@@ -1,0 +1,100 @@
+# PYTHON
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Environments
+venv/*
+venv/!requirements.txt
+venv_*
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# VisualStudioCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/launch.json
+
+# private
+statements
+database
+.*env
+!.flaskenv
+*.pem
+logs/
+
+
+# JAVASCRIPT
+node_modules
+.pnp
+.pnp.js
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# local env files
+.env*.local
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
