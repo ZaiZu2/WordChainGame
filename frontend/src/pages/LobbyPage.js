@@ -4,9 +4,9 @@ import Col from 'react-bootstrap/Col'
 import Stack from 'react-bootstrap/Stack'
 import { Button } from 'react-bootstrap'
 
-import Statistics from './Statistics'
+import Statistics from '../components/Statistics'
 
-export default function Lobby() {
+export default function LobbyPage() {
     let lobbyStats = {
         active_players: ['Active players', 11],
         active_games: ['Active games', 3],
