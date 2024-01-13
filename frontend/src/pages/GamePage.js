@@ -65,20 +65,20 @@ function ScoreCard() {
             <Table borderless className='m-0 text-center'>
                 <thead>
                     <tr className="d-flex justify-content-between">
-                        <td style={style} className='px-2 py-0 text-start fw-bold'>#</td>
-                        <td style={style} className='px-2 py-0 text-end fw-bold'>Player</td>
-                        <td style={style} className='px-2 py-0 text-end fw-bold'>Points</td>
-                        <td style={style} className='px-2 py-0 text-end fw-bold'>Mistakes</td>
+                        <td style={style} className='p-0 border-0 text-start fw-bold'>#</td>
+                        <td style={style} className='p-0 border-0 text-end fw-bold'>Player</td>
+                        <td style={style} className='p-0 border-0 text-end fw-bold'>Points</td>
+                        <td style={style} className='p-0 border-0 text-end fw-bold'>Mistakes</td>
                     </tr>
                 </thead>
                 <tbody>
                     {players.map(player => {
                         return (
                             <tr className="d-flex justify-content-between">
-                                <td style={style} className='px-2 py-0 text-start'>{player.ranking + 1}</td>
-                                <td style={style} className='px-2 py-0 text-end'>{player.name}</td>
-                                <td style={style} className='px-2 py-0 text-end'>{player.points}</td>
-                                <td style={style} className='px-2 py-0 text-end'>{player.mistakes}</td>
+                                <td style={style} className='p-0 border-0 text-start'>{player.ranking + 1}</td>
+                                <td style={style} className='p-0 border-0 text-end'>{player.name}</td>
+                                <td style={style} className='p-0 border-0 text-end'>{player.points}</td>
+                                <td style={style} className='p-0 border-0 text-end'>{player.mistakes}</td>
                             </tr>
                         )
                     })}
@@ -139,17 +139,17 @@ function WordList() {
                 <tbody>
                     {words.map((word, position) => {
                         return <tr style={style} className="d-flex justify-content-between">
-                            <td style={{ flexBasis: "20%" }} className='py-0 px-2'>Vecky</td>
-                            <td style={{ flexBasis: "60%" }} className={`py-0 ${positionToSize[position]}`}>{word.word}</td>
-                            <td style={{ flexBasis: "10%" }} className={`py-0 px-2 material-symbols-outlined ${color(word)}`}>{symbol(word)}</td>
-                            <td style={{ flexBasis: "10%" }} className={'py-0 px-2'}>{points(word)}</td>
+                            <td style={{ flexBasis: "20%" }} className='p-0 border-0'>Vecky</td>
+                            <td style={{ flexBasis: "60%" }} className={`p-0 border-0 ${positionToSize[position]}`}>{word.word}</td>
+                            <td style={{ flexBasis: "10%" }} className={`p-0 border-0 material-symbols-outlined ${color(word)}`}>{symbol(word)}</td>
+                            <td style={{ flexBasis: "10%" }} className={'p-0 border-0'}>{points(word)}</td>
                         </tr>
                     })}
                     <tr style={style} className="d-flex justify-content-between">
-                        <td style={{ flexBasis: "20%" }} className='py-0 px-2'>Vecky</td>
-                        <td style={{ flexBasis: "60%" }} className={`py-1 ${positionToSize[5]}`}>...</td>
-                        <td style={{ flexBasis: "10%" }} className={'py-0 px-2'}>...</td>
-                        <td style={{ flexBasis: "10%" }} className={'py-0 px-2'}>...</td>
+                        <td style={{ flexBasis: "20%" }} className='p-0 border-0'>Vecky</td>
+                        <td style={{ flexBasis: "60%" }} className={`p-0 border-0 ${positionToSize[5]}`}>...</td>
+                        <td style={{ flexBasis: "10%" }} className={'p-0 border-0'}>...</td>
+                        <td style={{ flexBasis: "10%" }} className={'p-0 border-0'}>...</td>
                     </tr>
                 </tbody>
             </Table>
