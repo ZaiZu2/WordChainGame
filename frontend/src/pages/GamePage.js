@@ -1,6 +1,4 @@
 import Container from 'react-bootstrap/Container'
-import Row from 'react-bootstrap/Row'
-import Col from 'react-bootstrap/Col'
 import Form from 'react-bootstrap/Form'
 import Table from 'react-bootstrap/Table'
 
@@ -63,50 +61,30 @@ function ScoreCard() {
     }
 
     return (
-        <>
-            {/* <Container className='border'>
-                <Row>
-                    <Col className='fw-bold'>Ranking</Col>
-                    <Col className='fw-bold'>Player</Col>
-                    <Col className='fw-bold'>Points</Col>
-                    <Col className='fw-bold'>Mistakes</Col>
-                </Row>
-                {players.map(player => {
-                    return (
-                        <Row key={player.id}>
-                            <Col>{player.ranking + 1}</Col>
-                            <Col>{player.name}</Col>
-                            <Col>{player.points}</Col>
-                            <Col>{player.mistakes}</Col>
-                        </Row>
-                    )
-                })}
-            </Container> */}
-            <div className='m-auto border'>
-                <Table borderless className='m-0 text-center'>
-                    <thead>
-                        <tr className="d-flex justify-content-between">
-                            <td style={style} className='px-2 py-0  fw-bold'>Ranking</td>
-                            <td style={style} className='px-2 py-0  fw-bold'>Player</td>
-                            <td style={style} className='px-2 py-0  fw-bold'>Points</td>
-                            <td style={style} className='px-2 py-0  fw-bold'>Mistakes</td>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {players.map(player => {
-                            return (
-                                <tr className="d-flex justify-content-between">
-                                    <td style={style} className='px-2 py-0 text-end'>{player.ranking + 1}</td>
-                                    <td style={style} className='px-2 py-0 text-end'>{player.name}</td>
-                                    <td style={style} className='px-2 py-0 text-end'>{player.points}</td>
-                                    <td style={style} className='px-2 py-0 text-end'>{player.mistakes}</td>
-                                </tr>
-                            )
-                        })}
-                    </tbody>
-                </Table>
-            </div>
-        </>
+        <Container className='border'>
+            <Table borderless className='m-0 text-center'>
+                <thead>
+                    <tr className="d-flex justify-content-between">
+                        <td style={style} className='px-2 py-0 text-start fw-bold'>#</td>
+                        <td style={style} className='px-2 py-0 text-end fw-bold'>Player</td>
+                        <td style={style} className='px-2 py-0 text-end fw-bold'>Points</td>
+                        <td style={style} className='px-2 py-0 text-end fw-bold'>Mistakes</td>
+                    </tr>
+                </thead>
+                <tbody>
+                    {players.map(player => {
+                        return (
+                            <tr className="d-flex justify-content-between">
+                                <td style={style} className='px-2 py-0 text-start'>{player.ranking + 1}</td>
+                                <td style={style} className='px-2 py-0 text-end'>{player.name}</td>
+                                <td style={style} className='px-2 py-0 text-end'>{player.points}</td>
+                                <td style={style} className='px-2 py-0 text-end'>{player.mistakes}</td>
+                            </tr>
+                        )
+                    })}
+                </tbody>
+            </Table>
+        </Container>
     )
 }
 

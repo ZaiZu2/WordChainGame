@@ -3,8 +3,10 @@ import Row from 'react-bootstrap/Row'
 import Col from 'react-bootstrap/Col'
 import Stack from 'react-bootstrap/Stack'
 import { Button } from 'react-bootstrap'
+import { Link } from 'react-router-dom'
 
 import Statistics from '../components/Statistics'
+
 
 export default function LobbyPage() {
     let lobbyStats = {
