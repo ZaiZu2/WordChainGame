@@ -64,17 +64,17 @@ function ScoreCard() {
         <Container className='border'>
             <Table borderless className='m-0 text-center'>
                 <thead>
-                    <tr className="d-flex justify-content-between">
+                    <tr className="d-flex py-2 justify-content-between">
                         <td style={style} className='p-0 border-0 text-start fw-bold'>#</td>
                         <td style={style} className='p-0 border-0 text-end fw-bold'>Player</td>
                         <td style={style} className='p-0 border-0 text-end fw-bold'>Points</td>
                         <td style={style} className='p-0 border-0 text-end fw-bold'>Mistakes</td>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody className='border-top'>
                     {players.map(player => {
                         return (
-                            <tr className="d-flex justify-content-between">
+                            <tr key={player.id} className="d-flex py-1 justify-content-between">
                                 <td style={style} className='p-0 border-0 text-start'>{player.ranking + 1}</td>
                                 <td style={style} className='p-0 border-0 text-end'>{player.name}</td>
                                 <td style={style} className='p-0 border-0 text-end'>{player.points}</td>
@@ -135,7 +135,6 @@ function WordList() {
     return (
         <Container className='border'>
             <Table borderless className='m-0 text-center'>
-                <thead></thead>
                 <tbody>
                     {words.map((word, position) => {
                         return <tr style={style} className="d-flex justify-content-between">
