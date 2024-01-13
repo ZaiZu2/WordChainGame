@@ -51,8 +51,7 @@ instance/
 .webassets-cache
 
 # Environments
-venv/*
-venv/!requirements.txt
+venv
 venv_*
 
 # mypy
