@@ -1,0 +1,38 @@
+[tools.mypy]
+check_untyped_defs = true
+disallow_any_unimported = false
+disallow_untyped_defs = true
+exclude = ["venv", "venv_dev", "venv_prod", "migrations"]
+ignore_missing_imports = true
+ignore_missing_imports_per_module = true
+no_implicit_optional = true
+show_error_codes = true
+warn_return_any = false
+warn_unused_configs = true
+warn_unused_ignores = true
+
+[tools.ruff]
+extend-exclude = ["venv", "venv_dev", "venv_prod"]
+line-length = 88
+
+[tool.ruff.lint]
+ignore = []
+select = ["E", "F", "B", "I", "W", "N", "D", "UP", "A", "C4", "PT"]
+
+fixable = ["ALL"]
+unfixable = []
+
+[tool.ruff.format]
+docstring-code-format = true
+indent-style = "space"
+quote-style = "single"
+
+[tool.ruff.isort]
+combine-as-imports = true
+force-wrap-aliases = true
+
+[tool.ruff.flake8-comprehensions]
+allow-dict-calls-with-keyword-arguments = true
+
+[tools.pytest]
+testpaths = "tests"
