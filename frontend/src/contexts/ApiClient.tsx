@@ -18,36 +18,27 @@ class GameApiClient {
             query = '?' + query;
         }
 
-        let response;
-        try {
-            response = await fetch(this.BASE_API_URL + options.url + query, {
-                method: options.method,
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...options.headers,
-                },
-                body: options.body ? JSON.stringify(options.body) : null,
-            });
-        }
-        catch (error: unknown) {
-            response = {
+        return fetch(this.BASE_API_URL + options.url + query, {
+            method: options.method,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers,
+            },
+            body: options.body ? JSON.stringify(options.body) : null,
+        }).then(async (response) => {
+            return {
+                ok: response.ok,
+                status: response.status,
+                body: response.status !== 204 ? await response.json() : null
+            };
+        }).catch(error => {
+            return {
                 ok: false,
                 status: 500,
-                body: async () => {
-                    return {
-                        code: 500,
-                        message: 'The server is unresponsive',
-                        description: error.toString(),
-                    };
-                }
-            };
+                body: error.json()
+            }
         }
-
-        return {
-            ok: response.ok,
-            status: response.status,
-            body: response.status !== 204 ? await response.json() : null
-        };
+        );
     }
 }
 
