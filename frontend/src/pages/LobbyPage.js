@@ -5,8 +5,6 @@ import Spinner from 'react-bootstrap/Spinner'
 import Table from 'react-bootstrap/Table'
 
 import Statistics from '../components/Statistics'
-import { BASE_API_URL } from '../config'
-import { GameRoom } from '../types'
 import { getGameRooms } from '../queries'
 
 export default function LobbyPage() {
@@ -40,10 +38,10 @@ function GameList() {
             <Table borderless className='m-0'>
                 <thead>
                     <tr className='d-flex py-2'>
-                        <td className='p-0 border-0 flex-grow-1 fw-bold' style={{flexBasis: "20%" }} >Name</td>
-                        <td className='p-0 border-0 flex-grow-1 fw-bold' style={{flexBasis: "20%" }} >Status</td>
-                        <td className='p-0 border-0 flex-grow-1 fw-bold' style={{flexBasis: "20%" }} >Capacity</td>
-                        <td className='p-0 border-0 flex-grow-1 fw-bold text-center' style={{flexBasis: "15%" }}>Actions</td>
+                        <td className='p-0 border-0 flex-grow-1 fw-bold' style={{ flexBasis: "20%" }} >Name</td>
+                        <td className='p-0 border-0 flex-grow-1 fw-bold' style={{ flexBasis: "20%" }} >Status</td>
+                        <td className='p-0 border-0 flex-grow-1 fw-bold' style={{ flexBasis: "20%" }} >Capacity</td>
+                        <td className='p-0 border-0 flex-grow-1 fw-bold text-center' style={{ flexBasis: "15%" }}>Actions</td>
                     </tr>
                 </thead>
                 <tbody className='border-top py-2 d-flex flex-column gap-2'>
@@ -53,10 +51,10 @@ function GameList() {
                                 gameRooms.map(gameRoom => {
                                     return (
                                         <tr key={gameRoom.id} className='d-flex'>
-                                            <td className='p-0 border-0 flex-grow-1' style={{flexBasis: "20%" }}>{gameRoom.name}</td>
-                                            <td className='p-0 border-0 flex-grow-1' style={{flexBasis: "20%" }}>{gameRoom.status}</td>
-                                            <td className='p-0 border-0 flex-grow-1' style={{flexBasis: "20%" }}>{gameRoom.player_ids.length}/{gameRoom.max_size}</td>
-                                            <td className='p-0 border-0 flex-grow-1 d-flex gap-2' style={{flexBasis: "15%", flexDirection: "horizontal" }}>
+                                            <td className='p-0 border-0 flex-grow-1' style={{ flexBasis: "20%" }}>{gameRoom.name}</td>
+                                            <td className='p-0 border-0 flex-grow-1' style={{ flexBasis: "20%" }}>{gameRoom.status}</td>
+                                            <td className='p-0 border-0 flex-grow-1' style={{ flexBasis: "20%" }}>{gameRoom.player_ids.length}/{gameRoom.max_size}</td>
+                                            <td className='p-0 border-0 flex-grow-1 d-flex gap-2' style={{ flexBasis: "15%", flexDirection: "horizontal" }}>
                                                 <Button variant='primary' size='sm'>Watch</Button>
                                                 <Button variant='primary' size='sm'>Join</Button>
                                             </td>
