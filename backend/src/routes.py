@@ -1,64 +1,60 @@
-from fastapi import Depends, FastAPI, HTTPException, status
-from fastapi.middleware.cors import CORSMiddleware
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import src.models as d  # d - database
 import src.schemas as s  # s - schema
+from src.fastapi_utils import TagsEnum
 from src.models import get_db, get_user
 
-app = FastAPI()
-
-origins = ['http://localhost:3000']
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=['*'],
-    allow_headers=['*'],
-)
+router = APIRouter(tags=[TagsEnum.ALL])
 
 
-@app.get('/players/me', status_code=status.HTTP_200_OK)
+@router.get('/players/me', status_code=status.HTTP_200_OK)
 async def get_player(player: d.Player = Depends(get_user)) -> s.MePlayer:
     return player
 
 
-@app.post('/players')
+@router.post('/players', status_code=status.HTTP_201_CREATED)
 async def create_player(
-    name: str, db: AsyncSession = Depends(get_db)) -> s.MePlayer:
+    name: Annotated[str, Query(max_length=10)], db: AsyncSession = Depends(get_db)
+) -> s.MePlayer:
     if await db.scalar(select(d.Player).where(d.Player.name == name)):
-        raise HTTPException(status_code=409,
-                            detail=f'Player with name {name} already exists')
+        raise HTTPException(
+            status_code=409, detail=[f'Player with name {name} already exists']
+        )
 
     player = d.Player(name=name)
+    db.add(player)
+    await db.flush()
+    await db.refresh(player)
+    return s.MePlayer.from_orm(player)
+
+
+@router.put('/players', status_code=status.HTTP_200_OK)
+async def update_player(
+    name: str, player: d.Player = Depends(get_user), db: AsyncSession = Depends(get_db)
+) -> s.MePlayer:
+    if await db.scalar(select(d.Player).where(d.Player.name == name)):
+        raise HTTPException(
+            status_code=409, detail=[f'Player with name {name} already exists']
+        )
+
+    player.name = name
     db.add(player)
     await db.flush()
     await db.refresh(player)
     return player
 
 
-@app.put('/players')
-async def update_player(
-    name: str, player: d.Player = Depends(get_user), db: AsyncSession = Depends(get_db)
-) -> s.MePlayer:
-    if await db.scalar(select(d.Player).where(d.Player.name == name)):
-        raise HTTPException(
-            status_code=409, detail=f'Player with name {name} already exists'
-        )
-
-    player.name = name
-    db.add(player)
-    await db.commit()
-    return player
-
-
-@app.get('/game_rooms')
+@router.get('/game_rooms', status_code=status.HTTP_200_OK)
 async def get_game_rooms() -> list[s.GameRoom]:
     return []
 
 
-@app.post('/game_rooms')
+@router.post('/game_rooms', status_code=status.HTTP_201_CREATED)
 async def create_game_room(
     new_game_room: s.NewGameRoom,
     player: d.Player = Depends(get_user),

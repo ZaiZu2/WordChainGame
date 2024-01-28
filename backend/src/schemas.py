@@ -1,21 +1,25 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 
 
-class MePlayer(BaseModel):
-    id_: UUID
+class GeneralBaseModel(BaseModel):
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+
+class MePlayer(GeneralBaseModel):
+    id_: UUID = Field(alias='id')
     name: str
     created_on: datetime
 
 
-class GameRoom(BaseModel):
-    id_: int
+class GameRoom(GeneralBaseModel):
+    id_: int = Field(alias='id')
     name: str
     rules: dict
 
 
-class NewGameRoom(BaseModel):
+class NewGameRoom(GeneralBaseModel):
     name: str
     rules: dict
