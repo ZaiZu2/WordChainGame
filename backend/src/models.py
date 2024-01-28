@@ -2,18 +2,19 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
+from typing import Annotated
 from uuid import UUID, uuid4
 
 import sqlalchemy as sa
 import sqlalchemy.orm as so
-from fastapi import Depends, HTTPException, status, Cookie
+from fastapi import Cookie, Depends, HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import (
     AsyncAttrs,
     AsyncSession,
     async_sessionmaker,
     create_async_engine,
 )
-from typing import Annotated
 
 from config import get_config
 
@@ -50,7 +51,7 @@ async def get_db() -> AsyncSession:
 async def get_user(
     user_id: Annotated[UUID, Cookie()], db: AsyncSession = Depends(get_db)
 ) -> Player:
-    player = await db.scalar(sa.select(Player).where(Player.id_ == user_id))
+    player = await db.scalar(select(Player).where(Player.id_ == user_id))
     if not player:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail='User not found'
@@ -66,7 +67,6 @@ class Base(AsyncAttrs, so.DeclarativeBase):
 # NOTE: CASCADE ON DELETE behavior not resolved as no resources are to be deleted in this project
 
 
-# Association table for many-to-many relationship between `players` and `games`
 players_games_table = sa.Table(
     'players_games',
     Base.metadata,
