@@ -6,6 +6,7 @@ import { RefObject, useRef, useState } from "react";
 import { useApi } from "../contexts/ApiContext";
 import { usePlayer } from "../contexts/PlayerContext";
 import { MePlayer } from "@/types";
+import { ApiError } from "../errors";
 
 export default function NewPlayerModal() {
     const api = useApi();
@@ -14,7 +15,7 @@ export default function NewPlayerModal() {
     return (
         <Modal show={player ? false : true} centered animation>
             <Modal.Body>
-                <LoginForm/>
+                <LoginForm />
                 <SuccessfulLogin />
             </Modal.Body>
         </Modal>
@@ -22,15 +23,12 @@ export default function NewPlayerModal() {
 }
 
 function SuccessfulLogin() {
-
-    return (
-        <></>
-    )
+    return <></>;
 }
 
 function LoginForm() {
     const api = useApi();
-    const { player, logIn } = usePlayer();
+    const { logIn } = usePlayer();
 
     const [playerErrors, setPlayerErrors] = useState<string[]>();
     const playerRef = useRef<HTMLInputElement>(null);
@@ -43,18 +41,21 @@ function LoginForm() {
             return;
         }
 
-        const response = await api.post<MePlayer>("players", {
-            name: playerName,
-        });
-        if (response.ok) {
+        try {
+            const response = await api.post<MePlayer>("players", {
+                name: playerName,
+            });
+            console.log('gowno');
             logIn(response.body);
-        } else {
-            console.log(response.errors);
-            const errorMessages = Object.values(response.errors).reduce(
-                (acc, val) => [...acc, ...val]
-            );
-            console.log(errorMessages);
-            setPlayerErrors(errorMessages);
+        } catch (error) {
+            console.log('gowno1');
+            if (error instanceof ApiError) console.log('gowno2');
+            if (error instanceof ApiError) {
+                const errorMessages = Object.values(error.errorMessages).reduce((acc, val) => [...acc, ...val]);
+                console.log('gowno');
+                console.log(errorMessages);
+                setPlayerErrors(errorMessages);
+            }
         }
     };
 
@@ -88,18 +89,14 @@ function LoginForm() {
                 </Form>
             </Stack>
             <Stack className="p-0">
-                <div className="mx-auto mb-2 fs-3">
-                    Or provide your unique code
-                </div>
+                <div className="mx-auto mb-2 fs-3">Or provide your unique code</div>
                 <Form onSubmit={onSubmitCode}>
                     <InputField
                         name={"player"}
                         label={"player"}
                         type={"text"}
                         errors={codeErrors}
-                        advice={
-                            "It was provided to you when you first created your account"
-                        }
+                        advice={"It was provided to you when you first created your account"}
                         fieldRef={codeRef}
                     />
                 </Form>
@@ -118,10 +115,7 @@ const InputField: React.FC<{
     fieldRef: RefObject<HTMLInputElement>;
 }> = (props) => {
     return (
-        <Form.Group
-            controlId={props.name}
-            className="d-flex flex-column justify-content"
-        >
+        <Form.Group controlId={props.name} className="d-flex flex-column justify-content">
             <Form.Label hidden>{props.label}</Form.Label>
             <Stack className="mx-auto m-1" direction="horizontal" gap={3}>
                 <Form.Control
@@ -136,11 +130,7 @@ const InputField: React.FC<{
             </Stack>
             {props.errors?.length ? (
                 props.errors.map((error) => {
-                    return (
-                        <Form.Text className="text-danger mx-auto">
-                            {error}
-                        </Form.Text>
-                    );
+                    return <Form.Text className="text-danger mx-auto">{error}</Form.Text>;
                 })
             ) : (
                 <Form.Text muted className="mx-auto">

@@ -1,13 +1,7 @@
 import { BASE_API_URL } from "../config";
-
-import {
-    ResponseOk,
-    ResponseError,
-    RequestOptions,
-    ValidatedFields,
-} from "../types";
-
+import { ApiResponse, RequestOptions, ValidatedFields } from "../types";
 import { createContext, useContext } from "react";
+import { ConnectionError, ApiError } from "../errors";
 
 class ApiClient {
     private BASE_API_URL: string;
@@ -16,10 +10,7 @@ class ApiClient {
         this.BASE_API_URL = BASE_API_URL;
     }
 
-    async request<T>(
-        url: string | URL,
-        options: RequestOptions
-    ): Promise<ResponseOk<T> | ResponseError> {
+    async request<T>(url: string | URL, options: RequestOptions): Promise<ApiResponse<T>> {
         let query = new URLSearchParams(options.query || {}).toString();
         if (query !== "") {
             query = "?" + query;
@@ -33,40 +24,33 @@ class ApiClient {
             },
             body: options.body ? JSON.stringify(options.body) : null,
         })
-            .then(async (response): Promise<ResponseOk<T> | ResponseError> => {
+            .catch(() => {
+                throw new ConnectionError();
+            })
+            .then(async (response): Promise<ApiResponse<T>> => {
                 const json: T | ValidatedFields = await response.json();
 
-                return response.ok
-                    ? {
-                          ok: response.ok,
-                          status: response.status,
-                          body: json as T,
-                      }
-                    : {
-                          ok: response.ok,
-                          status: response.status,
-                          errors: await this.extractErrorMessages(
-                              json as ValidatedFields
-                          ),
-                      };
-            })
-            .catch(() => {
-                return {
-                    ok: false,
-                    status: 500,
-                    errors: { detail: ["Connection was lost"] },
-                };
+                if (response.ok) {
+                    return {
+                        status: response.status,
+                        body: json as T,
+                    };
+                } else {
+                    const errorMessages = await this.extractErrorMessages(json as ValidatedFields);
+                    console.log(errorMessages);
+                    throw new ApiError(response.status, errorMessages);
+                }
             });
     }
 
     async get<T>(
         url: string | URL,
-        query: Record<string, string>,
-        options: {
+        query?: Record<string, string>,
+        options?: {
             headers?: Record<string, string>;
             cookies?: Record<string, string>;
         }
-    ): Promise<ResponseOk<T> | ResponseError> {
+    ): Promise<ApiResponse<T>> {
         return this.request(url, { method: "GET", query, ...options });
     }
 
@@ -78,7 +62,7 @@ class ApiClient {
             headers?: Record<string, string>;
             cookies?: Record<string, string>;
         }
-    ): Promise<ResponseOk<T> | ResponseError> {
+    ): Promise<ApiResponse<T>> {
         return this.request(url, { method: "POST", query, body, ...options });
     }
 
@@ -90,7 +74,7 @@ class ApiClient {
             headers?: Record<string, string>;
             cookies?: Record<string, string>;
         }
-    ): Promise<ResponseOk<T> | ResponseError> {
+    ): Promise<ApiResponse<T>> {
         return this.request(url, { method: "PUT", query, body, ...options });
     }
 
@@ -101,7 +85,7 @@ class ApiClient {
             headers?: Record<string, string>;
             cookies?: Record<string, string>;
         }
-    ): Promise<ResponseOk<T> | ResponseError> {
+    ): Promise<ApiResponse<T>> {
         return this.request(url, { method: "DELETE", query, ...options });
     }
 
@@ -112,9 +96,7 @@ class ApiClient {
             if (Array.isArray(fields)) {
                 errorMessages = { ...errorMessages, ...{ detail: fields } };
             } else {
-                for (const [fieldName, fieldMessages] of Object.entries(
-                    fields
-                )) {
+                for (const [fieldName, fieldMessages] of Object.entries(fields)) {
                     errorMessages = {
                         ...errorMessages,
                         ...{ [fieldName]: fieldMessages },
@@ -134,10 +116,6 @@ export function useApi() {
     return useContext(ApiContext);
 }
 
-export default function ApiProvider({
-    children,
-}: {
-    children: React.ReactNode;
-}) {
+export default function ApiProvider({ children }: { children: React.ReactNode }) {
     return <ApiContext.Provider value={api}>{children}</ApiContext.Provider>;
 }

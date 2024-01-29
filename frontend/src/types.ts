@@ -19,16 +19,9 @@ export type RequestOptions = {
     body?: any;
 };
 
-export type ResponseOk<T> = {
-    ok: true;
+export type ApiResponse<T> = {
     status: number;
     body: T;
-};
-
-export type ResponseError = {
-    ok: false;
-    status: number;
-    errors: Record<string, string[]>;
 };
 
 export type ValidatedFields = {
