@@ -6,11 +6,12 @@ import { RefObject, useRef, useState } from "react";
 import { useApi } from "../contexts/ApiContext";
 import { usePlayer } from "../contexts/PlayerContext";
 import { MePlayer } from "@/types";
-import { ApiError } from "../errors";
+import { ApiError, AuthError } from "../errors";
+import { UUID } from "crypto";
 
 export default function NewPlayerModal() {
     const api = useApi();
-    const { player, logIn } = usePlayer();
+    const { player } = usePlayer();
 
     return (
         <Modal show={player ? false : true} centered animation>
@@ -37,23 +38,16 @@ function LoginForm() {
         const playerName = playerRef.current?.value;
 
         if (!playerName) {
-            setPlayerErrors(["Player must not be empty"]);
+            setPlayerErrors(["Player field must not be empty"]);
             return;
         }
 
         try {
-            const response = await api.post<MePlayer>("players", {
-                name: playerName,
-            });
-            console.log('gowno');
-            logIn(response.body);
+            const response = await api.post<MePlayer>("/players", {}, { name: playerName });
+            await logIn(response.body.id);
         } catch (error) {
-            console.log('gowno1');
-            if (error instanceof ApiError) console.log('gowno2');
-            if (error instanceof ApiError) {
+            if (error instanceof ApiError || error instanceof AuthError) {
                 const errorMessages = Object.values(error.errorMessages).reduce((acc, val) => [...acc, ...val]);
-                console.log('gowno');
-                console.log(errorMessages);
                 setPlayerErrors(errorMessages);
             }
         }
@@ -61,16 +55,23 @@ function LoginForm() {
 
     const [codeErrors, setCodeErrors] = useState<string[]>();
     const codeRef = useRef<HTMLInputElement>(null);
-    const onSubmitCode = (event: React.FormEvent<HTMLFormElement>) => {
+    const onSubmitCode = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         const code = codeRef.current?.value;
 
         if (!code) {
-            setCodeErrors(["Code must not be empty"]);
+            setCodeErrors(["Code field must not be empty"]);
             return;
         }
 
-        // Query API, check the code & login
+        try {
+            await logIn(code as UUID);
+        } catch (error) {
+            if (error instanceof ApiError) {
+                const errorMessages = Object.values(error.errorMessages).reduce((acc, val) => [...acc, ...val]);
+                setCodeErrors(errorMessages);
+            }
+        }
     };
 
     return (

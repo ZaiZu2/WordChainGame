@@ -1,7 +1,7 @@
 import { BASE_API_URL } from "../config";
 import { ApiResponse, RequestOptions, ValidatedFields } from "../types";
 import { createContext, useContext } from "react";
-import { ConnectionError, ApiError } from "../errors";
+import { ConnectionError, ApiError, AuthError } from "../errors";
 
 class ApiClient {
     private BASE_API_URL: string;
@@ -16,8 +16,9 @@ class ApiClient {
             query = "?" + query;
         }
 
-        return fetch(`${this.BASE_API_URL}/${url}${query}`, {
+        return fetch(`${this.BASE_API_URL}${url}${query}`, {
             method: options.method,
+            credentials: "include", // Include http-only auth cookie
             headers: {
                 "Content-Type": "application/json",
                 ...options.headers,
@@ -29,15 +30,16 @@ class ApiClient {
             })
             .then(async (response): Promise<ApiResponse<T>> => {
                 const json: T | ValidatedFields = await response.json();
-
                 if (response.ok) {
                     return {
                         status: response.status,
                         body: json as T,
                     };
+                } else if (response.status === 403) {
+                    const errorMessages = await this.extractErrorMessages(json as ValidatedFields);
+                    throw new AuthError(response.status, errorMessages);
                 } else {
                     const errorMessages = await this.extractErrorMessages(json as ValidatedFields);
-                    console.log(errorMessages);
                     throw new ApiError(response.status, errorMessages);
                 }
             });

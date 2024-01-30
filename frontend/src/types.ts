@@ -28,11 +28,12 @@ export type ValidatedFields = {
     detail?: string[]; // ['user with this name already exists', ...]
     query?: Record<string, string[]>; // 'page': ['must be a number', 'must be positive']
     path?: Record<string, string[]>; // 'id': ['must be a UUID', 'must be a valid UUID']
+    cookie?: Record<string, string[]>; // ...
     body?: Record<string, string[]>; // ...
 };
 
 export type PlayerContext = {
     player: MePlayer | null | undefined;
-    logIn: (player: MePlayer) => void;
+    logIn: (id: UUID) => void;
     logOut: () => void;
 };
