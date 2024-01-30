@@ -24,15 +24,15 @@ async def request_validation_handler(
     }
     """
 
-    def _():
+    def dict_of_lists():
         return defaultdict(list)
 
-    body: dict[str | int, dict[str, list[str]]] = defaultdict(_)
+    body: dict[str | int, dict[str, list[str]]] = defaultdict(dict_of_lists)
     for error in exc.errors():
         if len(error['loc']) == 1:
             # request validation error - request body missing
             loc = error['loc'][0]
-            body[loc] = error.get('msg')
+            body[loc] = [error.get('msg')]
         else:
             # body/path validation error
             loc, field = error['loc'][0], error['loc'][1]

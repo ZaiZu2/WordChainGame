@@ -11,6 +11,9 @@ class Config(BaseSettings):
     SECRET_KEY: str
     DATABASE_URI: str
 
+    AUTH_COOKIE_NAME: str = 'player_id'
+    AUTH_COOKIE_EXPIRATION: int = 1200  # seconds
+
 
 @lru_cache
 def get_config() -> Config:

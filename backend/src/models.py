@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
-from typing import Annotated
+from typing import Annotated, Literal
 from uuid import UUID, uuid4
 
 import sqlalchemy as sa
 import sqlalchemy.orm as so
-from fastapi import Cookie, Depends, HTTPException, status
+from fastapi import Cookie, Depends, HTTPException, Response, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import (
     AsyncAttrs,
@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
-from config import get_config
+from config import Config, get_config
 
 metadata = sa.MetaData(
     naming_convention={
@@ -31,6 +31,21 @@ metadata = sa.MetaData(
 
 engine = create_async_engine(get_config().DATABASE_URI)
 async_session = async_sessionmaker(bind=engine, autocommit=False, autoflush=True)
+
+
+async def set_auth_cookie(
+    value: UUID | Literal[''],
+    response: Response,
+    config: Config = get_config(),
+) -> None:
+    response.set_cookie(
+        key=config.AUTH_COOKIE_NAME,
+        value=value,
+        max_age=config.AUTH_COOKIE_EXPIRATION,
+        httponly=True,
+        samesite='strict',
+        secure=True,
+    )
 
 
 async def get_db() -> AsyncSession:
@@ -48,14 +63,23 @@ async def get_db() -> AsyncSession:
             raise
 
 
-async def get_user(
-    user_id: Annotated[UUID, Cookie()], db: AsyncSession = Depends(get_db)
+async def get_player(
+    response: Response,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    player_id: Annotated[UUID | Literal[''] | None, Cookie()] = None,
 ) -> Player:
-    player = await db.scalar(select(Player).where(Player.id_ == user_id))
+    if player_id is None or player_id == '':
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail='Player is not authenticated'
+        )
+
+    player = await db.scalar(select(Player).where(Player.id_ == player_id))
     if not player:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail='User not found'
+            status_code=status.HTTP_403_FORBIDDEN, detail='Player is not authenticated'
         )
+
+    await set_auth_cookie(player_id, response)
     return player
 
 
@@ -79,7 +103,7 @@ class Player(Base):
     __tablename__ = 'players'
 
     id_: so.Mapped[UUID] = so.mapped_column('id', primary_key=True, default=uuid4)
-    name: so.Mapped[str] = so.mapped_column(sa.String(15), unique=True)
+    name: so.Mapped[str] = so.mapped_column(sa.String(10), unique=True)
     created_on: so.Mapped[datetime] = so.mapped_column(default=sa.func.now())
     last_active_on: so.Mapped[datetime] = so.mapped_column(default=sa.func.now())
 
@@ -102,7 +126,7 @@ class GameRoom(Base):
 
     id_: so.Mapped[int] = so.mapped_column('id', primary_key=True)
     name: so.Mapped[str] = so.mapped_column(
-        sa.String(15), unique=True
+        sa.String(10), unique=True
     )  # NOTE: Should this be unique?
     created_on: so.Mapped[datetime] = so.mapped_column(default=sa.func.now())
     ended_on: so.Mapped[datetime | None] = so.mapped_column()
