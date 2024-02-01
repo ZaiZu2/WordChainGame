@@ -1,7 +1,6 @@
-import { BASE_API_URL } from "../config";
-import { ApiResponse, RequestOptions, ValidatedFields } from "../types";
-import { createContext, useContext } from "react";
-import { ConnectionError, ApiError, AuthError } from "../errors";
+import { BASE_API_URL } from "./config";
+import { ApiResponse, RequestOptions, ValidatedFields } from "./types";
+import { ConnectionError, ApiError, AuthError } from "./errors";
 
 class ApiClient {
     private BASE_API_URL: string;
@@ -111,13 +110,5 @@ class ApiClient {
     }
 }
 
-const api = new ApiClient();
-const ApiContext = createContext(api);
-
-export function useApi() {
-    return useContext(ApiContext);
-}
-
-export default function ApiProvider({ children }: { children: React.ReactNode }) {
-    return <ApiContext.Provider value={api}>{children}</ApiContext.Provider>;
-}
+const apiClient = new ApiClient();
+export default apiClient;

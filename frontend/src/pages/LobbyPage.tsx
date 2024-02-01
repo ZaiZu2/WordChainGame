@@ -5,8 +5,7 @@ import Spinner from "react-bootstrap/Spinner";
 import Table from "react-bootstrap/Table";
 
 import Statistics from "../components/Statistics";
-import { getGameRooms } from "../queries";
-import { useApi } from "../contexts/ApiContext";
+import apiClient from "../apiClient";
 import { GameRoom } from "../types";
 
 export default function LobbyPage() {
@@ -25,12 +24,11 @@ export default function LobbyPage() {
 }
 
 function GameList() {
-    const api = useApi();
     const [gameRooms, setGameRooms] = useState<GameRoom[] | undefined>();
 
     useEffect(() => {
         (async () => {
-            const response = await api.get<GameRoom[]>("game_rooms");
+            const response = await apiClient.get<GameRoom[]>("/game_rooms");
             setGameRooms(response.body);
         })();
     }, []);

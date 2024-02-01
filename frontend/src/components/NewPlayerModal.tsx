@@ -1,34 +1,15 @@
 import Modal from "react-bootstrap/Modal";
 import Stack from "react-bootstrap/Stack";
 import Form from "react-bootstrap/Form";
-import { Button } from "react-bootstrap";
+import { Button, Container } from "react-bootstrap";
 import { RefObject, useRef, useState } from "react";
-import { useApi } from "../contexts/ApiContext";
+import apiClient from "../apiClient";
 import { usePlayer } from "../contexts/PlayerContext";
 import { MePlayer } from "@/types";
 import { ApiError, AuthError } from "../errors";
 import { UUID } from "crypto";
 
-export default function NewPlayerModal() {
-    const api = useApi();
-    const { player } = usePlayer();
-
-    return (
-        <Modal show={player ? false : true} centered animation>
-            <Modal.Body>
-                <LoginForm />
-                <SuccessfulLogin />
-            </Modal.Body>
-        </Modal>
-    );
-}
-
-function SuccessfulLogin() {
-    return <></>;
-}
-
-function LoginForm() {
-    const api = useApi();
+export function LoginModal() {
     const { logIn } = usePlayer();
 
     const [playerErrors, setPlayerErrors] = useState<string[]>();
@@ -43,11 +24,17 @@ function LoginForm() {
         }
 
         try {
-            const response = await api.post<MePlayer>("/players", {}, { name: playerName });
+            const response = await apiClient.post<MePlayer>(
+                "/players",
+                {},
+                { name: playerName }
+            );
             await logIn(response.body.id);
         } catch (error) {
             if (error instanceof ApiError || error instanceof AuthError) {
-                const errorMessages = Object.values(error.errorMessages).reduce((acc, val) => [...acc, ...val]);
+                const errorMessages = Object.values(error.errorMessages).reduce(
+                    (acc, val) => [...acc, ...val]
+                );
                 setPlayerErrors(errorMessages);
             }
         }
@@ -68,41 +55,55 @@ function LoginForm() {
             await logIn(code as UUID);
         } catch (error) {
             if (error instanceof ApiError) {
-                const errorMessages = Object.values(error.errorMessages).reduce((acc, val) => [...acc, ...val]);
+                const errorMessages = Object.values(error.errorMessages).reduce(
+                    (acc, val) => [...acc, ...val]
+                );
                 setCodeErrors(errorMessages);
             }
         }
     };
 
     return (
-        <Stack gap={4} className="justify-content">
-            <Stack className="p-0">
-                <div className="mx-auto mb-2 fs-3">Choose your name</div>
-                <Form onSubmit={onSubmitPlayer}>
-                    <InputField
-                        name={"player"}
-                        label={"player"}
-                        type={"text"}
-                        errors={playerErrors}
-                        advice={"Your name must be max. 10 characters long"}
-                        fieldRef={playerRef}
-                    />
-                </Form>
-            </Stack>
-            <Stack className="p-0">
-                <div className="mx-auto mb-2 fs-3">Or provide your unique code</div>
-                <Form onSubmit={onSubmitCode}>
-                    <InputField
-                        name={"player"}
-                        label={"player"}
-                        type={"text"}
-                        errors={codeErrors}
-                        advice={"It was provided to you when you first created your account"}
-                        fieldRef={codeRef}
-                    />
-                </Form>
-            </Stack>
-        </Stack>
+        <Modal centered animation show>
+            <Modal.Body>
+                <Stack gap={4} className="justify-content">
+                    <Stack className="p-0">
+                        <div className="mx-auto mb-2 fs-3">
+                            Choose your name
+                        </div>
+                        <Form onSubmit={onSubmitPlayer}>
+                            <InputField
+                                name={"player"}
+                                label={"player"}
+                                type={"text"}
+                                errors={playerErrors}
+                                advice={
+                                    "Your name must be max. 10 characters long"
+                                }
+                                fieldRef={playerRef}
+                            />
+                        </Form>
+                    </Stack>
+                    <Stack className="p-0">
+                        <div className="mx-auto mb-2 fs-3">
+                            Or provide your unique code
+                        </div>
+                        <Form onSubmit={onSubmitCode}>
+                            <InputField
+                                name={"player"}
+                                label={"player"}
+                                type={"text"}
+                                errors={codeErrors}
+                                advice={
+                                    "It was provided to you when you first created your account"
+                                }
+                                fieldRef={codeRef}
+                            />
+                        </Form>
+                    </Stack>
+                </Stack>
+            </Modal.Body>
+        </Modal>
     );
 }
 
@@ -116,7 +117,10 @@ const InputField: React.FC<{
     fieldRef: RefObject<HTMLInputElement>;
 }> = (props) => {
     return (
-        <Form.Group controlId={props.name} className="d-flex flex-column justify-content">
+        <Form.Group
+            controlId={props.name}
+            className="d-flex flex-column justify-content"
+        >
             <Form.Label hidden>{props.label}</Form.Label>
             <Stack className="mx-auto m-1" direction="horizontal" gap={3}>
                 <Form.Control
@@ -131,7 +135,11 @@ const InputField: React.FC<{
             </Stack>
             {props.errors?.length ? (
                 props.errors.map((error) => {
-                    return <Form.Text className="text-danger mx-auto">{error}</Form.Text>;
+                    return (
+                        <Form.Text className="text-danger mx-auto">
+                            {error}
+                        </Form.Text>
+                    );
                 })
             ) : (
                 <Form.Text muted className="mx-auto">

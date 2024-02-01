@@ -18,7 +18,6 @@ export default function Header() {
                     <Button
                         as={Link}
                         to="/"
-                        end
                         variant="primary"
                         size="sm"
                         className="me-3"

@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import { MePlayer, PlayerContext } from "@/types";
-import { useApi } from "./ApiContext";
+import apiClient from "../apiClient";
 import { AuthError } from "../errors";
 import { UUID } from "crypto";
 
@@ -15,8 +15,6 @@ export function usePlayer() {
 }
 
 export default function PlayerProvider({ children }: { children: React.ReactNode }) {
-    const api = useApi();
-
     const [player, setPlayer] = useState<MePlayer | null | undefined>();
 
     useEffect(function checkPlayerSessionCookie() {
@@ -24,7 +22,7 @@ export default function PlayerProvider({ children }: { children: React.ReactNode
         // logged in
         (async () => {
             try {
-                const response = await api.get<MePlayer>("/players/me");
+                const response = await apiClient.get<MePlayer>("/players/me");
                 setPlayer(response.body);
             } catch (error) {
                 if (error instanceof AuthError) {
@@ -36,12 +34,12 @@ export default function PlayerProvider({ children }: { children: React.ReactNode
 
     const logIn = async (id: UUID) => {
         const body = id === undefined ? { id: player?.id } : { id: id };
-        const response = await api.post<MePlayer>("/players/login", {}, body);
+        const response = await apiClient.post<MePlayer>("/players/login", {}, body);
         setPlayer(response.body);
     };
 
     const logOut = async () => {
-        await api.post<null>("/players/logout", {}, { id: player?.id });
+        await apiClient.post<null>("/players/logout", {}, { id: player?.id });
         setPlayer(null);
     };
 
