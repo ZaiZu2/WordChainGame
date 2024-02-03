@@ -39,7 +39,7 @@
             "request": "launch",
             "module": "uvicorn",
             "args": [
-                "src.routes:app",
+                "word_chain_game:app",
                 "--reload"
             ],
             "cwd": "${workspaceFolder}/backend",
