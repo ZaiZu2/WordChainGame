@@ -1,12 +1,13 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Body, Response, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Response, WebSocket, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import src.models as d  # d - database
 import src.schemas as s  # s - schema
+from src.connection_manager import ConnectionManager, get_connection_manager
 from src.fastapi_utils import TagsEnum
 from src.models import get_db, get_player, set_auth_cookie
 
@@ -80,7 +81,8 @@ async def get_rooms(
     player: Annotated[d.Player, Depends(get_player)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> list[s.Room]:
-    return []
+    rooms = await db.scalars(select(d.Room))
+    return [s.Room.model_validate(room) for room in rooms]
 
 
 @router.post('/rooms', status_code=status.HTTP_201_CREATED)
@@ -101,3 +103,23 @@ async def create_room(
     db.add(room)
     await db.commit()
     return room
+
+
+@router.websocket('room/{room_id}/chat')
+async def connect_to_chat(
+    room_id: int,
+    websocket: WebSocket,
+    player: Annotated[d.Player, Depends(get_player)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    conn_manager: Annotated[ConnectionManager, Depends(get_connection_manager)],
+) -> None:
+    await websocket.accept()
+    await conn_manager.add_connection(player.id_, room_id, websocket)
+
+    while True:
+        message_string = await websocket.receive_text()
+        await conn_manager.broadcast(room_id, message_string)
+
+        message = d.Message(content=message_string, room_id=room_id, player=player)
+        db.add(message)
+        await db.commit()

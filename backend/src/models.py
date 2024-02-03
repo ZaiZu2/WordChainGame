@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 from datetime import datetime
 from enum import Enum
 from typing import Annotated, Literal
@@ -31,6 +30,31 @@ metadata = sa.MetaData(
 
 engine = create_async_engine(get_config().DATABASE_URI)
 async_session = async_sessionmaker(bind=engine, autocommit=False, autoflush=True)
+
+
+async def create_root_objects():
+    """Create a db representations of a lobby chat and the it's necessary owner on server startup."""
+    async with async_session() as db:
+        try:
+            await db.begin()
+
+            if await db.scalar(select(Room).where(Room.id_ == 0)):
+                raise ValueError(
+                    f'Table "{Room.__tablename__}" is not empty - "lobby" room must be created with id=0'
+                )
+            if await db.scalar(select(Player).where(Player.name == 'root')):
+                raise ValueError(
+                    f'Table "{Room.__tablename__}" is not empty - Root player must be created with the name "root"'
+                )
+
+            root_owner = Player(name='root')
+            lobby = Room(id_=0, name='lobby', owner=root_owner, rules={})
+            db.add_all([lobby, root_owner])
+
+            await db.commit()
+        except Exception:
+            await db.rollback()
+            raise
 
 
 async def recreate_database():
@@ -172,9 +196,8 @@ class Message(Base):
     content: so.Mapped[str] = so.mapped_column(sa.String(255))
     created_on: so.Mapped[datetime] = so.mapped_column(default=sa.func.now())
 
-    # NOTE: If `room==None`, the message is sent in the global chat
-    room_id: so.Mapped[int | None] = so.mapped_column(sa.ForeignKey('rooms.id'))
-    room: so.Mapped[Room | None] = so.relationship(back_populates='messages')
+    room_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('rooms.id'))
+    room: so.Mapped[Room] = so.relationship(back_populates='messages')
     player_id: so.Mapped[UUID] = so.mapped_column(sa.ForeignKey('players.id'))
     player: so.Mapped[Player] = so.relationship(back_populates='messages')
 

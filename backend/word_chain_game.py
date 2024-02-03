@@ -10,12 +10,13 @@ import src.routes as routes
 from config import LOGGING_CONFIG
 from src.error_handlers import request_validation_handler
 from src.fastapi_utils import tags_metadata
-from src.models import recreate_database
+from src.models import create_root_objects, recreate_database
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await recreate_database()
+    await create_root_objects()
     yield
 
 
