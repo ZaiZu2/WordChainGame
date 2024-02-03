@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 import uvicorn
@@ -9,10 +10,17 @@ import src.routes as routes
 from config import LOGGING_CONFIG
 from src.error_handlers import request_validation_handler
 from src.fastapi_utils import tags_metadata
+from src.models import recreate_database
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await recreate_database()
+    yield
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(openapi_tags=tags_metadata)
+    app = FastAPI(lifespan=lifespan, openapi_tags=tags_metadata)
 
     origins = ['http://localhost:3000']
     app.add_middleware(

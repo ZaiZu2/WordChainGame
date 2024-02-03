@@ -75,29 +75,29 @@ async def update_player(
     return player
 
 
-@router.get('/game_rooms', status_code=status.HTTP_200_OK)
-async def get_game_rooms(
+@router.get('/rooms', status_code=status.HTTP_200_OK)
+async def get_rooms(
     player: Annotated[d.Player, Depends(get_player)],
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> list[s.GameRoom]:
+) -> list[s.Room]:
     return []
 
 
-@router.post('/game_rooms', status_code=status.HTTP_201_CREATED)
-async def create_game_room(
-    new_game_room: s.NewGameRoom,
+@router.post('/rooms', status_code=status.HTTP_201_CREATED)
+async def create_room(
+    new_room: s.NewRoom,
     player: Annotated[d.Player, Depends(get_player)],
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> s.GameRoom:
-    game = select(d.GameRoom).where(d.GameRoom.name == new_game_room.name)
+) -> s.Room:
+    game = select(d.Room).where(d.Room.name == new_room.name)
     if await db.scalar(game):
         raise HTTPException(
             status_code=409,
-            detail=f'Game room with name {new_game_room.name} already exists',
+            detail=f'Game room with name {new_room.name} already exists',
         )
 
-    game_room = d.GameRoom(**new_game_room.model_dump(exclude_unset=True))
-    game_room.owner = player
-    db.add(game_room)
+    room = d.Room(**new_room.model_dump(exclude_unset=True))
+    room.owner = player
+    db.add(room)
     await db.commit()
-    return game_room
+    return room

@@ -1,6 +1,6 @@
 import { UUID } from "crypto";
 
-export type GameRoom = {
+export type Room = {
     id: number;
     name: string;
     rules: object;

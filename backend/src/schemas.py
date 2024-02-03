@@ -14,12 +14,12 @@ class MePlayer(GeneralBaseModel):
     created_on: datetime
 
 
-class GameRoom(GeneralBaseModel):
+class Room(GeneralBaseModel):
     id_: int = Field(alias='id')
     name: str
     rules: dict
 
 
-class NewGameRoom(GeneralBaseModel):
+class NewRoom(GeneralBaseModel):
     name: str
     rules: dict

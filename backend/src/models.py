@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime
 from enum import Enum
 from typing import Annotated, Literal
@@ -28,9 +29,14 @@ metadata = sa.MetaData(
     }
 )
 
-
 engine = create_async_engine(get_config().DATABASE_URI)
 async_session = async_sessionmaker(bind=engine, autocommit=False, autoflush=True)
+
+
+async def recreate_database():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(Base.metadata.create_all)
 
 
 async def set_auth_cookie(
@@ -49,10 +55,6 @@ async def set_auth_cookie(
 
 
 async def get_db() -> AsyncSession:
-    # async with engine.begin() as conn:
-    #     await conn.run_sync(Base.metadata.drop_all)
-    #     await conn.run_sync(Base.metadata.create_all)
-
     async with async_session() as session:
         try:
             await session.begin()
@@ -90,7 +92,6 @@ class Base(AsyncAttrs, so.DeclarativeBase):
 
 # NOTE: CASCADE ON DELETE behavior not resolved as no resources are to be deleted in this project
 
-
 players_games_table = sa.Table(
     'players_games',
     Base.metadata,
@@ -107,11 +108,9 @@ class Player(Base):
     created_on: so.Mapped[datetime] = so.mapped_column(default=sa.func.now())
     last_active_on: so.Mapped[datetime] = so.mapped_column(default=sa.func.now())
 
-    game_room_id: so.Mapped[int | None] = so.mapped_column(
-        sa.ForeignKey('game_rooms.id')
-    )
-    game_room: so.Mapped[GameRoom | None] = so.relationship(
-        back_populates='players', foreign_keys=[game_room_id]
+    room_id: so.Mapped[int | None] = so.mapped_column(sa.ForeignKey('rooms.id'))
+    room: so.Mapped[Room | None] = so.relationship(
+        back_populates='players', foreign_keys=[room_id]
     )
 
     messages: so.Mapped[list[Message]] = so.relationship(back_populates='player')
@@ -121,8 +120,8 @@ class Player(Base):
     )
 
 
-class GameRoom(Base):
-    __tablename__ = 'game_rooms'
+class Room(Base):
+    __tablename__ = 'rooms'
 
     id_: so.Mapped[int] = so.mapped_column('id', primary_key=True)
     name: so.Mapped[str] = so.mapped_column(
@@ -136,10 +135,10 @@ class GameRoom(Base):
     owner: so.Mapped[Player] = so.relationship(foreign_keys=[owner_id])
 
     players: so.Mapped[list[Player]] = so.relationship(
-        back_populates='game_room', foreign_keys=[Player.game_room_id]
+        back_populates='room', foreign_keys=[Player.room_id]
     )
-    games: so.Mapped[list[Game]] = so.relationship(back_populates='game_room')
-    messages: so.Mapped[list[Message]] = so.relationship(back_populates='game_room')
+    games: so.Mapped[list[Game]] = so.relationship(back_populates='room')
+    messages: so.Mapped[list[Message]] = so.relationship(back_populates='room')
 
 
 class GameStatusEnum(str, Enum):
@@ -157,8 +156,8 @@ class Game(Base):
     ended_on: so.Mapped[datetime | None] = so.mapped_column()
     rules: so.Mapped[dict] = so.mapped_column(sa.JSON)  # TODO: Add TypedDict for rules
 
-    game_room_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('game_rooms.id'))
-    game_room: so.Mapped[GameRoom] = so.relationship(back_populates='games')
+    room_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('rooms.id'))
+    room: so.Mapped[Room] = so.relationship(back_populates='games')
 
     words: so.Mapped[list[Word]] = so.relationship(back_populates='game')
     players: so.Mapped[list[Player]] = so.relationship(
@@ -173,11 +172,9 @@ class Message(Base):
     content: so.Mapped[str] = so.mapped_column(sa.String(255))
     created_on: so.Mapped[datetime] = so.mapped_column(default=sa.func.now())
 
-    # NOTE: If `game_room==None`, the message is sent in the global chat
-    game_room_id: so.Mapped[int | None] = so.mapped_column(
-        sa.ForeignKey('game_rooms.id')
-    )
-    game_room: so.Mapped[GameRoom | None] = so.relationship(back_populates='messages')
+    # NOTE: If `room==None`, the message is sent in the global chat
+    room_id: so.Mapped[int | None] = so.mapped_column(sa.ForeignKey('rooms.id'))
+    room: so.Mapped[Room | None] = so.relationship(back_populates='messages')
     player_id: so.Mapped[UUID] = so.mapped_column(sa.ForeignKey('players.id'))
     player: so.Mapped[Player] = so.relationship(back_populates='messages')
 
