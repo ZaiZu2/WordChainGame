@@ -4,8 +4,6 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-import src.models as d  # d - database
-
 
 class GeneralBaseModel(BaseModel):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
@@ -34,14 +32,20 @@ class WebSocketMessageType(str, Enum):
     LOBBY_STATE = 'lobby_state'  # available rooms, ...?
 
 
-class ChatMessage(GeneralBaseModel):
+class ChatMessageIn(GeneralBaseModel):
+    content: str
     player_name: str
     room_id: int
-    created_on: datetime = Field(default_factory=datetime.now)
-    content: str
 
 
-class GameStateMessage(GeneralBaseModel):
+class ChatMessageOut(ChatMessageIn):
+    # message_id: int # TODO: To be provided by the database
+    created_on: datetime = Field(
+        default_factory=datetime.now
+    )  # TODO: Remove any default values
+
+
+class GameState(GeneralBaseModel):
     pass
 
 
@@ -51,14 +55,26 @@ class LobbyState(GeneralBaseModel):
 
 class WebSocketMessage(GeneralBaseModel):
     type: WebSocketMessageType
-    payload: ChatMessage | GameStateMessage | LobbyState
+    payload: ChatMessageIn | GameState | LobbyState
 
     @model_validator(mode='after')
     @classmethod
     def _check_corresponding_payload(cls, message: 'WebSocketMessage'):
-        if message.type == WebSocketMessageType.CHAT:
-            assert isinstance(message.payload, ChatMessage)
-        elif message.type == WebSocketMessageType.GAME_STATE:
-            assert isinstance(message.payload, GameStateMessage)
-        elif message.type == WebSocketMessageType.LOBBY_STATE:
-            assert isinstance(message.payload, LobbyState)
+        if message.type == WebSocketMessageType.CHAT and not isinstance(
+            message.payload, ChatMessageIn
+        ):
+            raise ValueError(
+                f'Wrong payload provided for the {message.type} message type'
+            )
+        elif message.type == WebSocketMessageType.GAME_STATE and not isinstance(
+            message.payload, GameState
+        ):
+            raise ValueError(
+                f'Wrong payload provided for the {message.type} message type'
+            )
+        elif message.type == WebSocketMessageType.LOBBY_STATE and not isinstance(
+            message.payload, LobbyState
+        ):
+            raise ValueError(
+                f'Wrong payload provided for the {message.type} message type'
+            )

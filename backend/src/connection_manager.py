@@ -11,21 +11,29 @@ class Connection:
         self.player_id = player_id
         self.connection = connection
 
+    def __hash__(self) -> int:
+        return self.player_id.int
+
+    def __eq__(self, other) -> bool:
+        if isinstance(other, Connection):
+            return self.player_id == other.player_id
+        return False
+
 
 class ConnectionManager:
     def __init__(self):
-        self.connections: dict[int, set[Connection]]
+        self.connections: dict[int, set[Connection]] = {}
 
-    def connect(self, player_id: UUID, game_id: int, conn: WebSocket):
-        room_conns = self.connections.get(game_id, None)
+    def connect(self, player_id: UUID, room_id: int, conn: WebSocket):
+        room_conns = self.connections.get(room_id, None)
         if room_conns is not None:
             conn = Connection(player_id, conn)
-            self.connections[room_conns].add(conn)
+            self.connections[room_id].add(conn)
         else:
-            self.connections[game_id] = set(Connection(player_id, conn))
+            self.connections[room_id] = {Connection(player_id, conn)}
 
-    def disconnect(self, player_id: UUID, game_id: int, conn: WebSocket):
-        room_conns = self.connections.get(game_id, None)
+    def disconnect(self, player_id: UUID, room_id: int, conn: WebSocket):
+        room_conns = self.connections.get(room_id, None)
         conn = Connection(player_id, conn)
 
         if room_conns is None:
@@ -37,10 +45,11 @@ class ConnectionManager:
                 'The player is trying to disconnect from a room they are not in'
             )
 
-        self.connections[room_conns].remove(conn)
+        self.connections[room_id].remove(conn)
+
 
     async def broadcast_chat_message(
-        self, chat_message: str, /, player_name: str = 'root', room_id: int = 0
+        self, chat_message: str, player_name: str, room_id: int
     ):
         """Brodcast a chat message - by default it's a 'root' message to the 'lobby' room."""
         room_conns = self.connections.get(room_id, None)
@@ -50,7 +59,7 @@ class ConnectionManager:
                 'The room for which a message is to be broadcasted does not exist'
             )
 
-        chat_message = s.ChatMessage(
+        chat_message = s.ChatMessageOut(
             player_name=player_name,
             room_id=room_id,
             content=chat_message,
@@ -60,7 +69,7 @@ class ConnectionManager:
             payload=chat_message,
         )
         for conn in room_conns:
-            await conn.connection.send_json(websocket_message.model_dump())
+            await conn.connection.send_json(websocket_message.model_dump_json())
 
 
 @lru_cache

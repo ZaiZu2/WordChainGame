@@ -115,39 +115,37 @@ async def create_room(
     return room
 
 
-@router.websocket('connect')
+@router.websocket('/connect')
 async def connect(
     websocket: WebSocket,
     player: Annotated[d.Player, Depends(get_player)],
     db: Annotated[AsyncSession, Depends(get_db)],
-    conn_manager: Annotated[ConnectionManager, Depends(get_connection_manager)],
+    conn_manager: Annotated[ConnectionManager,
+                            Depends(get_connection_manager)],
 ) -> None:
     #### INITIAL CONNECTION PHASE ####
     await websocket.accept()
-    await conn_manager.connect(player.id_, player.room_id, websocket)
+    conn_manager.connect(player.id_, player.room_id, websocket)
     # TODO: When websockets connects, it should send the initial package of data
     # if room_id == 0 (lobby):
     # send the list of available rooms and 10 last messages in the chat
     # if room_id != 0 (game room):
     # send all messages in the chat + game_state
     await conn_manager.broadcast_chat_message(
-        player.room_id, f'Player {player.name} joined the room'
-    )
+        f'Player {player.name} joined the room', "root", player.room_id)
 
     #### LISTENING PHASE ####
     try:
         while True:
             # TODO: Make a wrapper which deserializes the websocket message when it arrives
-            websocket_message_json = await websocket.receive_json()
-            websocket_message = s.WebSocketMessage.model_validate(
-                websocket_message_json
-            )
+            websocket_message_dict = await websocket.receive_json()
+            websocket_message = s.WebSocketMessage(**websocket_message_dict)
 
             match websocket_message.type:
-                # TODO: Make a wrapper which handles CHAT type websocket messages
+            # TODO: Make a wrapper which handles CHAT type websocket messages
                 case s.WebSocketMessageType.CHAT:
                     await conn_manager.broadcast_chat_message(
-                        websocket_message.payload,
+                        websocket_message.payload.content,
                         player_name=player.name,
                         room_id=player.room_id,
                     )
@@ -160,10 +158,8 @@ async def connect(
                     # await db.commit()
                 case s.WebSocketMessageType.GAME_STATE:
                     pass
-
     # TODO: Make a wrapper which catches the websocket disconnect exception
     except WebSocketDisconnect:
-        await conn_manager.disconnect(player.id_, player.room_id, websocket)
+        conn_manager.disconnect(player.id_, player.room_id, websocket)
         await conn_manager.broadcast_chat_message(
-            player.room_id, f'Player {player.name} left the room'
-        )
+            f'Player {player.name} left the room', player.name, player.room_id)
