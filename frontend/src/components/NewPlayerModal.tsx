@@ -1,7 +1,7 @@
 import Modal from "react-bootstrap/Modal";
 import Stack from "react-bootstrap/Stack";
 import Form from "react-bootstrap/Form";
-import { Button, Container } from "react-bootstrap";
+import { Button } from "react-bootstrap";
 import { RefObject, useRef, useState } from "react";
 import apiClient from "../apiClient";
 import { usePlayer } from "../contexts/PlayerContext";

@@ -37,3 +37,30 @@ export type PlayerContext = {
     logIn: (id: UUID) => void;
     logOut: () => void;
 };
+
+export type ChatMessage = {
+    player_name: string
+    room_id: number
+    created_on?: Date
+    content: string
+}
+
+export type GameState = {
+}
+
+export type LobbyState = {
+    rooms: Room[]
+}
+
+export type WebSocketMessage = {
+    type: 'chat' | 'game_state' | 'lobby_state'
+    payload: ChatMessage | GameState | LobbyState
+}
+
+
+export type WebSocketContext = {
+    sendChatMessage: (message: string, room_id: number) => void;
+    chatMessages: ChatMessage[];
+    lobbyState: LobbyState | null;
+    gameState: GameState | null;
+}

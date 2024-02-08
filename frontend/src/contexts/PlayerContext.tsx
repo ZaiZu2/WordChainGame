@@ -6,8 +6,8 @@ import { UUID } from "crypto";
 
 const PlayerContextObject = createContext<PlayerContext>({
     player: null,
-    logIn: () => {},
-    logOut: () => {},
+    logIn: () => { },
+    logOut: () => { },
 });
 
 export function usePlayer() {
