@@ -10,13 +10,13 @@ class GeneralBaseModel(BaseModel):
 
 
 class MePlayer(GeneralBaseModel):
-    id_: UUID = Field(alias='id')
+    id_: UUID = Field(serialization_alias='id')
     name: str
     created_on: datetime
 
 
 class Room(GeneralBaseModel):
-    id_: int = Field(alias='id')
+    id_: int = Field(serialization_alias='id')
     name: str
     rules: dict
 
@@ -32,17 +32,12 @@ class WebSocketMessageType(str, Enum):
     LOBBY_STATE = 'lobby_state'  # available rooms, ...?
 
 
-class ChatMessageIn(GeneralBaseModel):
+class ChatMessage(GeneralBaseModel):
+    id_: int | None = Field(None, serialization_alias='id')
+    created_on: datetime | None = None
     content: str
     player_name: str
     room_id: int
-
-
-class ChatMessageOut(ChatMessageIn):
-    # message_id: int # TODO: To be provided by the database
-    created_on: datetime = Field(
-        default_factory=datetime.now
-    )  # TODO: Remove any default values
 
 
 class GameState(GeneralBaseModel):
@@ -55,13 +50,13 @@ class LobbyState(GeneralBaseModel):
 
 class WebSocketMessage(GeneralBaseModel):
     type: WebSocketMessageType
-    payload: ChatMessageIn | GameState | LobbyState
+    payload: ChatMessage | GameState | LobbyState
 
     @model_validator(mode='after')
     @classmethod
     def _check_corresponding_payload(cls, message: 'WebSocketMessage'):
         if message.type == WebSocketMessageType.CHAT and not isinstance(
-            message.payload, ChatMessageIn
+            message.payload, ChatMessage
         ):
             raise ValueError(
                 f'Wrong payload provided for the {message.type} message type'

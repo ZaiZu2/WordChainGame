@@ -18,7 +18,7 @@ import src.models as d  # d - database
 import src.schemas as s  # s - schema
 from src.connection_manager import ConnectionManager, get_connection_manager
 from src.fastapi_utils import TagsEnum
-from src.models import get_db, get_player, set_auth_cookie
+from src.models import get_db, get_player, get_root_objects, set_auth_cookie
 
 router = APIRouter(tags=[TagsEnum.ALL])
 
@@ -107,7 +107,6 @@ async def create_room(
             status_code=409,
             detail=f'Game room with name {new_room.name} already exists',
         )
-
     room = d.Room(**new_room.model_dump(exclude_unset=True))
     room.owner = player
     db.add(room)
@@ -120,9 +119,10 @@ async def connect(
     websocket: WebSocket,
     player: Annotated[d.Player, Depends(get_player)],
     db: Annotated[AsyncSession, Depends(get_db)],
-    conn_manager: Annotated[ConnectionManager,
-                            Depends(get_connection_manager)],
+    conn_manager: Annotated[ConnectionManager, Depends(get_connection_manager)],
 ) -> None:
+    root_player, root_room = await get_root_objects(db)
+
     #### INITIAL CONNECTION PHASE ####
     await websocket.accept()
     conn_manager.connect(player.id_, player.room_id, websocket)
@@ -131,8 +131,15 @@ async def connect(
     # send the list of available rooms and 10 last messages in the chat
     # if room_id != 0 (game room):
     # send all messages in the chat + game_state
-    await conn_manager.broadcast_chat_message(
-        f'Player {player.name} joined the room', "root", player.room_id)
+    message = d.Message(
+        content=f'{player.name} joined the room',
+        room_id=player.room_id,
+        player_id=root_player.id_,
+    )
+    db.add(message)
+    await db.flush()
+    await conn_manager.broadcast_chat_message(message)
+    await db.commit()
 
     #### LISTENING PHASE ####
     try:
@@ -142,24 +149,29 @@ async def connect(
             websocket_message = s.WebSocketMessage(**websocket_message_dict)
 
             match websocket_message.type:
-            # TODO: Make a wrapper which handles CHAT type websocket messages
+                # TODO: Make a wrapper which handles CHAT type websocket messages
                 case s.WebSocketMessageType.CHAT:
-                    await conn_manager.broadcast_chat_message(
-                        websocket_message.payload.content,
-                        player_name=player.name,
-                        room_id=player.room_id,
+                    message = d.Message(
+                        content=websocket_message.payload.content,
+                        room_id=websocket_message.payload.room_id,
+                        player=player,
                     )
+                    db.add(message)
+                    await db.flush()
+                    await conn_manager.broadcast_chat_message(message)
+                    await db.commit()
 
-                    # TODO: Persistence switched off for now
-                    # message = d.Message(
-                    #     content=message_string, room_id=player.room_id, player=player
-                    # )
-                    # db.add(message)
-                    # await db.commit()
                 case s.WebSocketMessageType.GAME_STATE:
                     pass
     # TODO: Make a wrapper which catches the websocket disconnect exception
     except WebSocketDisconnect:
         conn_manager.disconnect(player.id_, player.room_id, websocket)
-        await conn_manager.broadcast_chat_message(
-            f'Player {player.name} left the room', player.name, player.room_id)
+        message = d.Message(
+            content=f'{player.name} left the room',
+            room_id=player.room_id,
+            player_id=root_player.id_,
+        )
+        db.add(message)
+        await db.flush()
+        await conn_manager.broadcast_chat_message(message)
+        await db.commit()

@@ -38,7 +38,9 @@ async def create_root_objects():
         try:
             await db.begin()
             # Root objects have circular FK constraints - this can happen only here
-            await db.execute(sa.text('SET CONSTRAINTS fk_players_room_id_rooms DEFERRED'))
+            await db.execute(
+                sa.text('SET CONSTRAINTS fk_players_room_id_rooms DEFERRED')
+            )
 
             if await db.scalar(select(Room).where(Room.id_ == 1)):
                 raise ValueError(
@@ -90,6 +92,13 @@ async def get_db() -> AsyncSession:
         except Exception:
             await session.rollback()
             raise
+
+
+# TODO: Add caching
+async def get_root_objects(db) -> tuple[Player, Room]:
+    root_player = await db.scalar(select(Player).where(Player.name == 'root'))
+    root_room = await db.scalar(select(Room).where(Room.name == 'lobby'))
+    return root_player, root_room
 
 
 async def get_player(

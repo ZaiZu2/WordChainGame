@@ -1,10 +1,8 @@
 from collections import defaultdict
 
-from fastapi import APIRouter, Response, status, HTTPException
+from fastapi import Response, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-
-router = APIRouter()
 
 
 async def request_validation_handler(

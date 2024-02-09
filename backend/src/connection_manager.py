@@ -3,6 +3,7 @@ from uuid import UUID
 
 from fastapi import WebSocket
 
+import src.models as d  # d - database
 import src.schemas as s  # s - schema
 
 
@@ -47,29 +48,30 @@ class ConnectionManager:
 
         self.connections[room_id].remove(conn)
 
-
-    async def broadcast_chat_message(
-        self, chat_message: str, player_name: str, room_id: int
-    ):
+    async def broadcast_chat_message(self, message: d.Message) -> None:
         """Brodcast a chat message - by default it's a 'root' message to the 'lobby' room."""
-        room_conns = self.connections.get(room_id, None)
+        room_conns = self.connections.get(message.room_id, None)
 
         if room_conns is None:
             raise ValueError(
                 'The room for which a message is to be broadcasted does not exist'
             )
 
-        chat_message = s.ChatMessageOut(
-            player_name=player_name,
-            room_id=room_id,
-            content=chat_message,
+        chat_message = s.ChatMessage(
+            id_=message.id_,
+            player_name=message.player.name,
+            room_id=message.room_id,
+            content=message.content,
+            created_on=message.created_on,
         )
         websocket_message = s.WebSocketMessage(
             type=s.WebSocketMessageType.CHAT,
             payload=chat_message,
         )
         for conn in room_conns:
-            await conn.connection.send_json(websocket_message.model_dump_json())
+            await conn.connection.send_json(
+                websocket_message.model_dump_json(by_alias=True)
+            )
 
 
 @lru_cache
