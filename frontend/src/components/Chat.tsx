@@ -11,9 +11,8 @@ export default function Chat() {
     const onSubmitMessage = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         const message = messageInputRef.current?.value;
-        console.log('message = ', message)
         if (message) {
-            sendChatMessage(message, 0);
+            sendChatMessage(message, 1);
         }
     };
 
@@ -22,7 +21,7 @@ export default function Chat() {
             <Container className="px-1 pb-2">
                 {chatMessages.map((message) => {
                     return (
-                        <div>
+                        <div key={message.id}>
                             {message.player_name !== "root"
                                 ? <span className="fw-bold me-2">{message.player_name}</span>
                                 : null}

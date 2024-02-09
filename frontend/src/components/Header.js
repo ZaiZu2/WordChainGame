@@ -41,9 +41,6 @@ export default function Header() {
                         <Navbar.Text className="m-0 fs-3">
                             {player ? player.name : "???"}
                         </Navbar.Text>
-                        <Navbar.Text>
-                            {player ? `#${player.id.slice(0, 8)}` : "#???"}
-                        </Navbar.Text>
                         <Button
                             variant="primary"
                             size="sm"

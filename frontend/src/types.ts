@@ -39,10 +39,11 @@ export type PlayerContext = {
 };
 
 export type ChatMessage = {
-    player_name: string
-    room_id: number
+    id?: number
     created_on?: Date
     content: string
+    player_name: string
+    room_id: number
 }
 
 export type GameState = {
