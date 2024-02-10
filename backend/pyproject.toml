@@ -16,7 +16,7 @@ extend-exclude = ["venv", "venv_dev", "venv_prod"]
 line-length = 88
 
 [tool.ruff.lint]
-ignore = []
+ignore = ["D100", "D101", "D102", "D103", "D105", "D107", "E501"]
 select = ["E", "F", "B", "I", "W", "N", "D", "UP", "A", "C4", "PT"]
 
 fixable = ["ALL"]
