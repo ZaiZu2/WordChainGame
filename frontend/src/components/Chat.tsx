@@ -2,11 +2,12 @@ import Container from "react-bootstrap/Container"
 import Form from "react-bootstrap/Form"
 
 import { useWebSocketContext } from "../contexts/WebsocketProvider"
-import { useRef } from "react"
+import { useEffect, useRef } from "react"
 
 export default function Chat() {
     const { sendChatMessage, chatMessages, } = useWebSocketContext();
     const messageInputRef = useRef<HTMLInputElement>(null);
+    const lastMessageRef = useRef<HTMLDivElement>(null);
 
     const onSubmitMessage = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -16,12 +17,21 @@ export default function Chat() {
         }
     };
 
+    useEffect(function scrollChatToBottom() {
+        lastMessageRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, [chatMessages]);
+
     return (
-        <Container className="border p-2">
-            <Container className="px-1 pb-2">
-                {chatMessages.map((message) => {
+        <Container className="border">
+            <Container className="p-0 my-2" style={{
+                minHeight: "100px",
+                maxHeight: "300px",
+                overflowY: "auto"
+            }}>
+                {chatMessages.map((message, index) => {
+                    const isLastMessage = index === chatMessages.length - 1;
                     return (
-                        <div key={message.id}>
+                        <div key={message.id} ref={isLastMessage ? lastMessageRef : null}>
                             {message.player_name !== "root"
                                 ? <span className="fw-bold me-2">{message.player_name}</span>
                                 : null}
@@ -34,10 +44,10 @@ export default function Chat() {
                 <Form.Control
                     type="text"
                     placeholder="Write here..."
-                    className="py-1 m-0"
+                    className="py-1 my-2"
                     ref={messageInputRef}
                 />
             </Form>
-        </Container>
+        </Container >
     );
 }

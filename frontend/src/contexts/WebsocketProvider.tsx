@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react'
 import { WebSocketContext, WebSocketMessage, ChatMessage, LobbyState, GameState } from "@/types"
 import { WEBSOCKET_URL } from '../config'
 import { usePlayer } from "../contexts/PlayerContext";
+import { CHAT_MESSAGE_LIMIT } from "../config";
 
 export const WebSocketContextObject = createContext<WebSocketContext>({
     sendChatMessage: (message: string, room_id: number) => { },
@@ -34,7 +35,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
             case "chat":
                 setChatMessages((prevChatMessages) => {
                     const tempMessages = [...prevChatMessages, websocketMessage.payload as ChatMessage];
-                    if (tempMessages.length > 10) {
+                    if (tempMessages.length > CHAT_MESSAGE_LIMIT) {
                         tempMessages.shift()
                     }
                     return tempMessages;

@@ -9,3 +9,5 @@ if (typeof _WEBSOCKET_URL === 'undefined') {
     throw new Error('REACT_APP_WEBSOCKET_URL is undefined');
 }
 export const WEBSOCKET_URL = _WEBSOCKET_URL;
+
+export const CHAT_MESSAGE_LIMIT = 30
