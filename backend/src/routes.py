@@ -16,9 +16,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 import src.models as d  # d - database
 import src.schemas as s  # s - schema
-from src.connection_manager import ConnectionManager, get_connection_manager
+from src.connection_manager import ConnectionManager
+from src.dependencies import (
+    get_connection_manager,
+    get_db,
+    get_player,
+    set_auth_cookie,
+)
 from src.fastapi_utils import TagsEnum
-from src.models import get_db, get_player, get_root_objects, set_auth_cookie
+from src.models import get_root_objects
 
 router = APIRouter(tags=[TagsEnum.ALL])
 
@@ -121,9 +127,8 @@ async def connect(
     db: Annotated[AsyncSession, Depends(get_db)],
     conn_manager: Annotated[ConnectionManager, Depends(get_connection_manager)],
 ) -> None:
-    root_player, root_room = await get_root_objects(db)
+    root_player, _ = await get_root_objects(db)
 
-    #### INITIAL CONNECTION PHASE ####
     await websocket.accept()
     conn_manager.connect(player.id_, player.room_id, websocket)
     # TODO: When websockets connects, it should send the initial package of data
@@ -141,7 +146,6 @@ async def connect(
     await conn_manager.broadcast_chat_message(message)
     await db.commit()
 
-    #### LISTENING PHASE ####
     try:
         while True:
             # TODO: Make a wrapper which deserializes the websocket message when it arrives
@@ -163,7 +167,6 @@ async def connect(
 
                 case s.WebSocketMessageType.GAME_STATE:
                     pass
-    # TODO: Make a wrapper which catches the websocket disconnect exception
     except WebSocketDisconnect:
         conn_manager.disconnect(player.id_, player.room_id, websocket)
         message = d.Message(

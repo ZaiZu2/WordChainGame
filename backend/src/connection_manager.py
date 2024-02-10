@@ -1,4 +1,3 @@
-from functools import lru_cache
 from uuid import UUID
 
 from fastapi import WebSocket
@@ -72,9 +71,3 @@ class ConnectionManager:
             await conn.connection.send_json(
                 websocket_message.model_dump_json(by_alias=True)
             )
-
-
-@lru_cache
-def get_connection_manager() -> ConnectionManager:
-    """FastAPI dependency injection function to pass a ConnectionManager instance into endpoints."""
-    return ConnectionManager()

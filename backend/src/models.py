@@ -2,21 +2,20 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
-from typing import Annotated, Literal
 from uuid import UUID, uuid4
 
 import sqlalchemy as sa
 import sqlalchemy.orm as so
-from fastapi import Cookie, Depends, HTTPException, Response, status
+from async_lru import alru_cache
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import (
     AsyncAttrs,
-    AsyncSession,
     async_sessionmaker,
     create_async_engine,
 )
 
-from config import Config, get_config
+import src.models as d
+from config import get_config
 
 metadata = sa.MetaData(
     naming_convention={
@@ -30,95 +29,6 @@ metadata = sa.MetaData(
 
 engine = create_async_engine(get_config().DATABASE_URI)
 async_session = async_sessionmaker(bind=engine, autocommit=False, autoflush=True)
-
-
-async def create_root_objects():
-    """Create a db representations of a lobby chat and the it's necessary owner on server startup."""
-    async with async_session() as db:
-        try:
-            await db.begin()
-            # Root objects have circular FK constraints - this can happen only here
-            await db.execute(
-                sa.text('SET CONSTRAINTS fk_players_room_id_rooms DEFERRED')
-            )
-
-            if await db.scalar(select(Room).where(Room.id_ == 1)):
-                raise ValueError(
-                    f'Table "{Room.__tablename__}" is not empty - "lobby" room must be created with id=1'
-                )
-            if await db.scalar(select(Player).where(Player.name == 'root')):
-                raise ValueError(
-                    f'Table "{Room.__tablename__}" is not empty - Root player must be created with the name "root"'
-                )
-
-            root_owner = Player(name='root')
-            lobby = Room(name='lobby', owner=root_owner, rules={})
-            root_owner.room_id = lobby.id_
-            db.add_all([lobby, root_owner])
-
-            await db.commit()
-        except Exception:
-            await db.rollback()
-            raise
-
-
-async def recreate_database():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-        await conn.run_sync(Base.metadata.create_all)
-
-
-async def set_auth_cookie(
-    value: UUID | Literal[''],
-    response: Response,
-    config: Config = get_config(),
-) -> None:
-    response.set_cookie(
-        key=config.AUTH_COOKIE_NAME,
-        value=value,
-        max_age=config.AUTH_COOKIE_EXPIRATION,
-        httponly=True,
-        samesite='strict',
-        secure=True,
-    )
-
-
-async def get_db() -> AsyncSession:
-    async with async_session() as session:
-        try:
-            await session.begin()
-            yield session
-            await session.commit()
-        except Exception:
-            await session.rollback()
-            raise
-
-
-# TODO: Add caching
-async def get_root_objects(db) -> tuple[Player, Room]:
-    root_player = await db.scalar(select(Player).where(Player.name == 'root'))
-    root_room = await db.scalar(select(Room).where(Room.name == 'lobby'))
-    return root_player, root_room
-
-
-async def get_player(
-    response: Response,
-    db: Annotated[AsyncSession, Depends(get_db)],
-    player_id: Annotated[UUID | Literal[''] | None, Cookie()] = None,
-) -> Player:
-    if player_id is None or player_id == '':
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail='Player is not authenticated'
-        )
-
-    player = await db.scalar(select(Player).where(Player.id_ == player_id))
-    if not player:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail='Player is not authenticated'
-        )
-
-    await set_auth_cookie(player_id, response)
-    return player
 
 
 class Base(AsyncAttrs, so.DeclarativeBase):
@@ -233,3 +143,46 @@ class Word(Base):
 
     player_id: so.Mapped[UUID] = so.mapped_column(sa.ForeignKey('players.id'))
     player: so.Mapped[Player] = so.relationship(back_populates='words')
+
+
+async def create_root_objects():
+    """Create a db representations of a lobby chat and the it's necessary owner on server startup."""
+    async with async_session() as db:
+        try:
+            await db.begin()
+            # Root objects have circular FK constraints - this can happen only here
+            await db.execute(
+                sa.text('SET CONSTRAINTS fk_players_room_id_rooms DEFERRED')
+            )
+
+            if await db.scalar(select(d.Room).where(d.Room.id_ == 1)):
+                raise ValueError(
+                    f'Table "{d.Room.__tablename__}" is not empty - "lobby" room must be created with id=1'
+                )
+            if await db.scalar(select(d.Player).where(d.Player.name == 'root')):
+                raise ValueError(
+                    f'Table "{d.Room.__tablename__}" is not empty - Root player must be created with the name "root"'
+                )
+
+            root_owner = d.Player(name='root')
+            lobby = d.Room(name='lobby', owner=root_owner, rules={})
+            root_owner.room_id = lobby.id_
+            db.add_all([lobby, root_owner])
+
+            await db.commit()
+        except Exception:
+            await db.rollback()
+            raise
+
+
+async def recreate_database():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(Base.metadata.create_all)
+
+
+@alru_cache
+async def get_root_objects(db) -> tuple[d.Player, d.Room]:
+    root_player = await db.scalar(select(d.Player).where(d.Player.name == 'root'))
+    root_room = await db.scalar(select(d.Room).where(d.Room.name == 'lobby'))
+    return root_player, root_room
