@@ -10,6 +10,7 @@ from async_lru import alru_cache
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import (
     AsyncAttrs,
+    AsyncSession,
     async_sessionmaker,
     create_async_engine,
 )
@@ -145,6 +146,12 @@ class Word(Base):
     player: so.Mapped[Player] = so.relationship(back_populates='words')
 
 
+async def recreate_database():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(Base.metadata.create_all)
+
+
 async def create_root_objects():
     """Create a db representations of a lobby chat and the it's necessary owner on server startup."""
     async with async_session() as db:
@@ -175,14 +182,29 @@ async def create_root_objects():
             raise
 
 
-async def recreate_database():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-        await conn.run_sync(Base.metadata.create_all)
+@alru_cache
+async def get_root_user(db: AsyncSession) -> d.Player:
+    """
+    Get the 'root' player which is referenced to all resources (messages/rooms/...)
+    generated on server.
+
+    Expunge it from the db session so that the model can be passed freely to different
+    request contexts.
+    """
+    root_player = await db.scalar(select(d.Player).where(d.Player.name == 'root'))
+    db.expunge(root_player)
+    return root_player
 
 
 @alru_cache
-async def get_root_objects(db) -> tuple[d.Player, d.Room]:
-    root_player = await db.scalar(select(d.Player).where(d.Player.name == 'root'))
+async def get_root_room(db: AsyncSession) -> d.Room:
+    """
+    Get the `lobby` room which is used as the main room players are connected to in
+    lobby.
+
+    Expunge it from the db session so the model can be passed freely to different
+    request contexts.
+    """
     root_room = await db.scalar(select(d.Room).where(d.Room.name == 'lobby'))
-    return root_player, root_room
+    db.expunge(root_room)
+    return root_room

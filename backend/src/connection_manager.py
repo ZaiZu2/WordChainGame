@@ -1,6 +1,7 @@
+import asyncio
 from uuid import UUID
 
-from fastapi import WebSocket
+from fastapi import WebSocket, WebSocketException
 
 import src.models as d  # d - database
 import src.schemas as s  # s - schema
@@ -24,28 +25,34 @@ class ConnectionManager:
     def __init__(self):
         self.connections: dict[int, set[Connection]] = {}
 
-    def connect(self, player_id: UUID, room_id: int, conn: WebSocket):
+    def connect(self, player_id: UUID, room_id: int, websocket_conn: WebSocket):
         room_conns = self.connections.get(room_id, None)
-        if room_conns is not None:
-            conn = Connection(player_id, conn)
-            self.connections[room_id].add(conn)
-        else:
-            self.connections[room_id] = {Connection(player_id, conn)}
+        player_conn = Connection(player_id, websocket_conn)
 
-    def disconnect(self, player_id: UUID, room_id: int, conn: WebSocket):
+        if room_conns is not None and player_conn in room_conns:
+            raise WebSocketException(
+                4001,
+                'Player can use only one client at a time. Disconnect the previous one first.',
+            )
+        elif room_conns is not None:
+            self.connections[room_id].add(player_conn)
+        else:
+            self.connections[room_id] = {player_conn}
+
+    def disconnect(self, player_id: UUID, room_id: int, websocket_conn: WebSocket):
         room_conns = self.connections.get(room_id, None)
-        conn = Connection(player_id, conn)
+        player_conn = Connection(player_id, websocket_conn)
 
         if room_conns is None:
             raise ValueError(
                 'The room for which a player is trying to disconnect does not exist'
             )
-        if conn not in room_conns:
+        if player_conn not in room_conns:
             raise ValueError(
                 'The player is trying to disconnect from a room they are not in'
             )
 
-        self.connections[room_id].remove(conn)
+        self.connections[room_id].remove(player_conn)
 
     async def broadcast_chat_message(self, message: d.Message) -> None:
         """Brodcast a chat message - by default it's a 'root' message to the 'lobby' room."""
@@ -67,7 +74,9 @@ class ConnectionManager:
             type=s.WebSocketMessageType.CHAT,
             payload=chat_message,
         )
-        for conn in room_conns:
-            await conn.connection.send_json(
-                websocket_message.model_dump_json(by_alias=True)
-            )
+
+        send_messages = [
+            conn.connection.send_json(websocket_message.model_dump_json(by_alias=True))
+            for conn in room_conns
+        ]
+        await asyncio.gather(*send_messages)

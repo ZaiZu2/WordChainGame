@@ -23,8 +23,8 @@ from src.dependencies import (
     get_player,
     set_auth_cookie,
 )
-from src.fastapi_utils import TagsEnum
-from src.models import get_root_objects
+from src.fastapi_utils import TagsEnum, persist_and_save_message
+from src.models import get_root_user
 
 router = APIRouter(tags=[TagsEnum.ALL])
 
@@ -127,10 +127,10 @@ async def connect(
     db: Annotated[AsyncSession, Depends(get_db)],
     conn_manager: Annotated[ConnectionManager, Depends(get_connection_manager)],
 ) -> None:
-    root_player, _ = await get_root_objects(db)
+    root_player = await get_root_user(db)
 
-    await websocket.accept()
     conn_manager.connect(player.id_, player.room_id, websocket)
+    await websocket.accept()
     # TODO: When websockets connects, it should send the initial package of data
     # if room_id == 0 (lobby):
     # send the list of available rooms and 10 last messages in the chat
@@ -139,12 +139,9 @@ async def connect(
     message = d.Message(
         content=f'{player.name} joined the room',
         room_id=player.room_id,
-        player_id=root_player.id_,
+        player=root_player,
     )
-    db.add(message)
-    await db.flush()
-    await conn_manager.broadcast_chat_message(message)
-    await db.commit()
+    await persist_and_save_message(message, db, conn_manager)
 
     try:
         while True:
@@ -160,21 +157,15 @@ async def connect(
                         room_id=websocket_message.payload.room_id,
                         player=player,
                     )
-                    db.add(message)
-                    await db.flush()
-                    await conn_manager.broadcast_chat_message(message)
-                    await db.commit()
-
+                    await persist_and_save_message(message, db, conn_manager)
                 case s.WebSocketMessageType.GAME_STATE:
                     pass
     except WebSocketDisconnect:
+        await db.refresh(player)
         conn_manager.disconnect(player.id_, player.room_id, websocket)
         message = d.Message(
             content=f'{player.name} left the room',
             room_id=player.room_id,
-            player_id=root_player.id_,
+            player=root_player,
         )
-        db.add(message)
-        await db.flush()
-        await conn_manager.broadcast_chat_message(message)
-        await db.commit()
+        await persist_and_save_message(message, db, conn_manager)
