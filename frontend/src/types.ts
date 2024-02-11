@@ -53,9 +53,14 @@ export type LobbyState = {
     rooms: Room[]
 }
 
+export type ConnectionState = {
+    code: number
+    reason: string
+}
+
 export type WebSocketMessage = {
-    type: 'chat' | 'game_state' | 'lobby_state'
-    payload: ChatMessage | GameState | LobbyState
+    type: 'chat' | 'game_state' | 'lobby_state' | 'connection_state'
+    payload: ChatMessage | GameState | LobbyState | ConnectionState
 }
 
 

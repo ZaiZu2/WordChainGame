@@ -1,33 +1,33 @@
-import useWebSocket from "react-use-websocket"
+import useWebSocket, { ReadyState } from "react-use-websocket"
 import React, { createContext, useContext, useState, useEffect } from 'react'
-import { WebSocketContext, WebSocketMessage, ChatMessage, LobbyState, GameState } from "@/types"
+import { WebSocketContext, WebSocketMessage, ChatMessage, LobbyState, GameState, ConnectionState } from "@/types"
 import { WEBSOCKET_URL } from '../config'
-import { usePlayer } from "../contexts/PlayerContext";
-import { CHAT_MESSAGE_LIMIT } from "../config";
+import { usePlayer } from "../contexts/PlayerContext"
+import { CHAT_MESSAGE_LIMIT } from "../config"
 
 export const WebSocketContextObject = createContext<WebSocketContext>({
     sendChatMessage: (message: string, room_id: number) => { },
     chatMessages: [],
     lobbyState: null,
     gameState: null,
-});
+})
 
 export function useWebSocketContext(): WebSocketContext {
     return useContext(WebSocketContextObject);
 }
 
 export function WebSocketProvider({ children }: { children: React.ReactNode }) {
-    const { player } = usePlayer()
+    const { logOut, player } = usePlayer()
     const {
         sendJsonMessage,
         lastJsonMessage,
-    } = useWebSocket(WEBSOCKET_URL);
+    } = useWebSocket(WEBSOCKET_URL, {});
 
     const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
     const [lobbyState, setLobbyState] = useState<LobbyState | null>(null);
     const [gameState, setGameState] = useState<GameState | null>(null);
 
-    useEffect(() => {
+    useEffect(function parseMessage() {
         if (lastJsonMessage === null) return
 
         const websocketMessage = JSON.parse(lastJsonMessage as string) as WebSocketMessage;
@@ -47,8 +47,16 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
             case "game_state":
                 setGameState(websocketMessage.payload as GameState);
                 break;
+            case "connection_state":
+                const connState = websocketMessage.payload as ConnectionState;
+                console.log(connState);
+                if (connState.code === 4001) {
+                    // TODO: Show toast saying that the player can only use one client at a time
+                    logOut();
+                }
+                break;
         }
-    }, [lastJsonMessage]);
+    }, [lastJsonMessage, logOut]);
 
     function sendChatMessage(message: string, room_id: number) {
         const websocketMessage = {
