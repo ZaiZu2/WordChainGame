@@ -1,6 +1,11 @@
 from typing import Annotated
 from uuid import UUID
 
+from backend.src.helpers import (
+    TagsEnum,
+    accept_websocket_connection,
+    save_and_send_message,
+)
 from fastapi import (
     APIRouter,
     Body,
@@ -23,8 +28,7 @@ from src.dependencies import (
     get_player,
     set_auth_cookie,
 )
-from src.fastapi_utils import TagsEnum, persist_and_save_message
-from src.models import get_root_user
+from src.models import get_root_player
 
 router = APIRouter(tags=[TagsEnum.ALL])
 
@@ -127,21 +131,14 @@ async def connect(
     db: Annotated[AsyncSession, Depends(get_db)],
     conn_manager: Annotated[ConnectionManager, Depends(get_connection_manager)],
 ) -> None:
-    root_player = await get_root_user(db)
+    root_player = await get_root_player(db)
 
-    conn_manager.connect(player.id_, player.room_id, websocket)
-    await websocket.accept()
+    await accept_websocket_connection(player, websocket, db, conn_manager)
     # TODO: When websockets connects, it should send the initial package of data
     # if room_id == 0 (lobby):
     # send the list of available rooms and 10 last messages in the chat
     # if room_id != 0 (game room):
     # send all messages in the chat + game_state
-    message = d.Message(
-        content=f'{player.name} joined the room',
-        room_id=player.room_id,
-        player=root_player,
-    )
-    await persist_and_save_message(message, db, conn_manager)
 
     try:
         while True:
@@ -151,15 +148,18 @@ async def connect(
 
             match websocket_message.type:
                 # TODO: Make a wrapper which handles CHAT type websocket messages
-                case s.WebSocketMessageType.CHAT:
+                case s.WebSocketMessageTypeEnum.CHAT:
                     message = d.Message(
                         content=websocket_message.payload.content,
                         room_id=websocket_message.payload.room_id,
                         player=player,
                     )
-                    await persist_and_save_message(message, db, conn_manager)
-                case s.WebSocketMessageType.GAME_STATE:
+                    await save_and_send_message(message, db, conn_manager)
+                case s.WebSocketMessageTypeEnum.GAME_STATE:
                     pass
+
+            db.commit()  # Commit all flushed resources to DB every time a message is received
+
     except WebSocketDisconnect:
         await db.refresh(player)
         conn_manager.disconnect(player.id_, player.room_id, websocket)
@@ -168,4 +168,4 @@ async def connect(
             room_id=player.room_id,
             player=root_player,
         )
-        await persist_and_save_message(message, db, conn_manager)
+        await save_and_send_message(message, db, conn_manager)

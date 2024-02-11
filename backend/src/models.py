@@ -183,7 +183,7 @@ async def create_root_objects():
 
 
 @alru_cache
-async def get_root_user(db: AsyncSession) -> d.Player:
+async def get_root_player(db: AsyncSession) -> d.Player:
     """
     Get the 'root' player which is referenced to all resources (messages/rooms/...)
     generated on server.

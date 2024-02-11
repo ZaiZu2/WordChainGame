@@ -26,10 +26,11 @@ class NewRoom(GeneralBaseModel):
     rules: dict
 
 
-class WebSocketMessageType(str, Enum):
+class WebSocketMessageTypeEnum(str, Enum):
     CHAT = 'chat'  # chat messages sent by players
     GAME_STATE = 'game_state'  # issued words, scores, ...?
     LOBBY_STATE = 'lobby_state'  # available rooms, ...?
+    CONNECTION_STATE = 'connection_state'
 
 
 class ChatMessage(GeneralBaseModel):
@@ -38,6 +39,15 @@ class ChatMessage(GeneralBaseModel):
     content: str
     player_name: str
     room_id: int
+
+
+class CustomWebsocketCodeEnum(int, Enum):
+    MULTIPLE_CLIENTS = 4001  # Player is already connected with another client
+
+
+class ConnectionState(GeneralBaseModel):
+    code: CustomWebsocketCodeEnum
+    reason: str
 
 
 class GameState(GeneralBaseModel):
@@ -49,27 +59,21 @@ class LobbyState(GeneralBaseModel):
 
 
 class WebSocketMessage(GeneralBaseModel):
-    type: WebSocketMessageType
-    payload: ChatMessage | GameState | LobbyState
+    type: WebSocketMessageTypeEnum
+    payload: ChatMessage | GameState | LobbyState | ConnectionState
 
     @model_validator(mode='after')
     @classmethod
     def _check_corresponding_payload(cls, message: 'WebSocketMessage'):
-        if message.type == WebSocketMessageType.CHAT and not isinstance(
-            message.payload, ChatMessage
-        ):
-            raise ValueError(
-                f'Wrong payload provided for the {message.type} message type'
-            )
-        elif message.type == WebSocketMessageType.GAME_STATE and not isinstance(
-            message.payload, GameState
-        ):
-            raise ValueError(
-                f'Wrong payload provided for the {message.type} message type'
-            )
-        elif message.type == WebSocketMessageType.LOBBY_STATE and not isinstance(
-            message.payload, LobbyState
-        ):
+        payload_types = {
+            WebSocketMessageTypeEnum.CHAT: ChatMessage,
+            WebSocketMessageTypeEnum.GAME_STATE: GameState,
+            WebSocketMessageTypeEnum.LOBBY_STATE: LobbyState,
+            WebSocketMessageTypeEnum.CONNECTION_STATE: ConnectionState,
+        }
+
+        expected_payload_type = payload_types.get(message.type)
+        if not isinstance(message.payload, expected_payload_type):
             raise ValueError(
                 f'Wrong payload provided for the {message.type} message type'
             )
