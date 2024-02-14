@@ -4,6 +4,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+import src.models as d
+
 
 class GeneralBaseModel(BaseModel):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
@@ -15,13 +17,16 @@ class MePlayer(GeneralBaseModel):
     created_on: datetime
 
 
-class Room(GeneralBaseModel):
+class RoomOut(GeneralBaseModel):
     id_: int = Field(serialization_alias='id')
     name: str
+    players_no: int
+    capacity: int
+    status: d.RoomStatusEnum
     rules: dict
 
 
-class NewRoom(GeneralBaseModel):
+class RoomIn(GeneralBaseModel):
     name: str
     rules: dict
 
@@ -50,17 +55,21 @@ class ConnectionState(GeneralBaseModel):
     reason: str
 
 
+class LobbyState(GeneralBaseModel):
+    rooms: dict[int, RoomOut]  # room_id: room
+
+
+class RoomState(GeneralBaseModel):
+    pass
+
+
 class GameState(GeneralBaseModel):
     pass
 
 
-class LobbyState(GeneralBaseModel):
-    rooms: list[Room]
-
-
 class WebSocketMessage(GeneralBaseModel):
     type: WebSocketMessageTypeEnum
-    payload: ChatMessage | GameState | LobbyState | ConnectionState
+    payload: ChatMessage | GameState | LobbyState | RoomState | ConnectionState
 
     @model_validator(mode='after')
     @classmethod

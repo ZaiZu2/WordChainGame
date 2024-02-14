@@ -105,8 +105,8 @@ async def send_initial_state(
     rooms = await db.scalars(select(d.Room).options(selectinload(d.Room.players)))
     rooms_map = {}
     for room in rooms:
-        out_room = s.RoomOut(players_no=len(room.players), **room.to_dict())
-        rooms_map[room.id_] = out_room
+        room_out = s.RoomOut(players_no=len(room.players), **room.to_dict())
+        rooms_map[room.id_] = room_out
 
     lobby_state = s.LobbyState(rooms=rooms_map)
     await conn_manager.send_lobby_state(player.id_, lobby_state)

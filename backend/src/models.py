@@ -6,11 +6,9 @@ from uuid import UUID, uuid4
 
 import sqlalchemy as sa
 import sqlalchemy.orm as so
-from async_lru import alru_cache
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import (
     AsyncAttrs,
-    AsyncSession,
     async_sessionmaker,
     create_async_engine,
 )
@@ -35,6 +33,11 @@ async_session = async_sessionmaker(bind=engine, autocommit=False, autoflush=True
 class Base(AsyncAttrs, so.DeclarativeBase):
     metadata = metadata
     pass
+
+    def to_dict(self) -> dict:
+        return {
+            col_name: getattr(self, col_name) for col_name in self.__mapper__.c.keys()
+        }
 
 
 # NOTE: CASCADE ON DELETE behavior not resolved as no resources are to be deleted in this project
@@ -72,6 +75,13 @@ class Player(Base):
     )
 
 
+class RoomStatusEnum(str, Enum):
+    OPEN = 'Open'
+    CLOSED = 'Closed'
+    PRIVATE = 'Private'
+    EXPIRED = 'Expired'
+
+
 class Room(Base):
     __tablename__ = 'rooms'
 
@@ -79,6 +89,10 @@ class Room(Base):
     name: so.Mapped[str] = so.mapped_column(
         sa.String(10), unique=True
     )  # NOTE: Should this be unique?
+    status: so.Mapped[RoomStatusEnum] = so.mapped_column(
+        default=RoomStatusEnum.OPEN, nullable=False
+    )
+    capacity: so.Mapped[int] = so.mapped_column(default=5, nullable=False)
     created_on: so.Mapped[datetime] = so.mapped_column(default=sa.func.now())
     ended_on: so.Mapped[datetime | None] = so.mapped_column()
     rules: so.Mapped[dict] = so.mapped_column(sa.JSON)  # TODO: Add TypedDict for rules

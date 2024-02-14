@@ -1,11 +1,6 @@
 from typing import Annotated
 from uuid import UUID
 
-from backend.src.helpers import (
-    TagsEnum,
-    accept_websocket_connection,
-    save_and_send_message,
-)
 from fastapi import (
     APIRouter,
     Body,
@@ -28,7 +23,12 @@ from src.dependencies import (
     get_player,
     set_auth_cookie,
 )
-from src.models import get_root_player
+from src.helpers import (
+    TagsEnum,
+    accept_websocket_connection,
+    save_and_send_message,
+    send_initial_state,
+)
 
 router = APIRouter(tags=[TagsEnum.ALL])
 
@@ -78,12 +78,12 @@ async def logout_player(
 
 
 @router.put('/players', status_code=status.HTTP_200_OK)
-async def update_player(
+async def update_player_name(
     name: Annotated[str, Body(embed=True)],
     player: Annotated[d.Player, Depends(get_player)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> s.MePlayer:
-    if await db.scalar(select(d.Player).where(d.Player.name == name)):
+    if db.scalar(select(d.Player).where(d.Player.name == name)):
         raise HTTPException(
             status_code=409, detail=[f'Player with name {name} already exists']
         )
@@ -95,33 +95,38 @@ async def update_player(
     return player
 
 
-@router.get('/rooms', status_code=status.HTTP_200_OK)
-async def get_rooms(
-    player: Annotated[d.Player, Depends(get_player)],
-    db: Annotated[AsyncSession, Depends(get_db)],
-) -> list[s.Room]:
-    # Room with id 1 is the lobby
-    rooms = await db.scalars(select(d.Room).where(d.Room.id_ != 1))
-    return [s.Room.model_validate(room) for room in rooms]
+# @router.get('/rooms', status_code=status.HTTP_200_OK)
+# async def get_rooms(
+#     player: Annotated[d.Player, Depends(get_player)],
+#     db: Annotated[AsyncSession, Depends(get_db)],
+# ) -> list[s.Room]:
+#     # Room with id 1 is the lobby
+#     rooms = await db.scalars(select(d.Room).where(d.Room.id_ != 1))
+#     return [s.Room.model_validate(room) for room in rooms]
 
 
 @router.post('/rooms', status_code=status.HTTP_201_CREATED)
 async def create_room(
-    new_room: s.NewRoom,
+    room_in: s.RoomIn,
     player: Annotated[d.Player, Depends(get_player)],
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> s.Room:
-    game = select(d.Room).where(d.Room.name == new_room.name)
-    if await db.scalar(game):
+    conn_manager: Annotated[ConnectionManager,
+                            Depends(get_connection_manager)],
+):
+    if await db.scalar(select(d.Room).where(d.Room.name == room_in.name)):
         raise HTTPException(
             status_code=409,
-            detail=f'Game room with name {new_room.name} already exists',
+            detail=f'Game room with name {room_in.name} already exists',
         )
-    room = d.Room(**new_room.model_dump(exclude_unset=True))
+
+    room = d.Room(**room_in.model_dump(exclude_unset=True))
     room.owner = player
     db.add(room)
-    await db.commit()
-    return room
+    await db.flush([room])
+
+    room_out = s.RoomOut(players_no=0, **room.to_dict())
+    lobby_state = s.LobbyState(rooms={room.id_: room_out})
+    await conn_manager.broadcast_lobby_state(lobby_state)
 
 
 @router.websocket('/connect')
@@ -131,23 +136,20 @@ async def connect(
     db: Annotated[AsyncSession, Depends(get_db)],
     conn_manager: Annotated[ConnectionManager, Depends(get_connection_manager)],
 ) -> None:
-    root_player = await get_root_player(db)
-
     await accept_websocket_connection(player, websocket, db, conn_manager)
-    # TODO: When websockets connects, it should send the initial package of data
-    # if room_id == 0 (lobby):
-    # send the list of available rooms and 10 last messages in the chat
-    # if room_id != 0 (game room):
-    # send all messages in the chat + game_state
+    await send_initial_state(player, db, conn_manager)
+    await db.commit()
 
     try:
         while True:
+            # await db.refresh(player)
+
             # TODO: Make a wrapper which deserializes the websocket message when it arrives
             websocket_message_dict = await websocket.receive_json()
             websocket_message = s.WebSocketMessage(**websocket_message_dict)
 
             match websocket_message.type:
-                # TODO: Make a wrapper which handles CHAT type websocket messages
+            # TODO: Make a wrapper which handles CHAT type websocket messages
                 case s.WebSocketMessageTypeEnum.CHAT:
                     message = d.Message(
                         content=websocket_message.payload.content,
@@ -158,14 +160,15 @@ async def connect(
                 case s.WebSocketMessageTypeEnum.GAME_STATE:
                     pass
 
-            db.commit()  # Commit all flushed resources to DB every time a message is received
+            # Commit all flushed resources to DB every time a message is received
+            await db.commit()
 
     except WebSocketDisconnect:
-        await db.refresh(player)
+        # await db.refresh(player)
         conn_manager.disconnect(player.id_, player.room_id, websocket)
         message = d.Message(
             content=f'{player.name} left the room',
             room_id=player.room_id,
-            player=root_player,
+            player=d.ROOT,
         )
         await save_and_send_message(message, db, conn_manager)
