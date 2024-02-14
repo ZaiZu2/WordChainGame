@@ -57,37 +57,37 @@ class ApiClient {
 
     async post<T>(
         url: string | URL,
-        query?: Record<string, string>,
-        body?: any,
         options?: {
+            query?: Record<string, string>,
+            body?: any,
             headers?: Record<string, string>;
             cookies?: Record<string, string>;
         }
     ): Promise<ApiResponse<T>> {
-        return this.request(url, { method: "POST", query, body, ...options });
+        return this.request(url, { method: "POST", ...options });
     }
 
     async put<T>(
         url: string | URL,
-        query?: Record<string, string>,
-        body?: any,
         options?: {
+            query?: Record<string, string>,
+            body?: any,
             headers?: Record<string, string>;
             cookies?: Record<string, string>;
         }
     ): Promise<ApiResponse<T>> {
-        return this.request(url, { method: "PUT", query, body, ...options });
+        return this.request(url, { method: "PUT", ...options });
     }
 
     async delete<T>(
         url: string | URL,
-        query?: Record<string, string>,
         options?: {
+            query?: Record<string, string>,
             headers?: Record<string, string>;
             cookies?: Record<string, string>;
         }
     ): Promise<ApiResponse<T>> {
-        return this.request(url, { method: "DELETE", query, ...options });
+        return this.request(url, { method: "DELETE", ...options });
     }
 
     private async extractErrorMessages(validatedFields: ValidatedFields) {
