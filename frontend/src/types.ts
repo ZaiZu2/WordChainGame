@@ -1,8 +1,11 @@
 import { UUID } from "crypto";
 
 export type Room = {
-    id: number;
+    id?: number;
     name: string;
+    players_no: number;
+    capacity: number;
+    status: "Open" | "Closed" | "Private"
     rules: object;
 };
 
@@ -50,7 +53,7 @@ export type GameState = {
 }
 
 export type LobbyState = {
-    rooms: Room[]
+    rooms: Record<number, Room>
 }
 
 export type ConnectionState = {
@@ -67,6 +70,6 @@ export type WebSocketMessage = {
 export type WebSocketContext = {
     sendChatMessage: (message: string, room_id: number) => void;
     chatMessages: ChatMessage[];
-    lobbyState: LobbyState | null;
+    rooms: Record<number, Room>;
     gameState: GameState | null;
 }

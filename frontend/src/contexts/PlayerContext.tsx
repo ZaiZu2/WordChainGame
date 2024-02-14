@@ -34,12 +34,12 @@ export default function PlayerProvider({ children }: { children: React.ReactNode
 
     const logIn = async (id: UUID) => {
         const body = id === undefined ? { id: player?.id } : { id: id };
-        const response = await apiClient.post<MePlayer>("/players/login", {}, body);
+        const response = await apiClient.post<MePlayer>("/players/login", { body: body });
         setPlayer(response.body);
     };
 
     const logOut = async () => {
-        await apiClient.post<null>("/players/logout", {}, { id: player?.id });
+        await apiClient.post<null>("/players/logout", { body: { id: player?.id } });
         setPlayer(null);
     };
 

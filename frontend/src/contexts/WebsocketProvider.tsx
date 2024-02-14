@@ -1,6 +1,6 @@
 import useWebSocket, { ReadyState } from "react-use-websocket"
 import React, { createContext, useContext, useState, useEffect } from 'react'
-import { WebSocketContext, WebSocketMessage, ChatMessage, LobbyState, GameState, ConnectionState } from "@/types"
+import { WebSocketContext, WebSocketMessage, ChatMessage, LobbyState, GameState, ConnectionState, Room } from "@/types"
 import { WEBSOCKET_URL } from '../config'
 import { usePlayer } from "../contexts/PlayerContext"
 import { CHAT_MESSAGE_LIMIT } from "../config"
@@ -8,7 +8,7 @@ import { CHAT_MESSAGE_LIMIT } from "../config"
 export const WebSocketContextObject = createContext<WebSocketContext>({
     sendChatMessage: (message: string, room_id: number) => { },
     chatMessages: [],
-    lobbyState: null,
+    rooms: {},
     gameState: null,
 })
 
@@ -24,7 +24,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     } = useWebSocket(WEBSOCKET_URL, {});
 
     const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-    const [lobbyState, setLobbyState] = useState<LobbyState | null>(null);
+    const [rooms, setRooms] = useState<Record<number, Room>>({});
     const [gameState, setGameState] = useState<GameState | null>(null);
 
     useEffect(function parseMessage() {
@@ -42,7 +42,12 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
                 });
                 break;
             case "lobby_state":
-                setLobbyState(websocketMessage.payload as LobbyState);
+                setRooms((prevRooms) => {
+                    const lobbyState = websocketMessage.payload as LobbyState;
+                    const newRooms = lobbyState.rooms;
+                    return { ...prevRooms, ...newRooms }
+                });
+                console.log(websocketMessage.payload);
                 break;
             case "game_state":
                 setGameState(websocketMessage.payload as GameState);
@@ -71,7 +76,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     }
 
     return (
-        <WebSocketContextObject.Provider value={{ sendChatMessage, chatMessages, lobbyState, gameState }}>
+        <WebSocketContextObject.Provider value={{ sendChatMessage, chatMessages, rooms, gameState }}>
             {children}
         </WebSocketContextObject.Provider>
     );

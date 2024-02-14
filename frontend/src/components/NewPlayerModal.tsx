@@ -26,8 +26,7 @@ export function LoginModal() {
         try {
             const response = await apiClient.post<MePlayer>(
                 "/players",
-                {},
-                { name: playerName }
+                { body: { name: playerName }, }
             );
             await logIn(response.body.id);
         } catch (error) {

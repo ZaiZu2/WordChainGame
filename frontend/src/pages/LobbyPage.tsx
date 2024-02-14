@@ -7,6 +7,7 @@ import Table from "react-bootstrap/Table";
 import Statistics from "../components/Statistics";
 import apiClient from "../apiClient";
 import { Room } from "../types";
+import { useWebSocketContext } from "../contexts/WebsocketProvider"
 
 export default function LobbyPage() {
     let lobbyStats = {
@@ -18,20 +19,13 @@ export default function LobbyPage() {
     return (
         <>
             <Statistics stats={lobbyStats} />
-            <GameList />
+            <RoomList />
         </>
     );
 }
 
-function GameList() {
-    const [Rooms, setRooms] = useState<Room[] | undefined>();
-
-    useEffect(() => {
-        (async () => {
-            const response = await apiClient.get<Room[]>("/rooms");
-            setRooms(response.body);
-        })();
-    }, []);
+function RoomList() {
+    const { rooms } = useWebSocketContext();
 
     return (
         <Container className="d-flex flex-column border" style={{ alignItems: "center" }}>
@@ -53,22 +47,22 @@ function GameList() {
                     </tr>
                 </thead>
                 <tbody className="border-top py-2 d-flex flex-column gap-2">
-                    {Rooms === undefined ? (
+                    {rooms === undefined ? (
                         <Spinner animation="border" className="my-3 mx-auto" />
-                    ) : Rooms.length === 0 ? (
-                        <p className="p-1 m-auto">No games available</p>
+                    ) : Object.values(rooms).length === 0 ? (
+                        <tr><td className="p-1 m-auto">No games available</td></tr>
                     ) : (
-                        Rooms.map((Room) => {
+                        Object.values(rooms).map((room) => {
                             return (
-                                <tr key={Room.id} className="d-flex">
+                                <tr key={room.id} className="d-flex">
                                     <td className="p-0 border-0 flex-grow-1" style={{ flexBasis: "20%" }}>
-                                        {Room.name}
+                                        {room.name}
                                     </td>
                                     <td className="p-0 border-0 flex-grow-1" style={{ flexBasis: "20%" }}>
-                                        {Room.name}
+                                        {room.status}
                                     </td>
                                     <td className="p-0 border-0 flex-grow-1" style={{ flexBasis: "20%" }}>
-                                        {Room.name}/{Room.name}
+                                        {room.players_no}/{room.capacity}
                                     </td>
                                     <td className="p-0 border-0 flex-grow-1 d-flex gap-2" style={{ flexBasis: "15%" }}>
                                         <Button variant="primary" size="sm">
