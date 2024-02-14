@@ -171,40 +171,20 @@ async def create_root_objects():
                     f'Table "{d.Room.__tablename__}" is not empty - Root player must be created with the name "root"'
                 )
 
-            root_owner = d.Player(name='root')
-            lobby = d.Room(name='lobby', owner=root_owner, rules={})
-            root_owner.room_id = lobby.id_
-            db.add_all([lobby, root_owner])
-
+            global ROOT, LOBBY
+            ROOT.room_id = LOBBY.id_
+            db.add_all([LOBBY, ROOT])
             await db.commit()
+            await db.refresh(LOBBY)
+            so.make_transient(LOBBY)
+            await db.refresh(ROOT)
+            so.make_transient(ROOT)
         except Exception:
             await db.rollback()
             raise
 
 
-@alru_cache
-async def get_root_player(db: AsyncSession) -> d.Player:
-    """
-    Get the 'root' player which is referenced to all resources (messages/rooms/...)
-    generated on server.
-
-    Expunge it from the db session so that the model can be passed freely to different
-    request contexts.
-    """
-    root_player = await db.scalar(select(d.Player).where(d.Player.name == 'root'))
-    db.expunge(root_player)
-    return root_player
-
-
-@alru_cache
-async def get_root_room(db: AsyncSession) -> d.Room:
-    """
-    Get the `lobby` room which is used as the main room players are connected to in
-    lobby.
-
-    Expunge it from the db session so the model can be passed freely to different
-    request contexts.
-    """
-    root_room = await db.scalar(select(d.Room).where(d.Room.name == 'lobby'))
-    db.expunge(root_room)
-    return root_room
+# Global root db objects, accessible to all components of the application
+# Their dynamic attrs (id, ...) are set in `create_root_objects()` on webserver startup
+ROOT = Player(name='root')
+LOBBY = Room(name='lobby', status=RoomStatusEnum.OPEN, owner=ROOT, rules={})
