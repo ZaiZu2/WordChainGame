@@ -2,7 +2,6 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 import uvicorn
-from backend.src.helpers import tags_metadata
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import src.routes as routes
 from config import LOGGING_CONFIG
 from src.error_handlers import request_validation_handler
+from src.helpers import tags_metadata
 from src.models import create_root_objects, recreate_database
 
 

@@ -23,6 +23,7 @@ class Connection:
 
 class ConnectionManager:
     def __init__(self):
+        # {room_id: {connection, ...}, ...}
         self.connections: dict[int, set[Connection]] = {}
 
     def connect(self, player_id: UUID, room_id: int, websocket: WebSocket) -> bool:
@@ -30,7 +31,7 @@ class ConnectionManager:
         room_conns = self.connections.get(room_id, None)
         connection = Connection(player_id, websocket)
 
-        if self.find_connection(player_id=player_id):
+        if self.find_connection(player_id):
             return False
         elif room_conns is not None:
             self.connections[room_id].add(connection)
@@ -40,20 +41,20 @@ class ConnectionManager:
 
     def disconnect(self, player_id: UUID, room_id: int, websocket: WebSocket):
         room_conns = self.connections.get(room_id, None)
-        connection = Connection(player_id, websocket)
+        conn = Connection(player_id, websocket)
 
         if room_conns is None:
             raise ValueError(
                 'The room for which a player is trying to disconnect does not exist'
             )
-        if connection not in room_conns:
+        if conn not in room_conns:
             raise ValueError(
                 'The player is trying to disconnect from a room they are not in'
             )
 
-        self.connections[room_id].remove(connection)
+        self.connections[room_id].remove(conn)
 
-    async def broadcast_chat_message(self, message: d.Message) -> None:
+    async def broadcast_chat_message(self, message: s.ChatMessage) -> None:
         room_conns = self.connections.get(message.room_id, None)
 
         if room_conns is None:
@@ -61,16 +62,9 @@ class ConnectionManager:
                 'The room for which a message is to be broadcasted does not exist'
             )
 
-        chat_message = s.ChatMessage(
-            id_=message.id_,
-            player_name=message.player.name,
-            room_id=message.room_id,
-            content=message.content,
-            created_on=message.created_on,
-        )
         websocket_message = s.WebSocketMessage(
             type=s.WebSocketMessageTypeEnum.CHAT,
-            payload=chat_message,
+            payload=message,
         )
 
         send_messages = [
@@ -78,6 +72,42 @@ class ConnectionManager:
             for conn in room_conns
         ]
         await asyncio.gather(*send_messages)
+
+    async def broadcast_lobby_state(self, lobby_state: s.LobbyState) -> None:
+        """
+        Send the lobby state to all players in the lobby. Message contains only the
+        data that is due to be updated - data which is not included in the message MUST
+        stay the same on the client side.
+        """
+        lobby_conns = self.connections.get(d.LOBBY.id_, [])
+
+        websocket_message = s.WebSocketMessage(
+            type=s.WebSocketMessageTypeEnum.LOBBY_STATE,
+            payload=lobby_state,
+        )
+
+        send_messages = [
+            conn.websocket.send_json(websocket_message.model_dump_json(by_alias=True))
+            for conn in lobby_conns
+        ]
+        await asyncio.gather(*send_messages)
+
+    async def send_lobby_state(
+        self, player_id: UUID, lobby_state: s.LobbyState
+    ) -> None:
+        """
+        Send the lobby state to a single player in the lobby. Message contains only the
+        data that is due to be updated - data which is not included in the message MUST
+        stay the same on the client side.
+        """
+        if not (conn := self.find_connection(player_id, room_id=d.LOBBY.id_)):
+            raise ValueError('Player is not in the lobby')
+
+        websocket_message = s.WebSocketMessage(
+            type=s.WebSocketMessageTypeEnum.LOBBY_STATE,
+            payload=lobby_state,
+        )
+        await conn.websocket.send_json(websocket_message.model_dump_json(by_alias=True))
 
     async def send_connection_state(
         self, code: int | s.CustomWebsocketCodeEnum, reason: str, websocket: WebSocket
@@ -95,21 +125,32 @@ class ConnectionManager:
         await websocket.send_json(websocket_message.model_dump_json(by_alias=True))
 
     def find_connection(
-        self, player_id: UUID | None = None, websocket: WebSocket | None = None
+        self,
+        player_id: UUID,
+        *,
+        # websocket: WebSocket | None = None,
+        room_id: int | None = None,
     ) -> Connection | None:
-        """Find a connection by player_id or websocket."""
+        """
+        Find a connection by player_id or websocket. If `room_id` is provided, check
+        for existence in a specific room.
+        """
         # XOR to check that only one of the optional arguments is provided
-        if not ((player_id is None) ^ (websocket is None)):
-            raise ValueError('Only one of the optional arguments must be provided')
+        # if not ((player_id is None) ^ (websocket is None)):
+        #     raise ValueError(
+        #         'Only one of the optional arguments must be provided')
 
-        if player_id is not None:
-            for room_conns in self.connections.values():
-                for conn in room_conns:
-                    if conn.player_id == player_id:
-                        return conn
+        if room_id is not None:
+            room_conns = self.connections.get(room_id, None)
+            if room_conns is None:
+                return None
+
+            for conn in room_conns:
+                if conn.player_id == player_id:
+                    return conn
         else:
             for room_conns in self.connections.values():
                 for conn in room_conns:
-                    if conn.websocket == websocket:
+                    if conn.player_id == player_id:
                         return conn
         return None
