@@ -92,7 +92,7 @@ class Room(Base):
     status: so.Mapped[RoomStatusEnum] = so.mapped_column(
         default=RoomStatusEnum.OPEN, nullable=False
     )
-    capacity: so.Mapped[int] = so.mapped_column(default=5, nullable=False)
+    capacity: so.Mapped[int] = so.mapped_column(nullable=False)
     created_on: so.Mapped[datetime] = so.mapped_column(default=sa.func.now())
     ended_on: so.Mapped[datetime | None] = so.mapped_column()
     rules: so.Mapped[dict] = so.mapped_column(sa.JSON)  # TODO: Add TypedDict for rules
@@ -201,4 +201,4 @@ async def create_root_objects():
 # Global root db objects, accessible to all components of the application
 # Their dynamic attrs (id, ...) are set in `create_root_objects()` on webserver startup
 ROOT = Player(name='root')
-LOBBY = Room(name='lobby', status=RoomStatusEnum.OPEN, owner=ROOT, rules={})
+LOBBY = Room(name='lobby', status=RoomStatusEnum.OPEN, capacity=0, owner=ROOT, rules={})

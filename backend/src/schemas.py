@@ -28,8 +28,8 @@ class RoomOut(GeneralBaseModel):
 
 class RoomIn(GeneralBaseModel):
     name: str
+    capacity: int
     rules: dict
-
 
 class WebSocketMessageTypeEnum(str, Enum):
     CHAT = 'chat'  # chat messages sent by players

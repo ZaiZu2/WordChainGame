@@ -1,3 +1,4 @@
+import asyncio
 from typing import Annotated
 from uuid import UUID
 
@@ -26,7 +27,8 @@ from src.dependencies import (
 from src.helpers import (
     TagsEnum,
     accept_websocket_connection,
-    save_and_send_message,
+    handle_player_disconnect,
+    listen_for_messages,
     send_initial_state,
 )
 
@@ -110,8 +112,7 @@ async def create_room(
     room_in: s.RoomIn,
     player: Annotated[d.Player, Depends(get_player)],
     db: Annotated[AsyncSession, Depends(get_db)],
-    conn_manager: Annotated[ConnectionManager,
-                            Depends(get_connection_manager)],
+    conn_manager: Annotated[ConnectionManager, Depends(get_connection_manager)],
 ):
     if await db.scalar(select(d.Room).where(d.Room.name == room_in.name)):
         raise HTTPException(
@@ -141,34 +142,14 @@ async def connect(
     await db.commit()
 
     try:
-        while True:
-            # await db.refresh(player)
+        # Run as a separate task so blocking operations can coexist with polling
+        # operations inside this endpoint.
+        listening_task = asyncio.create_task(
+            listen_for_messages(player, websocket, db, conn_manager)
+        )
 
-            # TODO: Make a wrapper which deserializes the websocket message when it arrives
-            websocket_message_dict = await websocket.receive_json()
-            websocket_message = s.WebSocketMessage(**websocket_message_dict)
-
-            match websocket_message.type:
-            # TODO: Make a wrapper which handles CHAT type websocket messages
-                case s.WebSocketMessageTypeEnum.CHAT:
-                    message = d.Message(
-                        content=websocket_message.payload.content,
-                        room_id=websocket_message.payload.room_id,
-                        player=player,
-                    )
-                    await save_and_send_message(message, db, conn_manager)
-                case s.WebSocketMessageTypeEnum.GAME_STATE:
-                    pass
-
-            # Commit all flushed resources to DB every time a message is received
-            await db.commit()
+        await asyncio.gather(listening_task)
 
     except WebSocketDisconnect:
-        # await db.refresh(player)
-        conn_manager.disconnect(player.id_, player.room_id, websocket)
-        message = d.Message(
-            content=f'{player.name} left the room',
-            room_id=player.room_id,
-            player=d.ROOT,
-        )
-        await save_and_send_message(message, db, conn_manager)
+        await db.refresh(player)
+        await handle_player_disconnect(player, db, conn_manager)
