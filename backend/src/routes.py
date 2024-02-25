@@ -151,5 +151,4 @@ async def connect(
         await asyncio.gather(listening_task)
 
     except WebSocketDisconnect:
-        await db.refresh(player)
-        await handle_player_disconnect(player, db, conn_manager)
+        await handle_player_disconnect(player, websocket, db, conn_manager)

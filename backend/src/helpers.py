@@ -112,8 +112,14 @@ async def send_initial_state(
 
 
 async def handle_player_disconnect(
-    player: d.Player, db: AsyncSession, conn_manager: ConnectionManager
+    player: d.Player,
+    websocket: WebSocket,
+    db: AsyncSession,
+    conn_manager: ConnectionManager,
 ) -> None:
+    await db.refresh(player)
+    conn_manager.disconnect(player.id_, player.room_id, websocket)
+
     is_player_in_lobby = player.room_id == d.LOBBY.id_
     if not is_player_in_lobby:
         active_game_with_player = await db.scalar(
@@ -121,9 +127,7 @@ async def handle_player_disconnect(
                 func.and_(
                     d.Game.status == d.GameStatusEnum.IN_PROGRESS,
                     d.Game.players.contains(player),
-                )
-            )
-        )
+                )))
 
         if not active_game_with_player:
             # If disconnected while in a game room, throw the player into the lobby
@@ -167,7 +171,7 @@ async def listen_for_messages(
 
         await db.refresh(player)
         match websocket_message.type:
-            # TODO: Make a wrapper which handles CHAT type websocket messages
+        # TODO: Make a wrapper which handles CHAT type websocket messages
             case s.WebSocketMessageTypeEnum.CHAT:
                 message = d.Message(
                     content=websocket_message.payload.content,
