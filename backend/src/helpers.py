@@ -123,11 +123,11 @@ async def send_initial_state(
     # 2. Send the lobby state
     result = await db.execute(
         select(d.Room, func.count(d.Room.players))
-        .join(d.Player, d.Room.players)
+        .outerjoin(d.Player, d.Room.players)
         .where(d.Room.status != d.RoomStatusEnum.EXPIRED)
         .group_by(d.Room.id_)
     )
-    result_tuples = result.fetchall()
+    result_tuples = result.all()
 
     rooms_map = {}
     for room, player_count in result_tuples:
