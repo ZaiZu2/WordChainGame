@@ -109,6 +109,24 @@ class ConnectionManager:
         )
         await conn.websocket.send_json(websocket_message.model_dump_json(by_alias=True))
 
+    async def broadcast_room_state(self, room_id: int, room_state: s.RoomState) -> None:
+        """
+        Send the room state to all players in the room. Message contains only the
+        data that is due to be updated - data which is not included in the message MUST
+        stay the same on the client side.
+        """
+        room_conns = self.connections[room_id]
+
+        websocket_message = s.WebSocketMessage(
+            type=s.WebSocketMessageTypeEnum.ROOM_STATE,
+            payload=room_state,
+        )
+        send_messages = [
+            conn.websocket.send_json(websocket_message.model_dump_json(by_alias=True))
+            for conn in room_conns
+        ]
+        await asyncio.gather(*send_messages)
+
     async def send_connection_state(
         self, code: int | s.CustomWebsocketCodeEnum, reason: str, websocket: WebSocket
     ) -> None:
@@ -124,22 +142,22 @@ class ConnectionManager:
         )
         await websocket.send_json(websocket_message.model_dump_json(by_alias=True))
 
+    def move_player(self, player_id: UUID, from_room_id: int, to_room_id: int) -> None:
+        """Move a player's websocket connection from one room to another."""
+        player_conn = self.find_connection(player_id, from_room_id)
+        self.connections[from_room_id].remove(player_conn)
+        self.connections[to_room_id].add(player_conn)
+
     def find_connection(
         self,
         player_id: UUID,
         *,
-        # websocket: WebSocket | None = None,
         room_id: int | None = None,
     ) -> Connection | None:
         """
-        Find a connection by player_id or websocket. If `room_id` is provided, check
-        for existence in a specific room.
+        Find a connection by player_id. If `room_id` is provided, check for existence in
+        a specific room.
         """
-        # XOR to check that only one of the optional arguments is provided
-        # if not ((player_id is None) ^ (websocket is None)):
-        #     raise ValueError(
-        #         'Only one of the optional arguments must be provided')
-
         if room_id is not None:
             room_conns = self.connections.get(room_id, None)
             if room_conns is None:

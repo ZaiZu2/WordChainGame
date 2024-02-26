@@ -38,6 +38,33 @@ async def save_and_broadcast_message(
     await conn_manager.broadcast_chat_message(chat_message)
 
 
+async def move_player_and_broadcast(
+    player: d.Player,
+    old_room_id: int,
+    db: AsyncSession,
+    conn_manager: ConnectionManager,
+) -> None:
+    """
+    Move the player from the old room to the new one and broadcast the change in
+    corresponding chats.
+    """
+    conn_manager.move_player(player.id_, old_room_id, player.room_id)
+
+    message = d.Message(
+        content=f'{player.name} left the lobby to join a room',
+        room_id=old_room_id,
+        player_id=player.id_,
+    )
+    await save_and_broadcast_message(message, db, conn_manager)
+
+    message = d.Message(
+        content=f'{player.name} joined the room',
+        room_id=player.room_id,
+        player_id=player.id_,
+    )
+    await save_and_broadcast_message(message, db, conn_manager)
+
+
 async def accept_websocket_connection(
     player: d.Player,
     websocket: WebSocket,
@@ -127,7 +154,9 @@ async def handle_player_disconnect(
                 func.and_(
                     d.Game.status == d.GameStatusEnum.IN_PROGRESS,
                     d.Game.players.contains(player),
-                )))
+                )
+            )
+        )
 
         if not active_game_with_player:
             # If disconnected while in a game room, throw the player into the lobby
@@ -171,7 +200,7 @@ async def listen_for_messages(
 
         await db.refresh(player)
         match websocket_message.type:
-        # TODO: Make a wrapper which handles CHAT type websocket messages
+            # TODO: Make a wrapper which handles CHAT type websocket messages
             case s.WebSocketMessageTypeEnum.CHAT:
                 message = d.Message(
                     content=websocket_message.payload.content,

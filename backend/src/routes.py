@@ -14,6 +14,7 @@ from fastapi import (
 )
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 import src.models as d  # d - database
 import src.schemas as s  # s - schema
@@ -29,6 +30,7 @@ from src.helpers import (
     accept_websocket_connection,
     handle_player_disconnect,
     listen_for_messages,
+    move_player_and_broadcast,
     send_initial_state,
 )
 
@@ -87,7 +89,8 @@ async def update_player_name(
 ) -> s.MePlayer:
     if db.scalar(select(d.Player).where(d.Player.name == name)):
         raise HTTPException(
-            status_code=409, detail=[f'Player with name {name} already exists']
+            status_code=status.HTTP_409_CONFLICT,
+            detail=[f'Player with name {name} already exists'],
         )
 
     player.name = name
@@ -116,7 +119,7 @@ async def create_room(
 ):
     if await db.scalar(select(d.Room).where(d.Room.name == room_in.name)):
         raise HTTPException(
-            status_code=409,
+            status_code=status.HTTP_409_CONFLICT,
             detail=f'Game room with name {room_in.name} already exists',
         )
 
@@ -128,6 +131,46 @@ async def create_room(
     room_out = s.RoomOut(players_no=0, **room.to_dict())
     lobby_state = s.LobbyState(rooms={room.id_: room_out})
     await conn_manager.broadcast_lobby_state(lobby_state)
+
+
+@router.post('/rooms/{room_id}/join', status_code=status.HTTP_200_OK)
+async def join_room(
+    room_id: int,
+    player: Annotated[d.Player, Depends(get_player)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    conn_manager: Annotated[ConnectionManager, Depends(get_connection_manager)],
+):
+    room = await db.scalar(
+        select(d.Room)
+        .where(d.Room.id_ == room_id)
+        .options(selectinload(d.Room.players))
+    )
+    if room is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail='Room does not exist'
+        )
+    if room.status != d.RoomStatusEnum.OPEN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail='Room is not accessible'
+        )
+    if len(room.players) >= room.capacity:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail='Room is full'
+        )
+
+    old_room_id = player.room_id
+    player.room = room
+    await db.flush([player])
+    move_player_and_broadcast(player, old_room_id, db, conn_manager)
+
+    players_out = {
+        room_player.id_: s.PlayerOut(**room_player.to_dict())
+        for room_player in room.players
+    }
+    room_state = s.RoomState(players=players_out)
+    await conn_manager.broadcast_room_state(room.id_, room_state)
+
+    # TODO: Collect chat history and send it to the player
 
 
 @router.websocket('/connect')

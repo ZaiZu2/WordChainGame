@@ -17,6 +17,11 @@ class MePlayer(GeneralBaseModel):
     created_on: datetime
 
 
+class PlayerOut(GeneralBaseModel):
+    name: str
+    created_on: datetime
+
+
 class RoomOut(GeneralBaseModel):
     id_: int = Field(serialization_alias='id')
     name: str
@@ -31,10 +36,12 @@ class RoomIn(GeneralBaseModel):
     capacity: int
     rules: dict
 
+
 class WebSocketMessageTypeEnum(str, Enum):
     CHAT = 'chat'  # chat messages sent by players
     GAME_STATE = 'game_state'  # issued words, scores, ...?
     LOBBY_STATE = 'lobby_state'  # available rooms, ...?
+    ROOM_STATE = 'room_state'  # players in the room, ...?
     CONNECTION_STATE = 'connection_state'
 
 
@@ -60,7 +67,7 @@ class LobbyState(GeneralBaseModel):
 
 
 class RoomState(GeneralBaseModel):
-    pass
+    players: dict[UUID, PlayerOut]  # player_id: player
 
 
 class GameState(GeneralBaseModel):
@@ -78,6 +85,7 @@ class WebSocketMessage(GeneralBaseModel):
             WebSocketMessageTypeEnum.CHAT: ChatMessage,
             WebSocketMessageTypeEnum.GAME_STATE: GameState,
             WebSocketMessageTypeEnum.LOBBY_STATE: LobbyState,
+            WebSocketMessageTypeEnum.ROOM_STATE: RoomState,
             WebSocketMessageTypeEnum.CONNECTION_STATE: ConnectionState,
         }
 
