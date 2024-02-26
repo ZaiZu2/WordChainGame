@@ -18,7 +18,7 @@ export default function Chat() {
     };
 
     useEffect(function scrollChatToBottom() {
-        lastMessageRef.current?.scrollIntoView({ behavior: "smooth" });
+        lastMessageRef.current?.scrollIntoView({ behavior: 'auto' });
     }, [chatMessages]);
 
     return (

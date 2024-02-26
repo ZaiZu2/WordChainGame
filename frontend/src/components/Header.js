@@ -13,12 +13,13 @@ export default function Header() {
     const { player, logOut } = usePlayer();
 
     const [newGameModalVis, setShowNewGameModal] = useState(false);
-    const showNewGameModal = () => setShowNewGameModal(true);
-    const hideNewGameModal = () => setShowNewGameModal(false);
 
     return (
         <>
-            <NewRoomModal show={newGameModalVis} onHide={hideNewGameModal} />
+            <NewRoomModal
+                show={newGameModalVis}
+                setShow={setShowNewGameModal}
+            />
             <Navbar className="bg-body-secondary">
                 <Container>
                     <Navbar.Brand>Word Chain Game</Navbar.Brand>
@@ -51,7 +52,7 @@ export default function Header() {
                             <Button
                                 variant="primary"
                                 size="sm"
-                                onClick={showNewGameModal}
+                                onClick={() => setShowNewGameModal(true)}
                             >
                                 Create room
                             </Button>

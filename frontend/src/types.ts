@@ -9,6 +9,13 @@ export type Room = {
     rules: object;
 };
 
+export type RoomIn = {
+    name: string
+    capacity: number
+    rules: Record<string, any>
+}
+
+
 export type MePlayer = {
     id: UUID;
     name: string;

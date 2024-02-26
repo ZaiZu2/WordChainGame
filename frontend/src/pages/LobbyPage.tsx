@@ -41,7 +41,7 @@ function RoomList() {
                         <td className="p-0 border-0 flex-grow-1 fw-bold" style={{ flexBasis: "20%" }}>
                             Capacity
                         </td>
-                        <td className="p-0 border-0 flex-grow-1 fw-bold text-center" style={{ flexBasis: "15%" }}>
+                        <td className="p-0 border-0 flex-grow-1 fw-bold text-end" style={{ flexBasis: "15%" }}>
                             Actions
                         </td>
                     </tr>
@@ -64,7 +64,7 @@ function RoomList() {
                                     <td className="p-0 border-0 flex-grow-1" style={{ flexBasis: "20%" }}>
                                         {room.players_no}/{room.capacity}
                                     </td>
-                                    <td className="p-0 border-0 flex-grow-1 d-flex gap-2" style={{ flexBasis: "15%" }}>
+                                    <td className="p-0 border-0 flex-grow-1 d-flex gap-2 justify-content-end" style={{ flexBasis: "15%" }}>
                                         <Button variant="primary" size="sm">
                                             Watch
                                         </Button>
