@@ -75,9 +75,9 @@ class ConnectionManager:
 
     async def broadcast_lobby_state(self, lobby_state: s.LobbyState) -> None:
         """
-        Send the lobby state to all players in the lobby. Message contains only the
-        data that is due to be updated - data which is not included in the message MUST
-        stay the same on the client side.
+        Send the lobby state to all players in the lobby. Message contains only the data
+        that is due to be updated/removed (if set to None) - data which is not included
+        in the message MUST stay the same on the client side.
         """
         lobby_conns = self.connections.get(d.LOBBY.id_, [])
 
@@ -111,9 +111,9 @@ class ConnectionManager:
 
     async def broadcast_room_state(self, room_id: int, room_state: s.RoomState) -> None:
         """
-        Send the room state to all players in the room. Message contains only the
-        data that is due to be updated - data which is not included in the message MUST
-        stay the same on the client side.
+        Send the room state to all players in the room. Message contains only the data
+        that is due to be updated/removed (if set to None) - data which is not included
+        in the message MUST stay the same on the client side.
         """
         room_conns = self.connections[room_id]
 

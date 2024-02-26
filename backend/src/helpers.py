@@ -38,7 +38,7 @@ async def save_and_broadcast_message(
     await conn_manager.broadcast_chat_message(chat_message)
 
 
-async def move_player_and_broadcast(
+async def move_player_and_broadcast_message(
     player: d.Player,
     old_room_id: int,
     db: AsyncSession,
@@ -51,7 +51,7 @@ async def move_player_and_broadcast(
     conn_manager.move_player(player.id_, old_room_id, player.room_id)
 
     message = d.Message(
-        content=f'{player.name} left the lobby to join a room',
+        content=f'{player.name} left the room',
         room_id=old_room_id,
         player_id=player.id_,
     )
@@ -215,21 +215,22 @@ async def listen_for_messages(
         await db.commit()
 
 
-async def send_lobby_state(
-    player: d.Player, db: AsyncSession, conn_manager: ConnectionManager
-):
+async def broadcast_lobby_state(db: AsyncSession, conn_manager: ConnectionManager):
     """
     Alternative way of refreshing the lobby state through a coroutine which would be
     polled inside the websocket endpoint. This simplifies code by avoiding event-based
     refreshing, for the price of not longer live updates. Currently NOT used.
     """
-    room_count_tuple = await db.scalars(
-        select(d.Room, func.count(d.Room.players)).where(
-            d.Room.status != d.RoomStatusEnum.EXPIRED
-        )
+    result = await db.execute(
+        select(d.Room, func.count(d.Room.players))
+        .outerjoin(d.Player, d.Room.players)
+        .where(d.Room.status != d.RoomStatusEnum.EXPIRED)
+        .group_by(d.Room.id_)
     )
+    result_tuples = result.all()
+
     rooms_map = {}
-    for room, player_count in room_count_tuple:
+    for room, player_count in result_tuples:
         room_out = s.RoomOut(players_no=player_count, **room.to_dict())
         rooms_map[room.id_] = room_out
 
