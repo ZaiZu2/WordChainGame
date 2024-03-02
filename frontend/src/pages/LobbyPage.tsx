@@ -6,7 +6,7 @@ import Table from "react-bootstrap/Table";
 
 import Statistics from "../components/Statistics";
 import apiClient from "../apiClient";
-import { Room } from "../types";
+import { RoomState, Room } from "../types";
 import { useWebSocketContext } from "../contexts/WebsocketProvider"
 
 export default function LobbyPage() {
@@ -25,7 +25,14 @@ export default function LobbyPage() {
 }
 
 function RoomList() {
-    const { rooms } = useWebSocketContext();
+    const { lobbyState } = useWebSocketContext();
+    const rooms = lobbyState?.rooms as Record<number, Room>;
+
+    const handleJoinRoom = async (roomId: number) => {
+        const roomState = (await apiClient.post<RoomState>(`/rooms/${roomId}/join`)).body;
+
+    }
+
 
     return (
         <Container className="d-flex flex-column border" style={{ alignItems: "center" }}>
@@ -65,10 +72,10 @@ function RoomList() {
                                         {room.players_no}/{room.capacity}
                                     </td>
                                     <td className="p-0 border-0 flex-grow-1 d-flex gap-2 justify-content-end" style={{ flexBasis: "15%" }}>
-                                        <Button variant="primary" size="sm">
+                                        <Button variant="primary" size="sm" disabled>
                                             Watch
                                         </Button>
-                                        <Button variant="primary" size="sm">
+                                        <Button onClick={() => handleJoinRoom(room.id as number)} variant="primary" size="sm">
                                             Join
                                         </Button>
                                     </td>

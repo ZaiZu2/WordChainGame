@@ -16,8 +16,8 @@ export type RoomIn = {
 }
 
 
-export type MePlayer = {
-    id: UUID;
+export type Player = {
+    id?: UUID;
     name: string;
     created_on: Date;
 };
@@ -43,7 +43,7 @@ export type ValidatedFields = {
 };
 
 export type PlayerContext = {
-    player: MePlayer | null | undefined;
+    player: Player | null | undefined;
     logIn: (id: UUID) => void;
     logOut: () => void;
 };
@@ -59,7 +59,13 @@ export type ChatMessage = {
 export type GameState = {
 }
 
+export type RoomState = {
+    room_id: number
+    players: Record<string, Player>
+}
+
 export type LobbyState = {
+    players: Record<string, Player>
     rooms: Record<number, Room>
 }
 
@@ -69,14 +75,6 @@ export type ConnectionState = {
 }
 
 export type WebSocketMessage = {
-    type: 'chat' | 'game_state' | 'lobby_state' | 'connection_state'
-    payload: ChatMessage | GameState | LobbyState | ConnectionState
-}
-
-
-export type WebSocketContext = {
-    sendChatMessage: (message: string, room_id: number) => void;
-    chatMessages: ChatMessage[];
-    rooms: Record<number, Room>;
-    gameState: GameState | null;
+    type: 'chat' | 'game_state' | 'lobby_state' | 'room_state' | 'connection_state'
+    payload: ChatMessage | GameState | LobbyState | RoomState | ConnectionState
 }

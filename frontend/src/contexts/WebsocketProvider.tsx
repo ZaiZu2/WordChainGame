@@ -1,14 +1,25 @@
 import useWebSocket, { ReadyState } from "react-use-websocket"
 import React, { createContext, useContext, useState, useEffect } from 'react'
-import { WebSocketContext, WebSocketMessage, ChatMessage, LobbyState, GameState, ConnectionState, Room } from "@/types"
+import { WebSocketMessage, ChatMessage, LobbyState, GameState, ConnectionState, Room, RoomState } from "@/types"
 import { WEBSOCKET_URL } from '../config'
 import { usePlayer } from "../contexts/PlayerContext"
 import { CHAT_MESSAGE_LIMIT } from "../config"
 
+
+
+export type WebSocketContext = {
+    sendChatMessage: (message: string, room_id: number) => void;
+    chatMessages: ChatMessage[];
+    lobbyState: LobbyState | null;
+    roomState: RoomState | null;
+    gameState: GameState | null;
+}
+
 export const WebSocketContextObject = createContext<WebSocketContext>({
     sendChatMessage: (message: string, room_id: number) => { },
     chatMessages: [],
-    rooms: {},
+    lobbyState: null,
+    roomState: null,
     gameState: null,
 })
 
@@ -24,7 +35,8 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     } = useWebSocket(WEBSOCKET_URL, {});
 
     const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-    const [rooms, setRooms] = useState<Record<number, Room>>({});
+    const [lobbyState, setLobbyState] = useState<LobbyState | null>(null);
+    const [roomState, setRoomState] = useState<RoomState | null>(null);
     const [gameState, setGameState] = useState<GameState | null>(null);
 
     useEffect(function parseMessage() {
@@ -41,17 +53,38 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
                     return tempMessages;
                 });
                 break;
+
             case "lobby_state":
-                setRooms((prevRooms) => {
+                setLobbyState((prevLobbyState) => {
                     const lobbyState = websocketMessage.payload as LobbyState;
-                    const newRooms = lobbyState.rooms;
-                    return { ...prevRooms, ...newRooms }
+                    if (prevLobbyState === null) {
+                        return lobbyState;
+                    } else {
+                        // Run differential update on any object in the lobbyState
+                        const players = { ...prevLobbyState.players, ...lobbyState.players };
+                        const rooms = { ...prevLobbyState.rooms, ...lobbyState.rooms };
+                        return { players, rooms };
+                    }
                 });
-                console.log(websocketMessage.payload);
                 break;
+
+            case "room_state":
+                setRoomState((prevRoomState) => {
+                    const roomState = websocketMessage.payload as RoomState;
+                    if (prevRoomState === null) {
+                        return roomState;
+                    } else {
+                        // Run differential update on any object in the roomState
+                        const players = { ...prevRoomState.players, ...roomState.players };
+                        return { ...prevRoomState, ...roomState, players };
+                    }
+                });
+                break;
+
             case "game_state":
                 setGameState(websocketMessage.payload as GameState);
                 break;
+
             case "connection_state":
                 const connState = websocketMessage.payload as ConnectionState;
                 console.log(connState);
@@ -76,7 +109,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     }
 
     return (
-        <WebSocketContextObject.Provider value={{ sendChatMessage, chatMessages, rooms, gameState }}>
+        <WebSocketContextObject.Provider value={{ sendChatMessage, chatMessages, lobbyState, roomState, gameState }}>
             {children}
         </WebSocketContextObject.Provider>
     );

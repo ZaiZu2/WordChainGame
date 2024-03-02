@@ -5,7 +5,7 @@ import { Button } from "react-bootstrap";
 import { RefObject, useRef, useState } from "react";
 import apiClient from "../apiClient";
 import { usePlayer } from "../contexts/PlayerContext";
-import { MePlayer } from "@/types";
+import { Player } from "@/types";
 import { ApiError, AuthError } from "../errors";
 import { UUID } from "crypto";
 
@@ -24,11 +24,11 @@ export function LoginModal() {
         }
 
         try {
-            const response = await apiClient.post<MePlayer>(
+            const response = await apiClient.post<Player>(
                 "/players",
                 { body: { name: playerName }, }
             );
-            await logIn(response.body.id);
+            await logIn(response.body.id as UUID);
         } catch (error) {
             if (error instanceof ApiError || error instanceof AuthError) {
                 const errorMessages = Object.values(error.errorMessages).reduce(
@@ -38,6 +38,7 @@ export function LoginModal() {
             }
         }
     };
+
 
     const [codeErrors, setCodeErrors] = useState<string[]>();
     const codeRef = useRef<HTMLInputElement>(null);
