@@ -28,11 +28,10 @@ from src.dependencies import (
 from src.helpers import (
     TagsEnum,
     accept_websocket_connection,
+    broadcast_lobby_state,
     handle_player_disconnect,
     listen_for_messages,
     move_player_and_broadcast_message,
-    send_initial_state,
-    broadcast_lobby_state,
 )
 
 router = APIRouter(tags=[TagsEnum.ALL])
@@ -140,7 +139,7 @@ async def join_room(
     player: Annotated[d.Player, Depends(get_player)],
     db: Annotated[AsyncSession, Depends(get_db)],
     conn_manager: Annotated[ConnectionManager, Depends(get_connection_manager)],
-):
+) -> s.RoomState:
     room = await db.scalar(
         select(d.Room)
         .where(d.Room.id_ == room_id)
@@ -170,14 +169,16 @@ async def join_room(
     }
     # Broadcast the info about all the players in the room, as the joining player
     # needs that context
-    room_state = s.RoomState(players=players_out)
+    room_state = s.RoomState(room.id_, players=players_out)
     await conn_manager.broadcast_room_state(room.id_, room_state)
+
     # Broadcast only the info about the leaving player, as this is all the context other
     # clients need to keep their state up to date
     lobby_state = s.LobbyState(rooms={room.id_: None})
     await conn_manager.broadcast_lobby_state(lobby_state)
 
     # TODO: Collect chat history and send it to the player
+    return room_state
 
 
 @router.post('/rooms/{room_id}/leave', status_code=status.HTTP_200_OK)
@@ -203,10 +204,11 @@ async def leave_room(
     # Broadcast only the info about the leaving player, as this is all the context other
     # clients need to keep their state up to date
     players_out = {player.id_: None}
-    room_state = s.RoomState(players=players_out)
+    room_state = s.RoomState(room_id, players_out)
+    await conn_manager.broadcast_room_state(room.id_, room_state)
+
     # Broadcast the info about all the players in the room, as the joining player
     # needs that context
-    await conn_manager.broadcast_room_state(room.id_, room_state)
     await broadcast_lobby_state(db, conn_manager)
 
 
@@ -218,7 +220,7 @@ async def connect(
     conn_manager: Annotated[ConnectionManager, Depends(get_connection_manager)],
 ) -> None:
     await accept_websocket_connection(player, websocket, db, conn_manager)
-    await send_initial_state(player, db, conn_manager)
+    await broadcast_lobby_state(db, conn_manager)
     await db.commit()
 
     try:

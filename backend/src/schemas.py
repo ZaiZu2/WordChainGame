@@ -64,10 +64,13 @@ class ConnectionState(GeneralBaseModel):
 
 class LobbyState(GeneralBaseModel):
     rooms: dict[int, RoomOut]  # room_id: room
+    players: dict[str, PlayerOut]  # player_name: player
 
 
 class RoomState(GeneralBaseModel):
-    players: dict[UUID, PlayerOut]  # player_id: player
+    room_id: int
+    players: dict[str, PlayerOut]  # player_name: player
+    rules: dict
 
 
 class GameState(GeneralBaseModel):

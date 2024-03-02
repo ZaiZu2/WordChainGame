@@ -100,44 +100,6 @@ async def accept_websocket_connection(
     await save_and_broadcast_message(message, db, conn_manager)
 
 
-async def send_initial_state(
-    player: d.Player, db: AsyncSession, conn_manager: ConnectionManager
-):
-    """
-    Send room specific state upon player's connection. If the player is in the lobby,
-    send the lobby state. If a game in which player is participating is still on,
-    reconnect him to that room.
-    """
-    # 1. TODO: Check and reconnect if the player was disconnected from any on-going game
-    # room = db.scalar(
-    #     select(d.Game)
-    #     .join(d.Player, d.Game.players)
-    #     .where(
-    #         and_(
-    #             d.Player.room_id == player.room_id,
-    #             d.Game.status == d.GameStatusEnum.IN_PROGRESS,
-    #         )
-    #     )
-    # )
-
-    # 2. Send the lobby state
-    result = await db.execute(
-        select(d.Room, func.count(d.Room.players))
-        .outerjoin(d.Player, d.Room.players)
-        .where(d.Room.status != d.RoomStatusEnum.EXPIRED)
-        .group_by(d.Room.id_)
-    )
-    result_tuples = result.all()
-
-    rooms_map = {}
-    for room, player_count in result_tuples:
-        room_out = s.RoomOut(players_no=player_count, **room.to_dict())
-        rooms_map[room.id_] = room_out
-
-    lobby_state = s.LobbyState(rooms=rooms_map)
-    await conn_manager.send_lobby_state(player.id_, lobby_state)
-
-
 async def handle_player_disconnect(
     player: d.Player,
     websocket: WebSocket,
@@ -215,12 +177,12 @@ async def listen_for_messages(
         await db.commit()
 
 
-async def broadcast_lobby_state(db: AsyncSession, conn_manager: ConnectionManager):
-    """
-    Alternative way of refreshing the lobby state through a coroutine which would be
-    polled inside the websocket endpoint. This simplifies code by avoiding event-based
-    refreshing, for the price of not longer live updates. Currently NOT used.
-    """
+async def broadcast_lobby_state(
+    db: AsyncSession, conn_manager: ConnectionManager
+) -> None:
+    players = await db.scalars(select(d.Player).where(d.Player.room_id == d.LOBBY.id_))
+    players_out = {player.name: s.PlayerOut(**player.to_dict()) for player in players}
+
     result = await db.execute(
         select(d.Room, func.count(d.Room.players))
         .outerjoin(d.Player, d.Room.players)
@@ -234,5 +196,5 @@ async def broadcast_lobby_state(db: AsyncSession, conn_manager: ConnectionManage
         room_out = s.RoomOut(players_no=player_count, **room.to_dict())
         rooms_map[room.id_] = room_out
 
-    lobby_state = s.LobbyState(rooms=rooms_map)
+    lobby_state = s.LobbyState(rooms=rooms_map, players=players_out)
     await conn_manager.broadcast_lobby_state(lobby_state)
