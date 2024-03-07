@@ -24,6 +24,9 @@ For singular requests and switching client state, normal requests are utilized.
 All endpoints and functionalities are implement as asynchronous.
 #### 4. Database
 Application utilizes SQLAlchemy with a PostgreSQL database to persist players, rooms, but also full history of each game. 
+
+![image](https://github.com/ZaiZu2/WordChainGame/assets/94539350/63c040e7-0be2-474a-9fea-beaa61498090)
+
 #### 5. Validation
 Virtually all inputs and outputs are modeled and validated using Pydantic. 
 
