@@ -39,11 +39,7 @@ export default function NewRoomModal({
             });
         } catch (error) {
             if (error instanceof ApiError) {
-                console.log(error.errorMessages);
-                const errorMessages = Object.values(error.errorMessages).reduce(
-                    (acc, val) => [...acc, ...val]
-                );
-                setNameErrors(errorMessages);
+                setNameErrors(error.messages);
             }
         }
         setShow(false);

@@ -31,10 +31,7 @@ export function LoginModal() {
             await logIn(response.body.id as UUID);
         } catch (error) {
             if (error instanceof ApiError || error instanceof AuthError) {
-                const errorMessages = Object.values(error.errorMessages).reduce(
-                    (acc, val) => [...acc, ...val]
-                );
-                setPlayerErrors(errorMessages);
+                setPlayerErrors(error.messages);
             }
         }
     };
@@ -55,10 +52,7 @@ export function LoginModal() {
             await logIn(code as UUID);
         } catch (error) {
             if (error instanceof ApiError) {
-                const errorMessages = Object.values(error.errorMessages).reduce(
-                    (acc, val) => [...acc, ...val]
-                );
-                setCodeErrors(errorMessages);
+                setCodeErrors(error.messages);
             }
         }
     };

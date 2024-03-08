@@ -25,14 +25,14 @@ export class ApiError extends Error {
 }
 
 export class AuthError extends Error {
-    errors: string[];
+    messages: string[];
     status: number;
 
     constructor(status: number, errorMessages: string[]) {
         super("Player is not authenticated");
         this.name = "AuthError";
         this.status = status;
-        this.errors = errorMessages;
+        this.messages = errorMessages;
 
         // This line is needed to restore the correct prototype chain.
         Object.setPrototypeOf(this, new.target.prototype);
