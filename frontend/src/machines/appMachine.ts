@@ -2,6 +2,7 @@ import { fromPromise, assign, createActor, setup } from 'xstate';
 import { Player, LobbyState, RoomState, GameState } from '@/types';
 import { UUID } from 'crypto';
 import apiClient from "../apiClient";
+import { RoomIn } from '../types';
 
 type StateEventSuccess<T> = {
     type: string;
@@ -45,6 +46,11 @@ export async function joinRoom({ input: { roomId } }: { input: { roomId: number 
         .then(response => response.body);
 }
 
+export async function createRoom({ input }: { input: RoomIn }): Promise<Player> {
+    return apiClient.post<Player>("/players", { body: input })
+        .then(response => response.body);
+}
+
 /** @xstate-layout N4IgpgJg5mDOIC5QEMAOqB0AZA9lGEA8gK4AuAxBDgHZgYCW1AbjgNZ1qa76QmkKMWAY2Sl6NANoAGALrSZiUKhyx6YmopAAPRAFoALAA4AbBgCshgJxmAzPrPHj+ywHZDAGhABPPfoCMfhjGUjZSLgBM4dZ+-uEAvnGenNh4BHzkYABOmTiZGKgANqIAZrkAthjJ3GlkAsw4IurU8vKayqpNmjoIujZ+hhjW4X3hZvohTpaePj3j+hgm4SbGfis2biYJSegpPERklDR0gmwcO9W8tSeN4s1+crJtKmq3XYj6Rhgu-n5RflLhKT+Qz6aZ6GyGMyDVyWcIuPyWGyWWFArYgKqpS4ULI5PKFErlSrnTH7fjXUS3CT3VpIEDtF4aWndfrzJyGBH-FxjfROMGzIELYxLRyrPzrKxojF7dIAUSYYGopAABNRkGUwDSlM9Oky9MNTPCrFZHCYpEK+boxjZBr9EUD1rZ9DZJcSAEauryHWgMersIlcHDurx1YQUySyTV07WvXU9ULhL5SELOKJmFyWIwuPlSDBIgFhHmGEz9AGWF0BoMZbK5fJFUilTIVDFBkMNMPNCOPWn0nWgZlRDCjALGQzhPxpqRii1O3P-cLGGxpj5miLllKVgp4PiRnsxvt6wKAyxFqSjiLrY8WmxOL7-PpFxyIlxrgBKOBwZXIBTAyHlb4-O7Roy+4IDYcKDPoEQjg6Pygt4eiBAEYohCE4ROhYLiook6I7P+n6wKQyCZKQADiaoal2WodHu2gIcYLgLCY3xmkCx6cnyYHWt8C5jGYx7MYYa5keq5Bygqyp+IB1HAbRCBIQsbjWEmIxWG4fJRAxPJ8bYYqjh8dhCeRGAAO6ZGoYAAOq5BA5CwAqEBWZkEBSQy1BvAg-iDJh8I8qM15hH4fLBIh6xCi4xiuPaZbYckwl0AU9AEQqAAqOCORAsCifKipKpJlFRtJbmxo4GD2NemFmGmrjpnylXWmK4VwhFmFOtF2HUDgEBwJonBPIV7mWnY5hWI6DiTGp8E9I4DFWDEKYQhYaZrhcpJ9a5A0RIKYrIpY9ELqsFoWDmPLniCiKQoYzoxW6Hprb2sm6EKXxmJOljDsesTGBakSmGYkSrA4cyGKexivu+ZR3TR3S6AiuZ9L8XIuDYYHfOEfL9Amf0VRmZjjlEwyGeqkMydDwyBAuhjpi4mHrOMJh8lpt6LvoowvQE15XdsmBxSZZmkJZ1nE0VIEw5dQQQlTNMCV9k3BRgDVhc1UWE-FiX89QqXpfA3ZAcLD39NaFOSyE0t8kjUIrC9DhisjBPXQG+CMFAACSeu7iT4LWKVzhOEs4VJt8h0fBgk6TJVlhJh8ZgJAkQA */
 const appMachine = setup({
     types: {
@@ -60,14 +66,15 @@ const appMachine = setup({
             | { type: 'requestCreatePlayer', playerName: string }
             | { type: 'requestLogOut' }
             | { type: 'requestJoinRoom', roomId: number }
-            | { type: 'requestCreateRoom' }
+            | { type: 'requestCreateRoom', roomIn: RoomIn }
             | { type: 'requestLeaveRoom' }
     },
     actors: {
         logIn: fromPromise(logIn),
         logOut: fromPromise(logOut),
         createPlayer: fromPromise(createPlayer),
-        joinRoom: fromPromise(joinRoom)
+        joinRoom: fromPromise(joinRoom),
+        createRoom: fromPromise(createRoom),
     },
     actions: {
         assignPlayer: assign(({ context, event }) => {
@@ -90,6 +97,14 @@ const appMachine = setup({
             return {
                 error: {
                     type: 'requestCreatePlayer' as 'requestCreatePlayer',
+                    messages: (event as StateEventError).error.messages
+                }
+            }
+        }),
+        assignCreateRoomErrors: assign(({ context, event }) => {
+            return {
+                error: {
+                    type: 'requestCreateRoom' as 'requestCreateRoom',
                     messages: (event as StateEventError).error.messages
                 }
             }
@@ -173,7 +188,7 @@ const appMachine = setup({
             invoke: {
                 src: "joinRoom",
                 input: ({ context, event }) => {
-                    return {roomId: 1,}
+                    return { roomId: 1, }
                 },
                 onDone: {
                     target: "Room",
@@ -187,16 +202,16 @@ const appMachine = setup({
         },
 
         CreatingRoom: {
-            // invoke: {
-            //     src: "createRoom",
-            //     onDone: {
-            //         target: "Room"
-            //     },
-            //     onError: {
-            //         target: "Lobby",
-            //         actions: "assignErrors"
-            //     }
-            // },
+            invoke: {
+                src: "createRoom",
+                input: ({ context, event }) => {
+                    const roomIn = (event as { type: "requestCreateRoom", roomIn: RoomIn }).roomIn;
+                    return roomIn
+                },
+                onError: {
+                    actions: "assignCreateRoomErrors"
+                }
+            },
         },
 
         Room: {

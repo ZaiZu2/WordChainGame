@@ -8,6 +8,8 @@ import { Link } from "react-router-dom";
 import GamePage from "../pages/GamePage";
 import { usePlayer } from "../contexts/PlayerContext";
 import NewRoomModal from "./NewRoomModal";
+import appActor from "../machines/appMachine"
+import { useSelector } from '@xstate/react';
 
 export default function Header() {
     const { player, logOut } = usePlayer();
@@ -26,7 +28,7 @@ export default function Header() {
                     <Navbar.Toggle />
                     <Navbar.Collapse className="justify-content-end">
                         <Button
-                            as={Link}
+                            as={Link as any} // TODO: Requires `react-router-bootstrap` dependency
                             to="/"
                             variant="primary"
                             size="sm"
@@ -35,7 +37,7 @@ export default function Header() {
                             Lobby
                         </Button>
                         <Button
-                            as={Link}
+                            as={Link as any} // TODO: Requires `react-router-bootstrap` dependency
                             to="/game/1"
                             elements={<GamePage />}
                             variant="primary"
@@ -60,7 +62,9 @@ export default function Header() {
                                 variant="primary"
                                 size="sm"
                                 className=""
-                                onClick={logOut}
+                                onClick={() => {
+                                    appActor.send({ type: 'requestLogOut' })
+                                }}
                             >
                                 Log out
                             </Button>

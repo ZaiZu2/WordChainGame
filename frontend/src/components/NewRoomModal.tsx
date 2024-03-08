@@ -8,6 +8,8 @@ import { usePlayer } from "../contexts/PlayerContext";
 import { Room, RoomIn } from "@/types";
 import { ApiError, AuthError } from "../errors";
 import InputField from "./Input";
+import appActor from "../machines/appMachine"
+import { useSelector } from '@xstate/react';
 
 export default function NewRoomModal({
     show,
@@ -16,6 +18,12 @@ export default function NewRoomModal({
     show: boolean;
     setShow: (show: boolean) => void;
 }) {
+    const { error } = useSelector(appActor, snapshot => {
+        return {
+            error: snapshot.error
+        }
+    })
+
     const [nameErrors, setNameErrors] = useState<string[]>([]);
     const nameRef = useRef<HTMLInputElement>(null);
     const capacityRef = useRef<HTMLInputElement>(null);
@@ -23,29 +31,17 @@ export default function NewRoomModal({
     async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
         const name = nameRef.current?.value;
+        const capacity = capacityRef.current?.valueAsNumber
 
-        if (!name) {
-            setNameErrors(["Name field must not be empty"]);
+        if (!name || !capacity) {
+            setNameErrors(["All fields must not be empty"]);
             return;
         }
 
-        try {
-            await apiClient.post<Room>("/rooms", {
-                body: {
-                    name: name,
-                    capacity: capacityRef.current?.valueAsNumber as number,
-                    rules: {},
-                } satisfies RoomIn,
-            });
-        } catch (error) {
-            if (error instanceof ApiError) {
-                console.log(error.errorMessages);
-                const errorMessages = Object.values(error.errorMessages).reduce(
-                    (acc, val) => [...acc, ...val]
-                );
-                setNameErrors(errorMessages);
-            }
-        }
+        const roomIn = { name, capacity, rules: {} } as RoomIn
+        setNameErrors([]);
+        
+        appActor.send({ type: 'requestCreateRoom', roomIn })
         setShow(false);
     }
 

@@ -3,16 +3,19 @@ import Stack from "react-bootstrap/Stack";
 import Form from "react-bootstrap/Form";
 import { Button } from "react-bootstrap";
 import { RefObject, useRef, useState } from "react";
-import apiClient from "../apiClient";
-import { usePlayer } from "../contexts/PlayerContext";
-import { Player } from "@/types";
-import { ApiError, AuthError } from "../errors";
 import { UUID } from "crypto";
+import { useSelector } from '@xstate/react';
+import appActor from "../machines/appMachine"
+
 
 export function LoginModal() {
-    const { logIn } = usePlayer();
+    const { error } = useSelector(appActor, snapshot => {
+        return {
+            error: snapshot.context.error
+        }
+    })
 
-    const [playerErrors, setPlayerErrors] = useState<string[]>();
+    const [playerErrors, setPlayerErrors] = useState<string[]>([]);
     const playerRef = useRef<HTMLInputElement>(null);
     const onSubmitPlayer = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -22,25 +25,12 @@ export function LoginModal() {
             setPlayerErrors(["Player field must not be empty"]);
             return;
         }
-
-        try {
-            const response = await apiClient.post<Player>(
-                "/players",
-                { body: { name: playerName }, }
-            );
-            await logIn(response.body.id as UUID);
-        } catch (error) {
-            if (error instanceof ApiError || error instanceof AuthError) {
-                const errorMessages = Object.values(error.errorMessages).reduce(
-                    (acc, val) => [...acc, ...val]
-                );
-                setPlayerErrors(errorMessages);
-            }
-        }
+        setPlayerErrors([]);
+        appActor.send({ type: 'requestCreatePlayer', playerName })
     };
 
 
-    const [codeErrors, setCodeErrors] = useState<string[]>();
+    const [codeErrors, setCodeErrors] = useState<string[]>([]);
     const codeRef = useRef<HTMLInputElement>(null);
     const onSubmitCode = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -50,17 +40,8 @@ export function LoginModal() {
             setCodeErrors(["Code field must not be empty"]);
             return;
         }
-
-        try {
-            await logIn(code as UUID);
-        } catch (error) {
-            if (error instanceof ApiError) {
-                const errorMessages = Object.values(error.errorMessages).reduce(
-                    (acc, val) => [...acc, ...val]
-                );
-                setCodeErrors(errorMessages);
-            }
-        }
+        setCodeErrors([]);
+        appActor.send({ type: 'requestLogIn', playerId: code as UUID })
     };
 
     return (
@@ -76,7 +57,7 @@ export function LoginModal() {
                                 name={"player"}
                                 label={"player"}
                                 type={"text"}
-                                errors={playerErrors}
+                                errors={[...playerErrors, ...(error.type === 'requestCreatePlayer' ? error.messages : [])]}
                                 advice={
                                     "Your name must be max. 10 characters long"
                                 }
@@ -93,7 +74,7 @@ export function LoginModal() {
                                 name={"player"}
                                 label={"player"}
                                 type={"text"}
-                                errors={codeErrors}
+                                errors={[...codeErrors, ...(error.type === 'requestLogIn' ? error.messages : [])]}
                                 advice={
                                     "It was provided to you when you first created your account"
                                 }

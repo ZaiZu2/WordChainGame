@@ -10,13 +10,18 @@ import Rules from "./components/Rules";
 import { LoginModal } from "./components/NewPlayerModal";
 import { usePlayer } from "./contexts/PlayerContext";
 import { WebSocketProvider } from "./contexts/WebsocketProvider";
+import { useSelector } from "@xstate/react";
+import appActor from "./machines/appMachine";
 
 export default function App() {
     const { player } = usePlayer();
+    const { state } = useSelector(appActor, (snapshot) => {
+        return {state: snapshot.value};
+    });
 
     return (
         <BrowserRouter>
-            {!player ? (
+            {["LoggedOut", "CreatingPlayer", "LoggingIn"].includes(state) ? (
                 <LoginModal />
             ) : (
                 <>
