@@ -10,14 +10,14 @@ export class ConnectionError extends Error {
 }
 
 export class ApiError extends Error {
-    errorMessages: Record<string, any>;
+    messages: string[];
     status: number;
 
-    constructor(status: number, errorMessages: Record<string, string[]>) {
+    constructor(status: number, errorMessages: string[]) {
         super(`API request failed with status code ${status}`);
         this.name = "ApiError";
         this.status = status;
-        this.errorMessages = errorMessages;
+        this.messages = errorMessages;
 
         // This line is needed to restore the correct prototype chain.
         Object.setPrototypeOf(this, new.target.prototype);
@@ -25,14 +25,14 @@ export class ApiError extends Error {
 }
 
 export class AuthError extends Error {
-    errorMessages: Record<string, any>;
+    errors: string[];
     status: number;
 
-    constructor(status: number, errorMessages: Record<string, string[]>) {
+    constructor(status: number, errorMessages: string[]) {
         super("Player is not authenticated");
         this.name = "AuthError";
         this.status = status;
-        this.errorMessages = errorMessages;
+        this.errors = errorMessages;
 
         // This line is needed to restore the correct prototype chain.
         Object.setPrototypeOf(this, new.target.prototype);

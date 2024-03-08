@@ -87,7 +87,6 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
 
             case "connection_state":
                 const connState = websocketMessage.payload as ConnectionState;
-                console.log(connState);
                 if (connState.code === 4001) {
                     // TODO: Show toast saying that the player can only use one client at a time
                     logOut();

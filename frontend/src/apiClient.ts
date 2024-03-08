@@ -91,24 +91,15 @@ class ApiClient {
     }
 
     private async extractErrorMessages(validatedFields: ValidatedFields) {
-        let errorMessages: Record<string, string[]> = {};
-
-        for (const fields of Object.values(validatedFields)) {
-            if (Array.isArray(fields)) {
-                errorMessages = { ...errorMessages, ...{ detail: fields } };
-            } else {
-                for (const [fieldName, fieldMessages] of Object.entries(fields)) {
-                    errorMessages = {
-                        ...errorMessages,
-                        ...{ [fieldName]: fieldMessages },
-                    };
-                }
+        const flattenedErrorMessages: string[] = Object.values(validatedFields).reduce<string[]>((acc: string[], val) => {
+            if (typeof val === 'string') {
+                return [...acc, val];
             }
-        }
-
-        return errorMessages;
+            const nestedMessages = Object.values(val).reduce((acc, val) => [...acc, ...val], []);
+            return [...acc, ...nestedMessages];
+        }, []);
+        return flattenedErrorMessages
     }
 }
-
 const apiClient = new ApiClient();
 export default apiClient;

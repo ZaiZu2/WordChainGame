@@ -35,7 +35,7 @@ export type ApiResponse<T> = {
 };
 
 export type ValidatedFields = {
-    detail?: string[]; // ['user with this name already exists', ...]
+    detail?: string; // ['user with this name already exists', ...]
     query?: Record<string, string[]>; // 'page': ['must be a number', 'must be positive']
     path?: Record<string, string[]>; // 'id': ['must be a UUID', 'must be a valid UUID']
     cookie?: Record<string, string[]>; // ...
