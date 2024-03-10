@@ -100,16 +100,6 @@ async def update_player_name(
     return player
 
 
-# @router.get('/rooms', status_code=status.HTTP_200_OK)
-# async def get_rooms(
-#     player: Annotated[d.Player, Depends(get_player)],
-#     db: Annotated[AsyncSession, Depends(get_db)],
-# ) -> list[s.Room]:
-#     # Room with id 1 is the lobby
-#     rooms = await db.scalars(select(d.Room).where(d.Room.id_ != 1))
-#     return [s.Room.model_validate(room) for room in rooms]
-
-
 @router.post('/rooms', status_code=status.HTTP_201_CREATED)
 async def create_room(
     room_in: s.RoomIn,

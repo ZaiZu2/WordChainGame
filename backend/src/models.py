@@ -58,16 +58,6 @@ class Player(Base):
     created_on: so.Mapped[datetime] = so.mapped_column(default=sa.func.now())
     last_active_on: so.Mapped[datetime] = so.mapped_column(default=sa.func.now())
 
-    # room_id: so.Mapped[int] = so.mapped_column(
-    #     # FK check must be deferred when creating 'root' and 'lobby' on server startup
-    #     # due to circular dependency
-    #     sa.ForeignKey('rooms.id', deferrable=True),
-    #     default=1,
-    # )
-    # room: so.Mapped[Room] = so.relationship(
-    #     back_populates='players', foreign_keys=[room_id]
-    # )
-
     messages: so.Mapped[list[Message]] = so.relationship(back_populates='player')
     words: so.Mapped[list[Word]] = so.relationship(back_populates='player')
     games: so.Mapped[list[Game]] = so.relationship(
@@ -100,9 +90,6 @@ class Room(Base):
     owner_id: so.Mapped[UUID] = so.mapped_column(sa.ForeignKey('players.id'))
     owner: so.Mapped[Player] = so.relationship(foreign_keys=[owner_id])
 
-    # players: so.Mapped[list[Player]] = so.relationship(
-    #     back_populates='room', foreign_keys=[Player.room_id]
-    # )
     games: so.Mapped[list[Game]] = so.relationship(back_populates='room')
     messages: so.Mapped[list[Message]] = so.relationship(back_populates='room')
 
@@ -171,10 +158,6 @@ async def create_root_objects():
     async with async_session() as db:
         try:
             await db.begin()
-            # Root objects have circular FK constraints - this can happen only here
-            # await db.execute(
-            #     sa.text('SET CONSTRAINTS fk_players_room_id_rooms DEFERRED')
-            # )
 
             if await db.scalar(select(d.Room).where(d.Room.id_ == 1)):
                 raise ValueError(
