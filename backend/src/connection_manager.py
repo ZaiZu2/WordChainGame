@@ -31,7 +31,7 @@ class ConnectionManager:
         room_conns = self.connections.get(room_id, None)
         connection = Connection(player_id, websocket)
 
-        if self.find_connection(player_id):
+        if self.find_connection(player_id) != (None, None):
             return False
         elif room_conns is not None:
             self.connections[room_id].add(connection)
@@ -100,7 +100,8 @@ class ConnectionManager:
         data that is due to be updated - data which is not included in the message MUST
         stay the same on the client side.
         """
-        if not (conn := self.find_connection(player_id, room_id=d.LOBBY.id_)):
+        conn, _ = self.find_connection(player_id, room_id=d.LOBBY.id_)
+        if not conn:
             raise ValueError('Player is not in the lobby')
 
         websocket_message = s.WebSocketMessage(
@@ -144,7 +145,7 @@ class ConnectionManager:
 
     def move_player(self, player_id: UUID, from_room_id: int, to_room_id: int) -> None:
         """Move a player's websocket connection from one room to another."""
-        player_conn = self.find_connection(player_id, from_room_id)
+        player_conn, _ = self.find_connection(player_id, from_room_id)
         self.connections[from_room_id].remove(player_conn)
         self.connections[to_room_id].add(player_conn)
 
@@ -153,22 +154,23 @@ class ConnectionManager:
         player_id: UUID,
         *,
         room_id: int | None = None,
-    ) -> Connection | None:
+    ) -> tuple[Connection, int] | tuple[None, None]:
         """
         Find a connection by player_id. If `room_id` is provided, check for existence in
-        a specific room.
+        a specific room. Return a tuple of the connection and the room_id, or Nones if
+        not found.
         """
         if room_id is not None:
             room_conns = self.connections.get(room_id, None)
             if room_conns is None:
-                return None
+                return None, None
 
             for conn in room_conns:
                 if conn.player_id == player_id:
-                    return conn
+                    return conn, room_id
         else:
-            for room_conns in self.connections.values():
+            for room_id, room_conns in self.connections.items():
                 for conn in room_conns:
                     if conn.player_id == player_id:
-                        return conn
-        return None
+                        return conn, room_id
+        return None, None

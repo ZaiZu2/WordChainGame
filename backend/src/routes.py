@@ -28,7 +28,7 @@ from src.dependencies import (
 from src.helpers import (
     TagsEnum,
     accept_websocket_connection,
-    broadcast_lobby_state,
+    broadcast_full_lobby_state,
     handle_player_disconnect,
     listen_for_messages,
     move_player_and_broadcast_message,
@@ -127,6 +127,7 @@ async def create_room(
     room.owner = player
     db.add(room)
     await db.flush([room])
+    conn_manager.connections[room.id_] = set()
 
     room_out = s.RoomOut(players_no=0, **room.to_dict())
     lobby_state = s.LobbyState(rooms={room.id_: room_out})
@@ -140,11 +141,7 @@ async def join_room(
     db: Annotated[AsyncSession, Depends(get_db)],
     conn_manager: Annotated[ConnectionManager, Depends(get_connection_manager)],
 ) -> s.RoomState:
-    room = await db.scalar(
-        select(d.Room)
-        .where(d.Room.id_ == room_id)
-        .options(selectinload(d.Room.players))
-    )
+    room = await db.scalar(select(d.Room).where(d.Room.id_ == room_id))
     if room is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail='Room does not exist'
@@ -153,28 +150,31 @@ async def join_room(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail='Room is not accessible'
         )
-    if len(room.players) >= room.capacity:
+    if len(conn_manager.connections[room_id]) >= room.capacity:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail='Room is full'
         )
 
-    old_room_id = player.room_id
-    player.room = room
-    await db.flush([player])
-    move_player_and_broadcast_message(player, old_room_id, db, conn_manager)
+    _, old_room_id = conn_manager.find_connection(player.id_)
+    move_player_and_broadcast_message(player, old_room_id, room_id, db, conn_manager)
 
-    players_out = {
-        room_player.id_: s.PlayerOut(**room_player.to_dict())
-        for room_player in room.players
-    }
     # Broadcast the info about all the players in the room, as the joining player
     # needs that context
-    room_state = s.RoomState(room.id_, players=players_out)
+    player_ids = [conn.player_id for conn in conn_manager.connections[room_id]]
+    room_players = await db.scalars(
+        select(d.Player).where(d.Player.id_.in_(player_ids))
+    )
+    players_out = {
+        room_player.name: s.PlayerOut(**room_player.to_dict())
+        for room_player in room_players
+    }
+    room_state = s.RoomState(**room.to_dict(), players=players_out)
     await conn_manager.broadcast_room_state(room.id_, room_state)
 
     # Broadcast only the info about the leaving player, as this is all the context other
     # clients need to keep their state up to date
-    lobby_state = s.LobbyState(rooms={room.id_: None})
+    room_out = s.RoomOut(players_no=len(room_players), **room.to_dict())
+    lobby_state = s.LobbyState(rooms={room.id_: room_out}, players={player.name: None})
     await conn_manager.broadcast_lobby_state(lobby_state)
 
     # TODO: Collect chat history and send it to the player
@@ -192,24 +192,29 @@ async def leave_room(
     # TODO: Ensure that the player is not the owner of the room
 
     room = await db.scalar(select(d.Room).where(d.Room.id_ == room_id))
-    if room is None or room_id != player.room_id:
+    _, old_room_id = conn_manager.find_connection(player.id_)
+    if room is None or room_id != old_room_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail='Player is not in the room'
         )
 
-    player.room_id = d.LOBBY.id_
-    await db.flush([player])
-    move_player_and_broadcast_message(player, room_id, db, conn_manager)
+    move_player_and_broadcast_message(player, old_room_id, room_id, db, conn_manager)
 
     # Broadcast only the info about the leaving player, as this is all the context other
     # clients need to keep their state up to date
-    players_out = {player.id_: None}
-    room_state = s.RoomState(room_id, players_out)
+    room_state = s.RoomState(**room.to_dict(), players={player.name: None})
     await conn_manager.broadcast_room_state(room.id_, room_state)
 
     # Broadcast the info about all the players in the room, as the joining player
     # needs that context
-    await broadcast_lobby_state(db, conn_manager)
+    room_out = s.RoomOut(
+        players_no=len(conn_manager.connections[room_id]), **room.to_dict()
+    )
+    lobby_state = s.LobbyState(
+        rooms={room.id_: room_out},
+        players={player.name: s.PlayerOut(**player.to_dict())},
+    )
+    await conn_manager.broadcast_lobby_state(lobby_state)
 
 
 @router.websocket('/connect')
@@ -220,7 +225,7 @@ async def connect(
     conn_manager: Annotated[ConnectionManager, Depends(get_connection_manager)],
 ) -> None:
     await accept_websocket_connection(player, websocket, db, conn_manager)
-    await broadcast_lobby_state(db, conn_manager)
+    await broadcast_full_lobby_state(db, conn_manager)
     await db.commit()
 
     try:
