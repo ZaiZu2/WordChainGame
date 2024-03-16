@@ -1,4 +1,4 @@
-import useWebSocket, { ReadyState } from "react-use-websocket"
+import useWebSocket from "react-use-websocket"
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { WebSocketMessage, ChatMessage, LobbyState, GameState, ConnectionState, Room, RoomState } from "@/types"
 import { WEBSOCKET_URL } from '../config'
@@ -52,33 +52,40 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
                     }
                     return tempMessages;
                 });
+                console.log("chat", websocketMessage.payload);
                 break;
 
             case "lobby_state":
                 setLobbyState((prevLobbyState) => {
-                    const lobbyState = websocketMessage.payload as LobbyState;
+                    const newLobbyState = websocketMessage.payload as LobbyState;
                     if (prevLobbyState === null) {
-                        return lobbyState;
+                        return newLobbyState;
                     } else {
-                        // Run differential update on any object in the lobbyState
-                        const players = { ...prevLobbyState.players, ...lobbyState.players };
-                        const rooms = { ...prevLobbyState.rooms, ...lobbyState.rooms };
-                        return { players, rooms };
+                        return {
+                            ...prevLobbyState,
+                            ...newLobbyState,
+                            rooms: newLobbyState.rooms ? runDifferentialUpdate(prevLobbyState.rooms, newLobbyState.rooms) : prevLobbyState.rooms,
+                            players: newLobbyState.players ? runDifferentialUpdate(prevLobbyState.players, newLobbyState.players) : prevLobbyState.players,
+                        }
                     }
                 });
+                console.log("lobby", websocketMessage.payload);
                 break;
 
             case "room_state":
                 setRoomState((prevRoomState) => {
-                    const roomState = websocketMessage.payload as RoomState;
-                    if (prevRoomState === null) {
-                        return roomState;
+                    const newRoomState = websocketMessage.payload as RoomState;
+                    if (prevRoomState === null || prevRoomState.room_id !== newRoomState.room_id) {
+                        return newRoomState;
                     } else {
-                        // Run differential update on any object in the roomState
-                        const players = { ...prevRoomState.players, ...roomState.players };
-                        return { ...prevRoomState, ...roomState, players };
+                        return {
+                            ...prevRoomState,
+                            ...newRoomState,
+                            players: newRoomState.players ? runDifferentialUpdate(prevRoomState.players, newRoomState.players) : prevRoomState.players,
+                        };
                     }
                 });
+                console.log("room", websocketMessage.payload);
                 break;
 
             case "game_state":
@@ -91,6 +98,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
                     // TODO: Show toast saying that the player can only use one client at a time
                     logOut();
                 }
+                console.log("connection", websocketMessage.payload);
                 break;
         }
     }, [lastJsonMessage, logOut]);
@@ -105,6 +113,17 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
             },
         } as WebSocketMessage
         sendJsonMessage(websocketMessage);
+    }
+
+    function runDifferentialUpdate<T>(prevObj: Record<string, T>, newObj: Record<string, T>): Record<string, T> {
+        const merged = { ...prevObj }
+        for (const [id, obj] of Object.entries(newObj)) {
+            if (obj === null) {
+                delete merged[id]
+            }
+            merged[id] = obj
+        }
+        return merged
     }
 
     return (
