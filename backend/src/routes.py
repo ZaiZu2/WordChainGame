@@ -138,15 +138,15 @@ async def join_room(
         )
     if room.status != d.RoomStatusEnum.OPEN:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail='Room is not accessible'
+            status_code=status.HTTP_400_BAD_REQUEST, detail='Room is not accessible'
         )
     if len(conn_manager.connections[room_id]) >= room.capacity:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail='Room is full'
+            status_code=status.HTTP_400_BAD_REQUEST, detail='Room is full'
         )
 
     _, old_room_id = conn_manager.find_connection(player.id_)
-    move_player_and_broadcast_message(player, old_room_id, room_id, db, conn_manager)
+    await move_player_and_broadcast_message(player, old_room_id, room_id, db, conn_manager)
 
     # Broadcast the info about all the players in the room, as the joining player
     # needs that context
@@ -158,12 +158,12 @@ async def join_room(
         room_player.name: s.PlayerOut(**room_player.to_dict())
         for room_player in room_players
     }
-    room_state = s.RoomState(**room.to_dict(), players=players_out)
+    room_state = s.RoomState(players=players_out, **room.to_dict())
     await conn_manager.broadcast_room_state(room.id_, room_state)
 
     # Broadcast only the info about the leaving player, as this is all the context other
     # clients need to keep their state up to date
-    room_out = s.RoomOut(players_no=len(room_players), **room.to_dict())
+    room_out = s.RoomOut(players_no=len(players_out), **room.to_dict())
     lobby_state = s.LobbyState(rooms={room.id_: room_out}, players={player.name: None})
     await conn_manager.broadcast_lobby_state(lobby_state)
 

@@ -63,13 +63,13 @@ class ConnectionState(GeneralBaseModel):
 
 
 class LobbyState(GeneralBaseModel):
-    rooms: dict[int, RoomOut] | None = None  # room_id: room
-    players: dict[str, PlayerOut] | None = None  # player_name: player
+    rooms: dict[int, RoomOut | None] | None = None  # room_id: room
+    players: dict[str, PlayerOut | None] | None = None  # player_name: player
 
 
 class RoomState(GeneralBaseModel):
-    room_id: int
-    players: dict[str, PlayerOut] | None = None  # player_name: player
+    room_id: int = Field(alias='id_')
+    players: dict[str, PlayerOut | None] | None = None  # player_name: player
     rules: dict
 
 
