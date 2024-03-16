@@ -37,14 +37,15 @@ async def get_player(
     if player_id is None or player_id == '':
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail='d.Player is not authenticated',
+            detail='Player is not authenticated',
         )
 
     player = await db.scalar(select(d.Player).where(d.Player.id_ == player_id))
     if not player:
+        await set_auth_cookie('', response)
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail='d.Player is not authenticated',
+            detail='Player is not authenticated',
         )
 
     await set_auth_cookie(player_id, response)

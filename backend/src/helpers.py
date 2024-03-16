@@ -54,14 +54,14 @@ async def move_player_and_broadcast_message(
     message = d.Message(
         content=f'{player.name} left the room',
         room_id=from_room_id,
-        player_id=player.id_,
+        player_id=d.ROOT.id_,
     )
     await save_and_broadcast_message(message, db, conn_manager)
 
     message = d.Message(
         content=f'{player.name} joined the room',
         room_id=to_room_id,
-        player_id=player.id_,
+        player_id=d.ROOT.id_,
     )
     await save_and_broadcast_message(message, db, conn_manager)
 
@@ -90,9 +90,7 @@ async def accept_websocket_connection(
             player_id=d.ROOT.id_,
         )
         await save_and_broadcast_message(message, db, conn_manager)
-        raise WebSocketException(
-            *exc_args, 'Player is already connected with another client'
-        )
+        raise WebSocketException(*exc_args)
 
     message = d.Message(
         content=f'{player.name} joined the room',
