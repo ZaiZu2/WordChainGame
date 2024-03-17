@@ -16,10 +16,7 @@ export default function Header() {
 
     return (
         <>
-            <NewRoomModal
-                show={newGameModalVis}
-                setShow={setShowNewGameModal}
-            />
+            <NewRoomModal show={newGameModalVis} setShow={setShowNewGameModal} />
             <Navbar className="bg-body-secondary">
                 <Container>
                     <Navbar.Brand>Word Chain Game</Navbar.Brand>
@@ -56,12 +53,7 @@ export default function Header() {
                             >
                                 Create room
                             </Button>
-                            <Button
-                                variant="primary"
-                                size="sm"
-                                className=""
-                                onClick={logOut}
-                            >
+                            <Button variant="primary" size="sm" className="" onClick={logOut}>
                                 Log out
                             </Button>
                         </Stack>

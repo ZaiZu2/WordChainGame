@@ -50,7 +50,7 @@ class ApiClient {
         options?: {
             headers?: Record<string, string>;
             cookies?: Record<string, string>;
-        }
+        },
     ): Promise<ApiResponse<T>> {
         return this.request(url, { method: "GET", query, ...options });
     }
@@ -58,11 +58,11 @@ class ApiClient {
     async post<T>(
         url: string | URL,
         options?: {
-            query?: Record<string, string>,
-            body?: any,
+            query?: Record<string, string>;
+            body?: any;
             headers?: Record<string, string>;
             cookies?: Record<string, string>;
-        }
+        },
     ): Promise<ApiResponse<T>> {
         return this.request(url, { method: "POST", ...options });
     }
@@ -70,11 +70,11 @@ class ApiClient {
     async put<T>(
         url: string | URL,
         options?: {
-            query?: Record<string, string>,
-            body?: any,
+            query?: Record<string, string>;
+            body?: any;
             headers?: Record<string, string>;
             cookies?: Record<string, string>;
-        }
+        },
     ): Promise<ApiResponse<T>> {
         return this.request(url, { method: "PUT", ...options });
     }
@@ -82,23 +82,29 @@ class ApiClient {
     async delete<T>(
         url: string | URL,
         options?: {
-            query?: Record<string, string>,
+            query?: Record<string, string>;
             headers?: Record<string, string>;
             cookies?: Record<string, string>;
-        }
+        },
     ): Promise<ApiResponse<T>> {
         return this.request(url, { method: "DELETE", ...options });
     }
 
     private async extractErrorMessages(validatedFields: ValidatedFields) {
-        const flattenedErrorMessages: string[] = Object.values(validatedFields).reduce<string[]>((acc: string[], val) => {
-            if (typeof val === 'string') {
-                return [...acc, val];
-            }
-            const nestedMessages = Object.values(val).reduce((acc, val) => [...acc, ...val], []);
-            return [...acc, ...nestedMessages];
-        }, []);
-        return flattenedErrorMessages
+        const flattenedErrorMessages: string[] = Object.values(validatedFields).reduce<string[]>(
+            (acc: string[], val) => {
+                if (typeof val === "string") {
+                    return [...acc, val];
+                }
+                const nestedMessages = Object.values(val).reduce(
+                    (acc, val) => [...acc, ...val],
+                    [],
+                );
+                return [...acc, ...nestedMessages];
+            },
+            [],
+        );
+        return flattenedErrorMessages;
     }
 }
 const apiClient = new ApiClient();

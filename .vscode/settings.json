@@ -1,14 +1,5 @@
 {
     "files.autoSave": "afterDelay",
-    "editor.rulers": [
-        88
-    ],
-    "[python]": {
-        "editor.defaultFormatter": "charliermarsh.ruff",
-        // "editor.codeActionsOnSave": {
-        //     "source.fixAll": "explicit"
-        // }
-    },
     "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true,
     "python.testing.pytestPath": "${workspaceFolder}/venv/bin/pytest",
@@ -23,4 +14,14 @@
     "autoDocstring.generateDocstringOnEnter": true,
     "rewrap.autoWrap.enabled": true,
     "rewrap.wholeComment": false,
+
+
+    "[typescript]": {
+        "editor.rulers": [100],
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[python]": {
+        "editor.rulers": [88],
+        "editor.defaultFormatter": "charliermarsh.ruff",
+    }
 }

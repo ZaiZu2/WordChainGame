@@ -5,16 +5,15 @@ export type Room = {
     name: string;
     players_no: number;
     capacity: number;
-    status: "Open" | "Closed" | "Private"
+    status: "Open" | "Closed" | "Private";
     rules: object;
 };
 
 export type RoomIn = {
-    name: string
-    capacity: number
-    rules: Record<string, any>
-}
-
+    name: string;
+    capacity: number;
+    rules: Record<string, any>;
+};
 
 export type Player = {
     id?: UUID;
@@ -49,41 +48,40 @@ export type PlayerContext = {
 };
 
 export type ChatMessage = {
-    id?: number
-    created_on?: Date
-    content: string
-    player_name: string
-    room_id: number
-}
+    id?: number;
+    created_on?: Date;
+    content: string;
+    player_name: string;
+    room_id: number;
+};
 
-export type GameState = {
-}
+export type GameState = {};
 
 export type RoomState = {
-    room_id: number
-    players: Record<string, Player>
-}
+    room_id: number;
+    players: Record<string, Player>;
+};
 
 export type LobbyState = {
-    players: Record<string, Player>
-    rooms: Record<number, Room>
-}
+    players: Record<string, Player>;
+    rooms: Record<number, Room>;
+};
 
 export type ConnectionState = {
-    code: number
-    reason: string
-}
+    code: number;
+    reason: string;
+};
 
 export type WebSocketMessage = {
-    type: 'chat' | 'game_state' | 'lobby_state' | 'room_state' | 'connection_state'
-    payload: ChatMessage | GameState | LobbyState | RoomState | ConnectionState
-}
+    type: "chat" | "game_state" | "lobby_state" | "room_state" | "connection_state";
+    payload: ChatMessage | GameState | LobbyState | RoomState | ConnectionState;
+};
 
 export type Word = {
-    id?: number
-    content: string
-    is_correct: boolean
-    created_on: Date
-    game_id: number
-    player_name: string
-}
+    id?: number;
+    content: string;
+    is_correct: boolean;
+    created_on: Date;
+    game_id: number;
+    player_name: string;
+};

@@ -26,24 +26,15 @@ export default function App() {
                             <Stack gap={3}>
                                 <Container>
                                     <div className="text-center fs-6">
-                                        Use this code to log into your account
-                                        again
+                                        Use this code to log into your account again
                                     </div>
-                                    <div className="text-center mt-2 fs-5">
-                                        {player?.id}
-                                    </div>
+                                    <div className="text-center mt-2 fs-5">{player?.id}</div>
                                 </Container>
                                 <Rules />
                                 <Routes>
                                     <Route path="/" element={<LobbyPage />} />
-                                    <Route
-                                        path="/rooms/:roomId"
-                                        element={<RoomPage />}
-                                    />
-                                    <Route
-                                        path="*"
-                                        element={<Navigate to="/" />}
-                                    />
+                                    <Route path="/rooms/:roomId" element={<RoomPage />} />
+                                    <Route path="*" element={<Navigate to="/" />} />
                                 </Routes>
                                 <Chat />
                             </Stack>

@@ -1,4 +1,3 @@
-
 export class ConnectionError extends Error {
     constructor() {
         super("Connection was lost");

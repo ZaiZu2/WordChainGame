@@ -58,11 +58,7 @@ export default function NewRoomModal({
                         <Form.Label>Name</Form.Label>
                         <Form.Control type="string" ref={nameRef} />
                         {nameErrors?.map((error) => {
-                            return (
-                                <Form.Text className="text-danger">
-                                    {error}
-                                </Form.Text>
-                            );
+                            return <Form.Text className="text-danger">{error}</Form.Text>;
                         })}
                     </Form.Group>
 

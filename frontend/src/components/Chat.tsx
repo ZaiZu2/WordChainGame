@@ -1,11 +1,11 @@
-import Container from "react-bootstrap/Container"
-import Form from "react-bootstrap/Form"
+import Container from "react-bootstrap/Container";
+import Form from "react-bootstrap/Form";
 
-import { useWebSocketContext } from "../contexts/WebsocketProvider"
-import { useEffect, useRef } from "react"
+import { useWebSocketContext } from "../contexts/WebsocketProvider";
+import { useEffect, useRef } from "react";
 
 export default function Chat() {
-    const { sendChatMessage, chatMessages, } = useWebSocketContext();
+    const { sendChatMessage, chatMessages } = useWebSocketContext();
     const messageInputRef = useRef<HTMLInputElement>(null);
     const lastMessageRef = useRef<HTMLDivElement>(null);
 
@@ -17,24 +17,30 @@ export default function Chat() {
         }
     };
 
-    useEffect(function scrollChatToBottom() {
-        lastMessageRef.current?.scrollIntoView({ behavior: 'auto' });
-    }, [chatMessages]);
+    useEffect(
+        function scrollChatToBottom() {
+            lastMessageRef.current?.scrollIntoView({ behavior: "auto" });
+        },
+        [chatMessages],
+    );
 
     return (
         <Container className="border">
-            <Container className="p-0 my-2" style={{
-                minHeight: "100px",
-                maxHeight: "300px",
-                overflowY: "auto"
-            }}>
+            <Container
+                className="p-0 my-2"
+                style={{
+                    minHeight: "100px",
+                    maxHeight: "300px",
+                    overflowY: "auto",
+                }}
+            >
                 {chatMessages.map((message, index) => {
                     const isLastMessage = index === chatMessages.length - 1;
                     return (
                         <div key={message.id} ref={isLastMessage ? lastMessageRef : null}>
-                            {message.player_name !== "root"
-                                ? <span className="fw-bold me-2">{message.player_name}</span>
-                                : null}
+                            {message.player_name !== "root" ? (
+                                <span className="fw-bold me-2">{message.player_name}</span>
+                            ) : null}
                             {message.content}
                         </div>
                     );
@@ -48,6 +54,6 @@ export default function Chat() {
                     ref={messageInputRef}
                 />
             </Form>
-        </Container >
+        </Container>
     );
 }

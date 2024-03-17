@@ -6,8 +6,8 @@ import { UUID } from "crypto";
 
 const PlayerContextObject = createContext<PlayerContext>({
     player: null,
-    logIn: () => { },
-    logOut: () => { },
+    logIn: () => {},
+    logOut: () => {},
 });
 
 export function usePlayer() {
@@ -43,5 +43,9 @@ export default function PlayerProvider({ children }: { children: React.ReactNode
         setPlayer(null);
     };
 
-    return <PlayerContextObject.Provider value={{ player, logIn, logOut }}>{children}</PlayerContextObject.Provider>;
+    return (
+        <PlayerContextObject.Provider value={{ player, logIn, logOut }}>
+            {children}
+        </PlayerContextObject.Provider>
+    );
 }
