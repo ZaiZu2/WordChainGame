@@ -62,6 +62,6 @@ async def set_auth_cookie(
         value=value,
         max_age=config.AUTH_COOKIE_EXPIRATION,
         httponly=True,
-        samesite='strict',
+        samesite='None',
         secure=True,
     )

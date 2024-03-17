@@ -6,7 +6,7 @@
     "configurations": [
         {
             "name": "Python: Current File",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
@@ -16,7 +16,7 @@
         },
         {
             "name": "Python: All files",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
@@ -25,7 +25,7 @@
         },
         {
             "name": "Python: Attach",
-            "type": "python",
+            "type": "debugpy",
             "request": "attach",
             "connect": {
               "host": "localhost",
@@ -35,12 +35,14 @@
         },
         {
             "name": "Uvicorn",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "module": "uvicorn",
             "args": [
                 "word_chain_game:app",
-                "--reload"
+                "--reload",
+                "--ssl-keyfile=${workspaceFolder}/backend/certs/localhost-key.pem",
+                "--ssl-certfile=${workspaceFolder}/backend/certs/localhost.pem"
             ],
             "cwd": "${workspaceFolder}/backend",
             "jinja": true
