@@ -7,7 +7,7 @@ import reportWebVitals from "./reportWebVitals";
 import PlayerProvider from "./contexts/PlayerContext";
 import { ConnectionErrorBoundary } from "./components/ErrorBoundaries";
 
-const root = ReactDOM.createRoot(document.getElementById("root"));
+const root = ReactDOM.createRoot(document.getElementById("root") as HTMLElement);
 root.render(
     <React.StrictMode>
         <ConnectionErrorBoundary>

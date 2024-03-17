@@ -4,7 +4,7 @@ import Stack from "react-bootstrap/Stack";
 
 import Header from "./components/Header";
 import Chat from "./components/Chat";
-import GamePage from "./pages/GamePage";
+import RoomPage from "./pages/RoomPage";
 import LobbyPage from "./pages/LobbyPage";
 import Rules from "./components/Rules";
 import { LoginModal } from "./components/NewPlayerModal";
@@ -37,8 +37,8 @@ export default function App() {
                                 <Routes>
                                     <Route path="/" element={<LobbyPage />} />
                                     <Route
-                                        path="/game/:gameId"
-                                        element={<GamePage />}
+                                        path="/rooms/:roomId"
+                                        element={<RoomPage />}
                                     />
                                     <Route
                                         path="*"

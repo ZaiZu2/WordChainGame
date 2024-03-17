@@ -5,7 +5,7 @@ import Navbar from "react-bootstrap/Navbar";
 import { Button, Stack } from "react-bootstrap";
 import { Link } from "react-router-dom";
 
-import GamePage from "../pages/GamePage";
+import RoomPage from "../pages/RoomPage";
 import { usePlayer } from "../contexts/PlayerContext";
 import NewRoomModal from "./NewRoomModal";
 
@@ -26,7 +26,7 @@ export default function Header() {
                     <Navbar.Toggle />
                     <Navbar.Collapse className="justify-content-end">
                         <Button
-                            as={Link}
+                            as={Link as any} // TODO: Due to incompatibility between react-bootstrap and react-router-dom
                             to="/"
                             variant="primary"
                             size="sm"
@@ -35,9 +35,9 @@ export default function Header() {
                             Lobby
                         </Button>
                         <Button
-                            as={Link}
-                            to="/game/1"
-                            elements={<GamePage />}
+                            as={Link as any} // TODO: Due to incompatibility between react-bootstrap and react-router-dom
+                            to="/rooms/1"
+                            elements={<RoomPage />}
                             variant="primary"
                             size="sm"
                             className="me-3"

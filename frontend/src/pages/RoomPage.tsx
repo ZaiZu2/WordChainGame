@@ -3,9 +3,10 @@ import Form from 'react-bootstrap/Form'
 import Table from 'react-bootstrap/Table'
 
 import Statistics from '../components/Statistics'
+import { Word } from '../types'
 
-export default function GamePage() {
-    let gameStats = {
+export default function RoomPage() {
+    let gameStats: Record<string, [string, string | number]> = {
         currentChainLength: ['Current chain length', 6],
     }
 
@@ -90,7 +91,7 @@ function ScoreCard() {
 
 
 function WordList() {
-    const positionToSize = {
+    const positionToSize: Record<number, string> = {
         0: 'fs-6',
         1: 'fs-5',
         2: 'fs-4',
@@ -98,31 +99,34 @@ function WordList() {
         4: 'fs-2',
         5: 'fs-1',
     }
-    let symbol = (word) => word.isCorrect ? 'check' : 'close'
-    let points = (word) => word.isCorrect ? '+2' : '-2'
-    let color = (word) => word.isCorrect ? 'text-success' : 'text-danger' // GREEN or RED
+    let symbol = (word: Word) => word.is_correct ? 'check' : 'close'
+    let points = (word: Word) => word.is_correct ? '+2' : '-2'
+    let color = (word: Word) => word.is_correct ? 'text-success' : 'text-danger' // GREEN or RED
 
     const word_1 = {
         id: 1,
-        userId: 1,
-        sentOn: '2024-01-01 12:00:00',
-        word: 'Elephant',
-        isCorrect: true,
-    }
+        player_name: 'Vecky',
+        created_on: new Date('2024-01-01 12:00:00'),
+        content: 'Elephant',
+        is_correct: true,
+        game_id: 1,
+    } as Word;
     const word_2 = {
         id: 2,
-        userId: 2,
-        sentOn: '2024-01-01 12:01:00',
-        word: 'Tiger',
-        isCorrect: false,
-    }
+        player_name: 'Adam',
+        created_on: new Date('2024-01-01 12:00:00'),
+        content: 'Tiger',
+        is_correct: false,
+        game_id: 1,
+    } as Word;
     const word_3 = {
         id: 3,
-        userId: 3,
-        sentOn: '2024-01-01 12:03:00',
-        word: 'Rotor',
-        isCorrect: false,
-    }
+        player_name: "Becky",
+        created_on: new Date('2024-01-01 12:00:00'),
+        content: 'Rotor',
+        is_correct: false,
+        game_id: 1,
+    } as Word;
     let words = [word_1, word_2, word_3, word_2, word_1]
 
     const style = {
@@ -138,8 +142,8 @@ function WordList() {
                 <tbody>
                     {words.map((word, position) => {
                         return <tr style={style} className="d-flex justify-content-between">
-                            <td style={{ flexBasis: "20%" }} className='p-0 border-0'>Vecky</td>
-                            <td style={{ flexBasis: "60%" }} className={`p-0 border-0 ${positionToSize[position]}`}>{word.word}</td>
+                            <td style={{ flexBasis: "20%" }} className='p-0 border-0'>{word.player_name}</td>
+                            <td style={{ flexBasis: "60%" }} className={`p-0 border-0 ${positionToSize[position]}`}>{word.content}</td>
                             <td style={{ flexBasis: "10%" }} className={`p-0 border-0 material-symbols-outlined ${color(word)}`}>{symbol(word)}</td>
                             <td style={{ flexBasis: "10%" }} className={'p-0 border-0'}>{points(word)}</td>
                         </tr>

@@ -10,7 +10,7 @@ import { RoomState, Room } from "../types";
 import { useWebSocketContext } from "../contexts/WebsocketProvider"
 
 export default function LobbyPage() {
-    let lobbyStats = {
+    let lobbyStats: Record<string, [string, string | number]> = {
         active_players: ["Active players", 11],
         active_games: ["Active games", 3],
         longest_chain: ["Longest word chain", 161],

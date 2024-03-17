@@ -78,3 +78,12 @@ export type WebSocketMessage = {
     type: 'chat' | 'game_state' | 'lobby_state' | 'room_state' | 'connection_state'
     payload: ChatMessage | GameState | LobbyState | RoomState | ConnectionState
 }
+
+export type Word = {
+    id?: number
+    content: string
+    is_correct: boolean
+    created_on: Date
+    game_id: number
+    player_name: string
+}
