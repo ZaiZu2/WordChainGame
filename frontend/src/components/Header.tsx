@@ -6,11 +6,11 @@ import { Button, Stack } from "react-bootstrap";
 import { Link } from "react-router-dom";
 
 import RoomPage from "../pages/RoomPage";
-import { usePlayer } from "../contexts/PlayerContext";
+import { useStore } from "../contexts/storeContext";
 import NewRoomModal from "./NewRoomModal";
 
 export default function Header() {
-    const { player, logOut } = usePlayer();
+    const { player, logOut } = useStore();
 
     const [newGameModalVis, setShowNewGameModal] = useState(false);
 

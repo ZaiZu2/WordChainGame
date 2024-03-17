@@ -4,13 +4,13 @@ import Form from "react-bootstrap/Form";
 import { Button } from "react-bootstrap";
 import { RefObject, useRef, useState } from "react";
 import apiClient from "../apiClient";
-import { usePlayer } from "../contexts/PlayerContext";
+import { useStore } from "../contexts/storeContext";
 import { Player } from "@/types";
 import { ApiError, AuthError } from "../errors";
 import { UUID } from "crypto";
 
 export function LoginModal() {
-    const { logIn } = usePlayer();
+    const { logIn } = useStore();
 
     const [playerErrors, setPlayerErrors] = useState<string[]>();
     const playerRef = useRef<HTMLInputElement>(null);

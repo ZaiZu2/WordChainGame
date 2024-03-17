@@ -4,16 +4,16 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import "./index.css";
 import App from "./App";
 import reportWebVitals from "./reportWebVitals";
-import PlayerProvider from "./contexts/PlayerContext";
+import StoreProvider from "./contexts/storeContext";
 import { ConnectionErrorBoundary } from "./components/ErrorBoundaries";
 
 const root = ReactDOM.createRoot(document.getElementById("root") as HTMLElement);
 root.render(
     <React.StrictMode>
         <ConnectionErrorBoundary>
-            <PlayerProvider>
+            <StoreProvider>
                 <App />
-            </PlayerProvider>
+            </StoreProvider>
         </ConnectionErrorBoundary>
     </React.StrictMode>,
 );

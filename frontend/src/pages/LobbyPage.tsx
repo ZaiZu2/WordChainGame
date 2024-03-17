@@ -6,7 +6,7 @@ import Table from "react-bootstrap/Table";
 import Statistics from "../components/Statistics";
 import apiClient from "../apiClient";
 import { RoomState, Room } from "../types";
-import { useWebSocketContext } from "../contexts/WebsocketProvider";
+import { useStore } from "../contexts/storeContext";
 
 export default function LobbyPage() {
     let lobbyStats: Record<string, [string, string | number]> = {
@@ -24,7 +24,7 @@ export default function LobbyPage() {
 }
 
 function RoomList() {
-    const { lobbyState } = useWebSocketContext();
+    const { lobbyState } = useStore();
     const rooms = lobbyState?.rooms as Record<number, Room>;
 
     const handleJoinRoom = async (roomId: number) => {

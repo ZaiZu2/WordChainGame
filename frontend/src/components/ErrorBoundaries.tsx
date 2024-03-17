@@ -1,5 +1,4 @@
 import React, { createRef, ReactNode, ErrorInfo } from "react";
-import { usePlayer } from "@/contexts/PlayerContext";
 
 interface ErrorBoundaryState {
     hasError: boolean;

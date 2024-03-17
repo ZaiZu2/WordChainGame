@@ -41,12 +41,6 @@ export type ValidatedFields = {
     body?: Record<string, string[]>; // ...
 };
 
-export type PlayerContext = {
-    player: Player | null | undefined;
-    logIn: (id: UUID) => void;
-    logOut: () => void;
-};
-
 export type ChatMessage = {
     id?: number;
     created_on?: Date;

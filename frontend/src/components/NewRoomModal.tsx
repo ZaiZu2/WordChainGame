@@ -4,7 +4,7 @@ import Form from "react-bootstrap/Form";
 import { Button } from "react-bootstrap";
 import { RefObject, useRef, useState } from "react";
 import apiClient from "../apiClient";
-import { usePlayer } from "../contexts/PlayerContext";
+import { useStore } from "../contexts/storeContext";
 import { Room, RoomIn } from "@/types";
 import { ApiError, AuthError } from "../errors";
 import InputField from "./Input";

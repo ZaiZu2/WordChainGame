@@ -8,11 +8,11 @@ import RoomPage from "./pages/RoomPage";
 import LobbyPage from "./pages/LobbyPage";
 import Rules from "./components/Rules";
 import { LoginModal } from "./components/NewPlayerModal";
-import { usePlayer } from "./contexts/PlayerContext";
+import { useStore } from "./contexts/storeContext";
 import { WebSocketProvider } from "./contexts/WebsocketProvider";
 
 export default function App() {
-    const { player } = usePlayer();
+    const { player } = useStore();
 
     return (
         <BrowserRouter>
