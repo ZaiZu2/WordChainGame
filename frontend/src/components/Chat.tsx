@@ -3,9 +3,11 @@ import Form from "react-bootstrap/Form";
 
 import { useWebSocketContext } from "../contexts/WebsocketProvider";
 import { useEffect, useRef } from "react";
+import { useStore } from "../contexts/storeContext";
 
 export default function Chat() {
-    const { sendChatMessage, chatMessages } = useWebSocketContext();
+    const { chatMessages } = useStore();
+    const { sendChatMessage } = useWebSocketContext();
     const messageInputRef = useRef<HTMLInputElement>(null);
     const lastMessageRef = useRef<HTMLDivElement>(null);
 
