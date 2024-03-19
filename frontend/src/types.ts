@@ -52,7 +52,7 @@ export type ChatMessage = {
 export type GameState = {};
 
 export type RoomState = {
-    room_id: number;
+    id: number;
     players: Record<string, Player>;
 };
 

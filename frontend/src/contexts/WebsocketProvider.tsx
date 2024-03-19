@@ -75,7 +75,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
             type: "chat",
             payload: {
                 player_name: player?.name,
-                room_id: roomState?.room_id || 1,// TODO: lobby id should be provided by the server
+                room_id: roomState?.id || 1,// TODO: lobby id should be provided by the server
                 content: message,
             },
         } as WebSocketMessage;

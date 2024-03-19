@@ -68,7 +68,7 @@ class LobbyState(GeneralBaseModel):
 
 
 class RoomState(GeneralBaseModel):
-    room_id: int = Field(alias='id_')
+    id_: int = Field(serialization_alias='id')
     players: dict[str, PlayerOut | None] | None = None  # player_name: player
     rules: dict
 

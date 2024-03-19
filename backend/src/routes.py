@@ -14,7 +14,6 @@ from fastapi import (
 )
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 import src.models as d  # d - database
 import src.schemas as s  # s - schema
@@ -72,7 +71,6 @@ async def login_player(
 
     await set_auth_cookie(player.id_, response)
     return s.MePlayer.model_validate(player)
-
 
 @router.post('/players/logout', status_code=status.HTTP_200_OK)
 async def logout_player(
@@ -159,7 +157,7 @@ async def join_room(
         for room_player in room_players
     }
     room_state = s.RoomState(players=players_out, **room.to_dict())
-    await conn_manager.broadcast_room_state(room.id_, room_state)
+    await conn_manager.broadcast_room_state(room_state.id_, room_state)
 
     # Broadcast only the info about the leaving player, as this is all the context other
     # clients need to keep their state up to date
@@ -168,7 +166,7 @@ async def join_room(
     await conn_manager.broadcast_lobby_state(lobby_state)
 
     # TODO: Collect chat history and send it to the player
-    return room_state
+    return room_state.model_dump()
 
 
 @router.post('/rooms/{room_id}/leave', status_code=status.HTTP_200_OK)

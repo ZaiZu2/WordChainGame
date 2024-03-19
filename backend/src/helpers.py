@@ -1,7 +1,7 @@
 from enum import Enum
 
 from fastapi import WebSocket, WebSocketException
-from sqlalchemy import func, select
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import src.models as d  # d - database
@@ -114,7 +114,7 @@ async def handle_player_disconnect(
     if not is_player_in_lobby:
         active_game_with_player = await db.scalar(
             select(d.Game).where(
-                func.and_(
+                and_(
                     d.Game.status == d.GameStatusEnum.IN_PROGRESS,
                     d.Game.players.contains(player),
                 )
