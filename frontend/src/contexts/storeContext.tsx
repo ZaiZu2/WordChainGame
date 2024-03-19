@@ -104,7 +104,7 @@ export default function StoreProvider({ children }: { children: React.ReactNode 
             if (
                 newRoomState === null ||
                 prevRoomState === null ||
-                newRoomState.room_id !== prevRoomState.room_id
+                newRoomState.id !== prevRoomState.id
             ) {
                 return newRoomState;
             } else {
