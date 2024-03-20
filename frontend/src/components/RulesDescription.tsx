@@ -2,10 +2,10 @@ import Container from "react-bootstrap/Container";
 import Accordion from "react-bootstrap/Accordion";
 import ListGroup from "react-bootstrap/ListGroup";
 
-export default function Rules() {
+export default function RulesDescription() {
     return (
         <Container className="border">
-            <Accordion defaultActiveKey="0" flush>
+            <Accordion flush>
                 <Accordion.Item eventKey="0">
                     <Accordion.Header>Rules</Accordion.Header>
                     <Accordion.Body className="p-0">
