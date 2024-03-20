@@ -6,7 +6,7 @@ import Header from "./components/Header";
 import Chat from "./components/Chat";
 import RoomPage from "./pages/RoomPage";
 import LobbyPage from "./pages/LobbyPage";
-import Rules from "./components/Rules";
+import RulesDescription from "./components/RulesDescription";
 import { LoginModal } from "./components/NewPlayerModal";
 import { useStore } from "./contexts/storeContext";
 import { WebSocketProvider } from "./contexts/WebsocketProvider";
@@ -30,13 +30,13 @@ export default function App() {
                                     </div>
                                     <div className="text-center mt-2 fs-5">{player?.id}</div>
                                 </Container>
-                                <Rules />
                                 <Routes>
                                     <Route path="/" element={<LobbyPage />} />
                                     <Route path="/rooms/:roomId" element={<RoomPage />} />
                                     <Route path="*" element={<Navigate to="/" />} />
                                 </Routes>
                                 <Chat />
+                                <RulesDescription />
                             </Stack>
                         </WebSocketProvider>
                     </Container>

@@ -1,9 +1,13 @@
 import Container from "react-bootstrap/Container";
 import Form from "react-bootstrap/Form";
 import Table from "react-bootstrap/Table";
+import { Button, Stack } from "react-bootstrap";
+import { useNavigate } from "react-router-dom";
 
 import Statistics from "../components/Statistics";
 import { Word } from "../types";
+import { useStore } from "../contexts/storeContext";
+import apiClient from "../apiClient";
 
 export default function RoomPage() {
     let gameStats: Record<string, [string, string | number]> = {
@@ -12,8 +16,9 @@ export default function RoomPage() {
 
     return (
         <>
-            <Statistics stats={gameStats} />
+            <RoomHeader />
             <ScoreCard />
+            <Statistics stats={gameStats} />
             <WordList />
         </>
     );
@@ -199,6 +204,68 @@ function WordList() {
                 </tbody>
             </Table>
             <Form.Control type="text" placeholder="Write here..." className="py-1 mt-0 mb-2" />
+        </Container>
+    );
+}
+
+function RoomHeader() {
+    const { player, roomState, chatMessages, purgeChatMessages, updateChatMessages, setMode } =
+        useStore();
+    const navigate = useNavigate();
+
+    async function handleLeaveRoom(roomId: number) {
+        const prevMessages = [...chatMessages];
+        purgeChatMessages();
+
+        try {
+            await apiClient.post(`/rooms/${roomId}/leave`);
+        } catch (error) {
+            updateChatMessages(prevMessages); // Restore chat messages in case `leave` request fails
+            return;
+        }
+        setMode("lobby");
+        navigate("/");
+    }
+
+    async function handleToggleRoomStatus(roomId: number) {
+        try {
+            await apiClient.post(`/rooms/${roomId}/toggle`);
+        } catch (error) {
+            return;
+        }
+    }
+
+    return (
+        <Container className="border">
+            <Stack gap={2} direction="horizontal" className="py-2">
+                <Stack direction="horizontal" gap={3}>
+                    <h3>Room {roomState?.name}</h3>
+                    <span className="material-symbols-outlined">
+                        {roomState?.status === "Closed" ? "lock" : "lock_open_right"}
+                    </span>
+                    <h3>
+                        {Object.keys(roomState?.players || {}).length}/{roomState?.capacity}
+                    </h3>
+
+                </Stack>
+                <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => handleLeaveRoom(roomState?.id as number)}
+                    className="ms-auto"
+                >
+                    Leave
+                </Button>
+                {roomState?.owner_name === player?.name && (
+                    <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => handleToggleRoomStatus(roomState?.id as number)}
+                    >
+                        {roomState?.status === "Open" ? "Close" : "Open"}
+                    </Button>
+                )}
+            </Stack>
         </Container>
     );
 }

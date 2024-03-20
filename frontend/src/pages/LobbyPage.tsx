@@ -1,11 +1,12 @@
 import Container from "react-bootstrap/Container";
-import { Button } from "react-bootstrap";
+import { Button, Stack } from "react-bootstrap";
 import Spinner from "react-bootstrap/Spinner";
 import Table from "react-bootstrap/Table";
+import { useNavigate } from "react-router-dom";
 
 import Statistics from "../components/Statistics";
 import apiClient from "../apiClient";
-import { RoomState, Room } from "../types";
+import { RoomState, RoomOut, ChatMessage } from "../types";
 import { useStore } from "../contexts/storeContext";
 
 export default function LobbyPage() {
@@ -24,16 +25,27 @@ export default function LobbyPage() {
 }
 
 function RoomList() {
-    const { lobbyState } = useStore();
-    const rooms = lobbyState?.rooms as Record<number, Room>;
+    const navigate = useNavigate();
+    const { setMode, lobbyState, chatMessages, updateChatMessages, purgeChatMessages } = useStore();
+    const rooms = lobbyState?.rooms as Record<number, RoomOut>;
 
-    const handleJoinRoom = async (roomId: number) => {
-        const roomState = (await apiClient.post<RoomState>(`/rooms/${roomId}/join`)).body;
-    };
+    async function handleJoinRoom(roomId: number) {
+        const prevMessages = [...chatMessages];
+        purgeChatMessages();
+
+        try {
+            await apiClient.post<RoomState>(`/rooms/${roomId}/join`);
+        } catch (error) {
+            updateChatMessages(prevMessages); // Restore chat messages in case `join` request fails
+            return;
+        }
+        setMode("room");
+        navigate(`/rooms/${roomId}`);
+    }
 
     return (
         <Container className="d-flex flex-column border" style={{ alignItems: "center" }}>
-            <Table borderless className="m-0">
+            <Table borderless className="m-0 pt-0">
                 <thead>
                     <tr className="d-flex py-2">
                         <td
@@ -53,6 +65,12 @@ function RoomList() {
                             style={{ flexBasis: "20%" }}
                         >
                             Capacity
+                        </td>
+                        <td
+                            className="p-0 border-0 flex-grow-1 fw-bold"
+                            style={{ flexBasis: "20%" }}
+                        >
+                            Owner
                         </td>
                         <td
                             className="p-0 border-0 flex-grow-1 fw-bold text-end"
@@ -92,6 +110,12 @@ function RoomList() {
                                         {room.players_no}/{room.capacity}
                                     </td>
                                     <td
+                                        className="p-0 border-0 flex-grow-1"
+                                        style={{ flexBasis: "20%" }}
+                                    >
+                                        {room.owner_name}
+                                    </td>
+                                    <td
                                         className="p-0 border-0 flex-grow-1 d-flex gap-2 justify-content-end"
                                         style={{ flexBasis: "15%" }}
                                     >
@@ -102,6 +126,10 @@ function RoomList() {
                                             onClick={() => handleJoinRoom(room.id as number)}
                                             variant="primary"
                                             size="sm"
+                                            disabled={
+                                                room.players_no === room.capacity ||
+                                                !(room.status === "Open")
+                                            }
                                         >
                                             Join
                                         </Button>

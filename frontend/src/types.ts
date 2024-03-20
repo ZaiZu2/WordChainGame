@@ -1,12 +1,13 @@
 import { UUID } from "crypto";
 
-export type Room = {
+export type RoomOut = {
     id?: number;
     name: string;
     players_no: number;
     capacity: number;
     status: "Open" | "Closed" | "Private";
     rules: object;
+    owner_name: string;
 };
 
 export type RoomIn = {
@@ -51,14 +52,13 @@ export type ChatMessage = {
 
 export type GameState = {};
 
-export type RoomState = {
-    id: number;
+export type RoomState = Omit<RoomOut, 'players_no'> & {
     players: Record<string, Player>;
 };
 
 export type LobbyState = {
     players: Record<string, Player>;
-    rooms: Record<number, Room>;
+    rooms: Record<number, RoomOut>;
 };
 
 export type ConnectionState = {
