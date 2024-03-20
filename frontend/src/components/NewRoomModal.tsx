@@ -5,7 +5,7 @@ import { Button } from "react-bootstrap";
 import { RefObject, useRef, useState } from "react";
 import apiClient from "../apiClient";
 import { useStore } from "../contexts/storeContext";
-import { Room, RoomIn } from "@/types";
+import { RoomOut, RoomIn } from "@/types";
 import { ApiError, AuthError } from "../errors";
 import InputField from "./Input";
 
@@ -30,7 +30,7 @@ export default function NewRoomModal({
         }
 
         try {
-            await apiClient.post<Room>("/rooms", {
+            await apiClient.post<RoomOut>("/rooms", {
                 body: {
                     name: name,
                     capacity: capacityRef.current?.valueAsNumber as number,

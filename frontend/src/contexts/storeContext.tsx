@@ -10,8 +10,11 @@ export type StoreContext = {
     lobbyState: LobbyState | null;
     roomState: RoomState | null;
     gameState: GameState | null;
+    mode: "lobby" | "room" | "game";
     player: Player | null | undefined;
-    updateChatMessages: (newChatMessage: ChatMessage) => void;
+    setMode: (mode: "lobby" | "room" | "game") => void;
+    updateChatMessages: (newChatMessages: ChatMessage[]) => void;
+    purgeChatMessages: () => void;
     updateLobbyState: (newLobbyState: LobbyState | null) => void;
     updateRoomState: (newRoomState: RoomState | null) => void;
     updateGameState: (newGameState: GameState | null) => void;
@@ -24,8 +27,11 @@ const StoreContextObject = createContext<StoreContext>({
     lobbyState: null,
     roomState: null,
     gameState: null,
+    mode: "lobby",
     player: null,
-    updateChatMessages: (newChatMessage: ChatMessage) => {},
+    setMode: (mode: "lobby" | "room" | "game") => {},
+    updateChatMessages: (newChatMessages: ChatMessage[]) => {},
+    purgeChatMessages: () => {},
     updateLobbyState: (newLobbyState: LobbyState | null) => {},
     updateRoomState: (newRoomState: RoomState | null) => {},
     updateGameState: (newGameState: GameState | null) => {},
@@ -38,6 +44,7 @@ export function useStore() {
 }
 
 export default function StoreProvider({ children }: { children: React.ReactNode }) {
+    const [mode, setMode] = useState<"lobby" | "room" | "game">("lobby");
     const [player, setPlayer] = useState<Player | null | undefined>();
     const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
     const [lobbyState, setLobbyState] = useState<LobbyState | null>(null);
@@ -70,11 +77,15 @@ export default function StoreProvider({ children }: { children: React.ReactNode 
         setPlayer(null);
     }
 
-    function updateChatMessages(newChatMessage: ChatMessage) {
+    function purgeChatMessages() {
+        setChatMessages([]);
+    }
+
+    function updateChatMessages(newChatMessages: ChatMessage[]) {
         setChatMessages((prevChatMessages) => {
-            const tempMessages = [...prevChatMessages, newChatMessage];
+            const tempMessages = [...prevChatMessages, ...newChatMessages];
             if (tempMessages.length > CHAT_MESSAGE_LIMIT) {
-                tempMessages.shift();
+                return tempMessages.slice(tempMessages.length - CHAT_MESSAGE_LIMIT);
             }
             return tempMessages;
         });
@@ -146,8 +157,11 @@ export default function StoreProvider({ children }: { children: React.ReactNode 
                 lobbyState,
                 roomState,
                 gameState,
+                mode,
+                setMode,
                 player,
                 updateChatMessages,
+                purgeChatMessages,
                 updateLobbyState,
                 updateRoomState,
                 updateGameState,

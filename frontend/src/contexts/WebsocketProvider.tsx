@@ -42,7 +42,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
             const websocketMessage = JSON.parse(lastJsonMessage as string) as WebSocketMessage;
             switch (websocketMessage.type) {
                 case "chat":
-                    updateChatMessages(websocketMessage.payload as ChatMessage);
+                    updateChatMessages([websocketMessage.payload as ChatMessage]);
                     console.log("chat", websocketMessage.payload);
                     break;
                 case "lobby_state":
