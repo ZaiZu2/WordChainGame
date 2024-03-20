@@ -3,6 +3,7 @@ from enum import Enum
 from fastapi import WebSocket, WebSocketException
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
 import src.models as d  # d - database
 import src.schemas as s  # s - schema
@@ -126,8 +127,16 @@ async def handle_player_disconnect(
             # player.room_id = d.LOBBY.id_
             # db.add(player)
             # await db.flush([player])
-            room = await db.scalar(select(d.Room).where(d.Room.id_ == room_id))
-            room_state = s.RoomState(**room.to_dict(), players={player.name: None})
+            room = await db.scalar(
+                select(d.Room)
+                .where(d.Room.id_ == room_id)
+                .options(joinedload(d.Room.owner))
+            )
+            room_state = s.RoomState(
+                **room.to_dict(),
+                owner_name=room.owner.name,
+                players={player.name: None},
+            )
             await conn_manager.broadcast_room_state(room_id, room_state)
 
             message = d.Message(
@@ -194,11 +203,15 @@ async def broadcast_full_lobby_state(
     }
 
     rooms = await db.scalars(
-        select(d.Room).where(d.Room.status != d.RoomStatusEnum.EXPIRED)
+        select(d.Room)
+        .where(d.Room.status != d.RoomStatusEnum.EXPIRED)
+        .options(joinedload(d.Room.owner))
     )
     rooms_out_map = {
         room.id_: s.RoomOut(
-            players_no=len(conn_manager.connections[room.id_]), **room.to_dict()
+            players_no=len(conn_manager.connections[room.id_]),
+            owner_name=room.owner.name,
+            **room.to_dict(),
         )
         for room in rooms
     }

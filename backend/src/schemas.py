@@ -1,5 +1,6 @@
 from datetime import datetime
 from enum import Enum
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -29,12 +30,29 @@ class RoomOut(GeneralBaseModel):
     capacity: int
     status: d.RoomStatusEnum
     rules: dict
+    owner_name: str
 
 
 class RoomIn(GeneralBaseModel):
     name: str
     capacity: int
     rules: dict
+
+
+class GameTypeEnum(str, Enum):
+    DEATHMATCH = 'deathmatch'
+
+
+class Rules(GeneralBaseModel):
+    type_: GameTypeEnum = Field(serialization_alias='type')
+
+
+class DeathmatchRules(Rules):
+    type_: Literal[GameTypeEnum.DEATHMATCH] = Field(serialization_alias='type')
+    round_time: int = 10
+    starting_score: int = 0
+    penalty: int = Field(-10, le=0)  # If 0, player loses after a single mistake
+    reward: int = Field(2, ge=0)
 
 
 class WebSocketMessageTypeEnum(str, Enum):
@@ -69,8 +87,12 @@ class LobbyState(GeneralBaseModel):
 
 class RoomState(GeneralBaseModel):
     id_: int = Field(serialization_alias='id')
-    players: dict[str, PlayerOut | None] | None = None  # player_name: player
+    name: str
+    capacity: int
+    status: d.RoomStatusEnum
     rules: dict
+    owner_name: str
+    players: dict[str, PlayerOut | None] | None = None  # player_name: player
 
 
 class GameState(GeneralBaseModel):
