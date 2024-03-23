@@ -7,15 +7,9 @@ import apiClient from "../apiClient";
 import { useStore } from "../contexts/storeContext";
 import { RoomOut, RoomIn } from "@/types";
 import { ApiError, AuthError } from "../errors";
-import InputField from "./Input";
 
-export default function NewRoomModal({
-    show,
-    setShow,
-}: {
-    show: boolean;
-    setShow: (show: boolean) => void;
-}) {
+export default function NewRoomModal() {
+    const { showCreateRoomModal, toggleCreateRoomModal } = useStore();
     const [nameErrors, setNameErrors] = useState<string[]>([]);
     const nameRef = useRef<HTMLInputElement>(null);
     const capacityRef = useRef<HTMLInputElement>(null);
@@ -42,11 +36,16 @@ export default function NewRoomModal({
                 setNameErrors(error.messages);
             }
         }
-        setShow(false);
+        toggleCreateRoomModal(false);
     }
 
     return (
-        <Modal centered animation show={show} onHide={() => setShow(false)}>
+        <Modal
+            centered
+            animation
+            show={showCreateRoomModal}
+            onHide={() => toggleCreateRoomModal(false)}
+        >
             <Modal.Header closeButton>
                 <Modal.Title>
                     <h5 className="m-0">Create new game room</h5>

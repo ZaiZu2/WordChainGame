@@ -10,6 +10,7 @@ import RulesDescription from "./components/RulesDescription";
 import { LoginModal } from "./components/NewPlayerModal";
 import { useStore } from "./contexts/storeContext";
 import { WebSocketProvider } from "./contexts/WebsocketProvider";
+import NewRoomModal from "./components/NewRoomModal";
 
 export default function App() {
     const { player } = useStore();
@@ -20,6 +21,7 @@ export default function App() {
                 <LoginModal />
             ) : (
                 <>
+                    <NewRoomModal />
                     <Header />
                     <Container fluid className="p-3">
                         <WebSocketProvider>
