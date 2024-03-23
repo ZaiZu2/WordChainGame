@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from "react";
-import { Player, ChatMessage, LobbyState, GameState, RoomState } from "@/types";
+import { Player, ChatMessage, LobbyState, GameState, RoomState, AllTimeStatistics } from "@/types";
 import apiClient from "../apiClient";
 import { AuthError } from "../errors";
 import { UUID } from "crypto";
@@ -10,6 +10,7 @@ export type StoreContext = {
     lobbyState: LobbyState | null;
     roomState: RoomState | null;
     gameState: GameState | null;
+    allTimeStatistics: AllTimeStatistics | undefined;
     mode: "lobby" | "room" | "game";
     player: Player | null | undefined;
     setMode: (mode: "lobby" | "room" | "game") => void;
@@ -18,6 +19,7 @@ export type StoreContext = {
     updateLobbyState: (newLobbyState: LobbyState | null) => void;
     updateRoomState: (newRoomState: RoomState | null) => void;
     updateGameState: (newGameState: GameState | null) => void;
+    setAllTimeStatistics: (newAllTimeStatistics: AllTimeStatistics) => void;
     logIn: (id: UUID) => void;
     logOut: () => void;
 };
@@ -29,12 +31,14 @@ const StoreContextObject = createContext<StoreContext>({
     gameState: null,
     mode: "lobby",
     player: null,
+    allTimeStatistics: undefined,
     setMode: (mode: "lobby" | "room" | "game") => {},
     updateChatMessages: (newChatMessages: ChatMessage[]) => {},
     purgeChatMessages: () => {},
     updateLobbyState: (newLobbyState: LobbyState | null) => {},
     updateRoomState: (newRoomState: RoomState | null) => {},
     updateGameState: (newGameState: GameState | null) => {},
+    setAllTimeStatistics: (newAllTimeStatistics: AllTimeStatistics) => {},
     logIn: () => {},
     logOut: () => {},
 });
@@ -50,6 +54,7 @@ export default function StoreProvider({ children }: { children: React.ReactNode 
     const [lobbyState, setLobbyState] = useState<LobbyState | null>(null);
     const [roomState, setRoomState] = useState<RoomState | null>(null);
     const [gameState, setGameState] = useState<GameState | null>(null);
+    const [allTimeStatistics, setAllTimeStatistics] = useState<AllTimeStatistics | undefined>(undefined);
 
     useEffect(function checkPlayerSessionCookie() {
         // If HTTP-only cookie is set and still valid, the player will get immediately
@@ -105,6 +110,9 @@ export default function StoreProvider({ children }: { children: React.ReactNode 
                     players: newLobbyState.players
                         ? runDifferentialUpdate(prevLobbyState.players, newLobbyState.players)
                         : prevLobbyState.players,
+                    stats: newLobbyState.stats
+                        ? { ...prevLobbyState.stats, ...newLobbyState.stats }
+                        : prevLobbyState.stats,
                 };
             }
         });
@@ -157,6 +165,7 @@ export default function StoreProvider({ children }: { children: React.ReactNode 
                 lobbyState,
                 roomState,
                 gameState,
+                allTimeStatistics,
                 mode,
                 setMode,
                 player,
@@ -165,6 +174,7 @@ export default function StoreProvider({ children }: { children: React.ReactNode 
                 updateLobbyState,
                 updateRoomState,
                 updateGameState,
+                setAllTimeStatistics,
                 logIn,
                 logOut,
             }}

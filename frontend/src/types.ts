@@ -59,7 +59,19 @@ export type RoomState = Omit<RoomOut, 'players_no'> & {
 export type LobbyState = {
     players: Record<string, Player>;
     rooms: Record<number, RoomOut>;
+    stats: CurrentStatistics;
 };
+
+export type CurrentStatistics = {
+    active_players: number;
+    active_rooms: number;
+}
+
+export type AllTimeStatistics = {
+    longest_chain: number;
+    longest_game_time: number;
+    total_games: number;
+}
 
 export type ConnectionState = {
     code: number;

@@ -18,7 +18,7 @@ export default function RoomPage() {
         <>
             <RoomHeader />
             <ScoreCard />
-            <Statistics stats={gameStats} />
+            {/* <Statistics /> */}
             <WordList />
         </>
     );
@@ -246,7 +246,6 @@ function RoomHeader() {
                     <h3>
                         {Object.keys(roomState?.players || {}).length}/{roomState?.capacity}
                     </h3>
-
                 </Stack>
                 <Button
                     variant="primary"
