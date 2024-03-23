@@ -12,9 +12,10 @@ from fastapi import (
     WebSocketDisconnect,
     status,
 )
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
+
 import src.models as d  # d - database
 import src.schemas as s  # s - schema
 from src.connection_manager import ConnectionManager
@@ -282,6 +283,19 @@ async def toggle_room(
         players={},
     )
     await conn_manager.broadcast_lobby_state(lobby_state)
+
+
+@router.get('/stats', status_code=status.HTTP_200_OK)
+async def get_stats(
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> s.AllTimeStatistics:
+    total_games = await db.scalar(
+        select(func.count(d.Game.id_)).where(d.Game.status == d.GameStatusEnum.FINISHED)
+    )
+    # TODO: Calculate the longest chain and the longest game time
+    return s.AllTimeStatistics(
+        longest_chain=10, longest_game_time=1234, total_games=total_games
+    )
 
 
 @router.websocket('/connect')
