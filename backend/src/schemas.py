@@ -80,9 +80,21 @@ class ConnectionState(GeneralBaseModel):
     reason: str
 
 
+class CurrentStatistics(GeneralBaseModel):
+    active_players: int
+    active_rooms: int
+
+
+class AllTimeStatistics(GeneralBaseModel):
+    longest_chain: int
+    longest_game_time: int
+    total_games: int
+
+
 class LobbyState(GeneralBaseModel):
     rooms: dict[int, RoomOut | None] | None = None  # room_id: room
     players: dict[str, PlayerOut | None] | None = None  # player_name: player
+    stats: CurrentStatistics | None = None
 
 
 class RoomState(GeneralBaseModel):

@@ -216,5 +216,12 @@ async def broadcast_full_lobby_state(
         for room in rooms
     }
 
-    lobby_state = s.LobbyState(rooms=rooms_out_map, players=players_out_map)
+    stats = s.CurrentStatistics(
+        active_players=sum(len(conn) for conn in conn_manager.connections.values()),
+        active_rooms=len(conn_manager.connections) - 1,  # exclude the Lobby
+    )
+
+    lobby_state = s.LobbyState(
+        rooms=rooms_out_map, players=players_out_map, stats=stats
+    )
     await conn_manager.broadcast_lobby_state(lobby_state)
