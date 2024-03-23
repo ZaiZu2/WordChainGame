@@ -240,12 +240,15 @@ function RoomHeader() {
             <Stack gap={2} direction="horizontal" className="py-2">
                 <Stack direction="horizontal" gap={3}>
                     <h3>Room {roomState?.name}</h3>
-                    <span className="material-symbols-outlined">
+                    <span className="material-symbols-outlined fs-2">
                         {roomState?.status === "Closed" ? "lock" : "lock_open_right"}
                     </span>
-                    <h3>
-                        {Object.keys(roomState?.players || {}).length}/{roomState?.capacity}
-                    </h3>
+                    <Stack direction="horizontal" gap={1}>
+                        <span className="material-symbols-outlined fs-2">group</span>
+                        <span className="fs-5">
+                            {Object.keys(roomState?.players || {}).length}/{roomState?.capacity}
+                        </span>
+                    </Stack>
                 </Stack>
                 <Button
                     variant="primary"

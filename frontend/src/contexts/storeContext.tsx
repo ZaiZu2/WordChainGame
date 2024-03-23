@@ -22,6 +22,8 @@ export type StoreContext = {
     setAllTimeStatistics: (newAllTimeStatistics: AllTimeStatistics) => void;
     logIn: (id: UUID) => void;
     logOut: () => void;
+    showCreateRoomModal: boolean;
+    toggleCreateRoomModal: (show: boolean) => void;
 };
 
 const StoreContextObject = createContext<StoreContext>({
@@ -41,6 +43,8 @@ const StoreContextObject = createContext<StoreContext>({
     setAllTimeStatistics: (newAllTimeStatistics: AllTimeStatistics) => {},
     logIn: () => {},
     logOut: () => {},
+    showCreateRoomModal: false,
+    toggleCreateRoomModal: (show: boolean) => {},
 });
 
 export function useStore() {
@@ -54,7 +58,11 @@ export default function StoreProvider({ children }: { children: React.ReactNode 
     const [lobbyState, setLobbyState] = useState<LobbyState | null>(null);
     const [roomState, setRoomState] = useState<RoomState | null>(null);
     const [gameState, setGameState] = useState<GameState | null>(null);
-    const [allTimeStatistics, setAllTimeStatistics] = useState<AllTimeStatistics | undefined>(undefined);
+    const [allTimeStatistics, setAllTimeStatistics] = useState<AllTimeStatistics | undefined>(
+        undefined,
+    );
+
+    const [showCreateRoomModal, toggleCreateRoomModal] = useState(false);
 
     useEffect(function checkPlayerSessionCookie() {
         // If HTTP-only cookie is set and still valid, the player will get immediately
@@ -177,6 +185,8 @@ export default function StoreProvider({ children }: { children: React.ReactNode 
                 setAllTimeStatistics,
                 logIn,
                 logOut,
+                showCreateRoomModal,
+                toggleCreateRoomModal,
             }}
         >
             {children}
