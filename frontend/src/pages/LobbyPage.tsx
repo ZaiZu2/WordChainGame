@@ -10,15 +10,10 @@ import { RoomState, RoomOut, ChatMessage } from "../types";
 import { useStore } from "../contexts/storeContext";
 
 export default function LobbyPage() {
-    let lobbyStats: Record<string, [string, string | number]> = {
-        active_players: ["Active players", 11],
-        active_games: ["Active games", 3],
-        longest_chain: ["Longest word chain", 161],
-    };
-
     return (
         <>
-            <Statistics stats={lobbyStats} />
+            <LobbyHeader />
+            <Statistics />
             <RoomList />
         </>
     );
@@ -140,6 +135,50 @@ function RoomList() {
                     )}
                 </tbody>
             </Table>
+        </Container>
+    );
+}
+
+function LobbyHeader() {
+    const { player, roomState, chatMessages, purgeChatMessages, updateChatMessages, setMode } =
+        useStore();
+    const navigate = useNavigate();
+
+    async function handleLeaveRoom(roomId: number) {
+        const prevMessages = [...chatMessages];
+        purgeChatMessages();
+
+        try {
+            await apiClient.post(`/rooms/${roomId}/leave`);
+        } catch (error) {
+            updateChatMessages(prevMessages); // Restore chat messages in case `leave` request fails
+            return;
+        }
+        setMode("lobby");
+        navigate("/");
+    }
+
+    async function handleToggleRoomStatus(roomId: number) {
+        try {
+            await apiClient.post(`/rooms/${roomId}/toggle`);
+        } catch (error) {
+            return;
+        }
+    }
+
+    return (
+        <Container className="border">
+            <Stack gap={2} direction="horizontal" className="py-2">
+                <h3>Lobby</h3>
+                <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => handleLeaveRoom(roomState?.id as number)}
+                    className="ms-auto"
+                >
+                    Create room
+                </Button>
+            </Stack>
         </Container>
     );
 }
