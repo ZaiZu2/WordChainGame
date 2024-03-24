@@ -29,7 +29,7 @@ export default function NewRoomModal() {
                     name: name,
                     capacity: capacityRef.current?.valueAsNumber as number,
                     rules: {},
-                } satisfies RoomIn,
+                } as RoomIn,
             });
         } catch (error) {
             if (error instanceof ApiError) {

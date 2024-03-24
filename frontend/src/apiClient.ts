@@ -50,7 +50,7 @@ class ApiClient {
         options?: {
             headers?: Record<string, string>;
             cookies?: Record<string, string>;
-        },
+        }
     ): Promise<ApiResponse<T>> {
         return this.request(url, { method: "GET", query, ...options });
     }
@@ -62,7 +62,7 @@ class ApiClient {
             body?: any;
             headers?: Record<string, string>;
             cookies?: Record<string, string>;
-        },
+        }
     ): Promise<ApiResponse<T>> {
         return this.request(url, { method: "POST", ...options });
     }
@@ -74,7 +74,7 @@ class ApiClient {
             body?: any;
             headers?: Record<string, string>;
             cookies?: Record<string, string>;
-        },
+        }
     ): Promise<ApiResponse<T>> {
         return this.request(url, { method: "PUT", ...options });
     }
@@ -85,7 +85,7 @@ class ApiClient {
             query?: Record<string, string>;
             headers?: Record<string, string>;
             cookies?: Record<string, string>;
-        },
+        }
     ): Promise<ApiResponse<T>> {
         return this.request(url, { method: "DELETE", ...options });
     }
@@ -98,11 +98,11 @@ class ApiClient {
                 }
                 const nestedMessages = Object.values(val).reduce(
                     (acc, val) => [...acc, ...val],
-                    [],
+                    []
                 );
                 return [...acc, ...nestedMessages];
             },
-            [],
+            []
         );
         return flattenedErrorMessages;
     }

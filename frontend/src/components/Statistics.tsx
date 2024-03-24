@@ -28,11 +28,11 @@ export default function Statistics() {
         };
 
         // Fetch stats immediately and then every 60 seconds
-            fetchStats();
-            const intervalId = setInterval(fetchStats, 60 * 1000);
+        fetchStats();
+        const intervalId = setInterval(fetchStats, 60 * 1000);
 
-            // Clean up the interval on unmount
-            return () => clearInterval(intervalId);
+        // Clean up the interval on unmount
+        return () => clearInterval(intervalId);
     }, []);
 
     return (

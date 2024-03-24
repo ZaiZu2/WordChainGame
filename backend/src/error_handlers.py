@@ -8,7 +8,8 @@ from fastapi.responses import JSONResponse
 async def request_validation_handler(
     response: Response, exc: RequestValidationError
 ) -> Response:
-    """Exception body template
+    """
+    Exception body template.
     {
         'body': {
             'field': ['validation error message'],
@@ -19,7 +20,7 @@ async def request_validation_handler(
         'query': {
             'param': ['validation error message'],
         },
-    }
+    }.
     """
 
     def dict_of_lists():

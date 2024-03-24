@@ -55,7 +55,7 @@ async def get_player(
 async def set_auth_cookie(
     value: UUID | Literal[''],
     response: Response,
-    config: Config = get_config(),
+    config: Config = get_config(),  # noqa
 ) -> None:
     response.set_cookie(
         key=config.AUTH_COOKIE_NAME,

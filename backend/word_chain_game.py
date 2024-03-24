@@ -23,7 +23,12 @@ async def lifespan(app: FastAPI):
 def create_app() -> FastAPI:
     app = FastAPI(lifespan=lifespan, openapi_tags=tags_metadata)
 
-    origins = ['http://localhost:3000', 'http://127.0.0.1:3000','https://localhost:3000', 'https://127.0.0.1:3000']
+    origins = [
+        'http://localhost:3000',
+        'http://127.0.0.1:3000',
+        'https://localhost:3000',
+        'https://127.0.0.1:3000',
+    ]
     app.add_middleware(
         CORSMiddleware,
         allow_origins=origins,
