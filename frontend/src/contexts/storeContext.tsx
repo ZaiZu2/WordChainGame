@@ -59,7 +59,7 @@ export default function StoreProvider({ children }: { children: React.ReactNode 
     const [roomState, setRoomState] = useState<RoomState | null>(null);
     const [gameState, setGameState] = useState<GameState | null>(null);
     const [allTimeStatistics, setAllTimeStatistics] = useState<AllTimeStatistics | undefined>(
-        undefined,
+        undefined
     );
 
     const [showCreateRoomModal, toggleCreateRoomModal] = useState(false);

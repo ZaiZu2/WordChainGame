@@ -23,7 +23,7 @@ export default function Chat() {
         function scrollChatToBottom() {
             lastMessageRef.current?.scrollIntoView({ behavior: "auto" });
         },
-        [chatMessages],
+        [chatMessages]
     );
 
     return (

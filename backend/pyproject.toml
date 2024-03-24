@@ -16,7 +16,7 @@ extend-exclude = ["venv", "venv_dev", "venv_prod"]
 line-length = 88
 
 [tool.ruff.lint]
-ignore = ["D100", "D101", "D102", "D103", "D105", "D107", "D205", "D212", "E501"]
+ignore = ["D100", "D101", "D102", "D103", "D105", "D106", "D107", "D203", "D205", "D212", "E501"]
 select = ["E", "F", "B", "I", "W", "N", "D", "UP", "A", "C4", "PT"]
 
 fixable = ["ALL"]
@@ -27,11 +27,11 @@ docstring-code-format = true
 indent-style = "space"
 quote-style = "single"
 
-[tool.ruff.isort]
+[tool.ruff.lint.isort]
 combine-as-imports = true
 force-wrap-aliases = true
 
-[tool.ruff.flake8-comprehensions]
+[tool.ruff.lint.flake8-comprehensions]
 allow-dict-calls-with-keyword-arguments = true
 
 [tools.pytest]
