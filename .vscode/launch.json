@@ -1,48 +1,48 @@
 {
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "name": "Python: Current File",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "${file}",
-            "console": "integratedTerminal",
-            "envFile": "${workspaceFolder}/backend/.env",
-            "cwd": "${workspaceFolder}/backend",
-            "justMyCode": true
-        },
-        {
-            "name": "Python: All files",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "${file}",
-            "console": "integratedTerminal",
-            "envFile": "${workspaceFolder}/backend/.env",
-            "justMyCode": false
-        },
-        {
-            "name": "Python: Attach",
-            "type": "debugpy",
-            "request": "attach",
-            "connect": {
-              "host": "localhost",
-              "port": 5680
-            },
-            "justMyCode": false,
-        },
-        {
-            "name": "Uvicorn",
-            "type": "debugpy",
-            "request": "launch",
-            "module": "uvicorn",
-            "args": [
-                "word_chain_game:app",
-                "--reload",
-                "--ssl-keyfile=${workspaceFolder}/backend/certs/localhost-key.pem",
-                "--ssl-certfile=${workspaceFolder}/backend/certs/localhost.pem"
-            ],
-            "cwd": "${workspaceFolder}/backend",
-            "jinja": true
-        }
-    ]
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Python: Current File",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${file}",
+      "console": "integratedTerminal",
+      "envFile": "${workspaceFolder}/backend/.env",
+      "cwd": "${workspaceFolder}/backend",
+      "justMyCode": true
+    },
+    {
+      "name": "Python: All files",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${file}",
+      "console": "integratedTerminal",
+      "envFile": "${workspaceFolder}/backend/.env",
+      "justMyCode": false
+    },
+    {
+      "name": "Python: Attach",
+      "type": "debugpy",
+      "request": "attach",
+      "connect": {
+        "host": "localhost",
+        "port": 5680
+      },
+      "justMyCode": false
+    },
+    {
+      "name": "Uvicorn",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "uvicorn",
+      "args": [
+        "word_chain_game:app",
+        "--reload",
+        "--ssl-keyfile=${workspaceFolder}/backend/certs/localhost-key.pem",
+        "--ssl-certfile=${workspaceFolder}/backend/certs/localhost.pem"
+      ],
+      "cwd": "${workspaceFolder}/backend",
+      "jinja": true
+    }
+  ]
 }
