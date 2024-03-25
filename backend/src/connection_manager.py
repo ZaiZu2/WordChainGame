@@ -73,6 +73,21 @@ class ConnectionManager:
         ]
         await asyncio.gather(*send_messages)
 
+    async def send_chat_message(
+        self,
+        message: s.ChatMessage,
+        player_id: UUID,
+    ) -> None:
+        conn, _ = self.find_connection(player_id)
+        if not conn:
+            raise ValueError('Player is not in a room')
+
+        websocket_message = s.WebSocketMessage(
+            type=s.WebSocketMessageTypeEnum.CHAT,
+            payload=message,
+        )
+        await conn.websocket.send_json(websocket_message.model_dump_json(by_alias=True))
+
     async def broadcast_lobby_state(self, lobby_state: s.LobbyState) -> None:
         """
         Send the lobby state to all players in the lobby. Message contains only the data
