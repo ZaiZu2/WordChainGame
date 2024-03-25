@@ -22,6 +22,26 @@ tags_metadata = [
 ]
 
 
+async def save_and_send_message(
+    message: d.Message,
+    player: d.Player,
+    db: AsyncSession,
+    conn_manager: ConnectionManager,
+) -> None:
+    db.add(message)
+    await db.flush([message])
+    await db.refresh(message, attribute_names=['player'])
+
+    chat_message = s.ChatMessage(
+        id_=message.id_,
+        player_name=message.player.name,
+        room_id=message.room_id,
+        content=message.content,
+        created_on=message.created_on,
+    )
+    await conn_manager.send_chat_message(chat_message, player.id_)
+
+
 async def save_and_broadcast_message(
     message: d.Message, db: AsyncSession, conn_manager: ConnectionManager
 ) -> None:
@@ -86,11 +106,11 @@ async def accept_websocket_connection(
         # Inform the original client about the connection attempt
         _, room_id_with_already_logged_player = conn_manager.find_connection(player.id_)
         message = d.Message(
-            content='Someone tried to log into your account from another device. If it was not you, please regenerate your account code.',
+            content='Someone tried to log into your account from another device',
             room_id=room_id_with_already_logged_player,
             player_id=d.ROOT.id_,
         )
-        await save_and_broadcast_message(message, db, conn_manager)
+        await save_and_send_message(message, player, db, conn_manager)
         raise WebSocketException(*exc_args)
 
     message = d.Message(
