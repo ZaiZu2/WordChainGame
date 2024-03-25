@@ -8,6 +8,7 @@ import Statistics from "../components/Statistics";
 import { Word } from "../types";
 import { useStore } from "../contexts/storeContext";
 import apiClient from "../apiClient";
+import Tooltip from "../components/Tooltip";
 
 export default function RoomPage() {
     let gameStats: Record<string, [string, string | number]> = {
@@ -17,8 +18,8 @@ export default function RoomPage() {
     return (
         <>
             <RoomHeader />
+            <Rules />
             <ScoreCard />
-            {/* <Statistics /> */}
             <WordList />
         </>
     );
@@ -174,7 +175,9 @@ function WordList() {
                                 </td>
                                 <td
                                     style={{ flexBasis: "10%" }}
-                                    className={`p-0 border-0 material-symbols-outlined ${color(word)}`}
+                                    className={`p-0 border-0 material-symbols-outlined ${color(
+                                        word
+                                    )}`}
                                 >
                                     {symbol(word)}
                                 </td>
@@ -190,9 +193,13 @@ function WordList() {
                         </td>
                         <td
                             style={{ flexBasis: "60%" }}
-                            className={`p-0 border-0 ${positionToSize[5]}`}
+                            className={`d-flex p-0 border-0 ${positionToSize[5]} justify-content-center`}
                         >
-                            ...
+                            <Form.Control
+                                type="text"
+                                placeholder="Write here..."
+                                className="py-1 mt-2 mb-2 w-50"
+                            />
                         </td>
                         <td style={{ flexBasis: "10%" }} className={"p-0 border-0"}>
                             ...
@@ -203,7 +210,6 @@ function WordList() {
                     </tr>
                 </tbody>
             </Table>
-            <Form.Control type="text" placeholder="Write here..." className="py-1 mt-0 mb-2" />
         </Container>
     );
 }
@@ -239,7 +245,7 @@ function RoomHeader() {
         <Container className="border">
             <Stack gap={2} direction="horizontal" className="py-2">
                 <Stack direction="horizontal" gap={3}>
-                    <h3>Room {roomState?.name}</h3>
+                    <h3>{roomState?.name}</h3>
                     <span className="material-symbols-outlined fs-2">
                         {roomState?.status === "Closed" ? "lock" : "lock_open_right"}
                     </span>
@@ -267,6 +273,52 @@ function RoomHeader() {
                         {roomState?.status === "Open" ? "Close" : "Open"}
                     </Button>
                 )}
+            </Stack>
+        </Container>
+    );
+}
+
+function Rules() {
+    const { roomState } = useStore();
+    const tooltips = [
+        {
+            content: "Game type",
+            symbol: "skull",
+            value: roomState?.rules.type,
+        },
+        {
+            content: "Length of a round in seconds",
+            symbol: "history",
+            value: roomState?.rules.round_time,
+        },
+        {
+            content: "Amount of points each players starts with",
+            symbol: "start",
+            value: roomState?.rules.start_score,
+        },
+        {
+            content: "Amount of points awarded for correct word",
+            symbol: "check",
+            value: roomState?.rules.reward,
+        },
+        {
+            content: "Amount of points subtracted due to wrong answer",
+            symbol: "dangerous",
+            value: roomState?.rules.penalty,
+        },
+    ];
+
+    return (
+        <Container className="border">
+            <Stack direction="horizontal" gap={3} className="py-2 justify-content-between">
+                {tooltips.map((tooltip) => (
+                    <Tooltip content={tooltip.content} placement="bottom">
+                        <Stack direction="horizontal" gap={2}>
+                            <span className="material-symbols-outlined fs-2">{tooltip.symbol}</span>
+                            <span className=" fs-2">{tooltip.value}</span>
+                        </Stack>
+                    </Tooltip>
+                ))}
             </Stack>
         </Container>
     );
