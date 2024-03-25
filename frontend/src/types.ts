@@ -6,14 +6,14 @@ export type RoomOut = {
     players_no: number;
     capacity: number;
     status: "Open" | "Closed" | "Private";
-    rules: object;
+    rules: DeathmatchRules;
     owner_name: string;
 };
 
 export type RoomIn = {
     name: string;
     capacity: number;
-    rules: Record<string, any>;
+    rules: DeathmatchRules;
 };
 
 export type Player = {
@@ -54,6 +54,14 @@ export type GameState = {};
 
 export type RoomState = Omit<RoomOut, "players_no"> & {
     players: Record<string, Player>;
+};
+
+export type DeathmatchRules = {
+    type: "deathmatch";
+    round_time: number;
+    start_score: number;
+    penalty: number; // should be less than or equal to 0
+    reward: number; // should be greater than or equal to 0
 };
 
 export type LobbyState = {
