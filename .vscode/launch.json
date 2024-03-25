@@ -42,7 +42,8 @@
         "--ssl-certfile=${workspaceFolder}/backend/certs/localhost.pem"
       ],
       "cwd": "${workspaceFolder}/backend",
-      "jinja": true
+      "jinja": true,
+      "justMyCode": false
     }
   ]
 }
