@@ -13,7 +13,6 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
-import src.models as d
 from config import get_config
 
 metadata = sa.MetaData(
@@ -85,7 +84,7 @@ class Room(Base):
     capacity: so.Mapped[int] = so.mapped_column(nullable=False)
     created_on: so.Mapped[datetime] = so.mapped_column(default=sa.func.now())
     ended_on: so.Mapped[datetime | None] = so.mapped_column()
-    rules: so.Mapped[dict] = so.mapped_column(sa.JSON)  # TODO: Add TypedDict for rules
+    rules: so.Mapped[dict] = so.mapped_column(sa.JSON, nullable=False)
 
     owner_id: so.Mapped[UUID] = so.mapped_column(sa.ForeignKey('players.id'))
     owner: so.Mapped[Player] = so.relationship(foreign_keys=[owner_id])
@@ -158,13 +157,13 @@ async def create_root_objects():
         try:
             await db.begin()
 
-            if await db.scalar(select(d.Room).where(d.Room.id_ == 1)):
+            if await db.scalar(select(Room).where(Room.id_ == 1)):
                 raise ValueError(
-                    f'Table "{d.Room.__tablename__}" is not empty - "lobby" room must be created with id=1'
+                    f'Table "{Room.__tablename__}" is not empty - "lobby" room must be created with id=1'
                 )
-            if await db.scalar(select(d.Player).where(d.Player.name == 'root')):
+            if await db.scalar(select(Player).where(Player.name == 'root')):
                 raise ValueError(
-                    f'Table "{d.Room.__tablename__}" is not empty - Root player must be created with the name "root"'
+                    f'Table "{Room.__tablename__}" is not empty - Root player must be created with the name "root"'
                 )
 
             global ROOT, LOBBY
@@ -179,7 +178,17 @@ async def create_root_objects():
             raise
 
 
+# Import here to avoid circular import - s.DeathmatchRules is used in ROOT
+# initialization for convenience only
+import src.schemas as s  # noqa: E402
+
 # Global root db objects, accessible to all components of the application
 # Their dynamic attrs (id, ...) are set in `create_root_objects()` on webserver startup
 ROOT = Player(name='root')
-LOBBY = Room(name='lobby', status=RoomStatusEnum.OPEN, capacity=0, owner=ROOT, rules={})
+LOBBY = Room(
+    name='lobby',
+    status=RoomStatusEnum.OPEN,
+    capacity=0,
+    owner=ROOT,
+    rules=s.DeathmatchRules().model_dump(by_alias=True),
+)
