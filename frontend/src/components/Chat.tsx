@@ -15,7 +15,7 @@ export default function Chat() {
         event.preventDefault();
         const message = messageInputRef.current?.value;
         if (message) {
-            sendChatMessage(message, 1);
+            sendChatMessage(message);
         }
     };
 

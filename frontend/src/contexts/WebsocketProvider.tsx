@@ -12,11 +12,11 @@ import { WEBSOCKET_URL } from "../config";
 import { useStore } from "./storeContext";
 
 export type WebSocketContext = {
-    sendChatMessage: (message: string, room_id: number) => void;
+    sendChatMessage: (message: string) => void;
 };
 
 export const WebSocketContextObject = createContext<WebSocketContext>({
-    sendChatMessage: (message: string, room_id: number) => {},
+    sendChatMessage: (message: string) => {},
 });
 
 export function useWebSocketContext(): WebSocketContext {
@@ -32,6 +32,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
         updateLobbyState,
         updateRoomState,
         updateGameState,
+        mode,
     } = useStore();
     const { sendJsonMessage, lastJsonMessage } = useWebSocket(WEBSOCKET_URL, {});
 
@@ -75,7 +76,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
             type: "chat",
             payload: {
                 player_name: player?.name,
-                room_id: roomState?.id || 1, // TODO: lobby id should be provided by the server
+                room_id: mode === "lobby" ? 1 : (roomState?.id as number), // TODO: lobby id should be provided by the server
                 content: message,
             },
         } as WebSocketMessage;
