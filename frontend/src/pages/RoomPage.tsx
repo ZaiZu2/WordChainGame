@@ -2,66 +2,198 @@ import Container from "react-bootstrap/Container";
 import Form from "react-bootstrap/Form";
 import Table from "react-bootstrap/Table";
 import { Button, Stack } from "react-bootstrap";
-import { useNavigate } from "react-router-dom";
-
+import { useNavigate, useParams } from "react-router-dom";
+import Icon from "../components/Icon";
 import Statistics from "../components/Statistics";
-import { Word } from "../types";
+import { GameState, Player, RoomState, Word } from "../types";
 import { useStore } from "../contexts/storeContext";
 import apiClient from "../apiClient";
 import Tooltip from "../components/Tooltip";
+import { useEffect } from "react";
 
 export default function RoomPage() {
-    let gameStats: Record<string, [string, string | number]> = {
-        currentChainLength: ["Current chain length", 6],
-    };
+    const { mode, roomState } = useStore();
+    const navigate = useNavigate();
+    const { roomId } = useParams();
+
+    // TODO: Create a guard to prevent entering the room simply by changing the URL
+    useEffect(() => {
+        console.log("Room stats", mode, roomId, roomState);
+        // if (mode !== "room" || roomState?.id !== roomId) {
+        //     navigate("/");
+        // }
+    });
 
     return (
         <>
             <RoomHeader />
             <Rules />
+            <ButtonBar />
             <ScoreCard />
             <WordList />
         </>
     );
 }
 
+function RoomHeader() {
+    const { roomState } = useStore();
+    const icons = [
+        {
+            symbol: roomState?.status === "Closed" ? "lock" : "lock_open_right",
+            tooltip:
+                roomState?.status === "Closed"
+                    ? "No new players can join the room"
+                    : "Players can freely join the room",
+            className: "ms-auto",
+        },
+        {
+            symbol: "group",
+            value: `${Object.keys(roomState?.players || {}).length}/${roomState?.capacity}`,
+            tooltip: "Number of players in the room",
+        },
+        {
+            symbol: "manage_accounts",
+            value: roomState?.owner_name,
+            tooltip: "Owner of the room",
+        },
+    ];
+
+    return (
+        <Container className="border">
+            <Stack direction="horizontal" gap={2} className="py-2">
+                <div className="fs-3">{roomState?.name}</div>
+                {icons.map((icon, index) => (
+                    <>
+                        {index !== 0 && <div className="vr" />}
+                        <Icon {...icon} />
+                    </>
+                ))}
+            </Stack>
+        </Container>
+    );
+}
+
+function Rules() {
+    const { roomState } = useStore();
+    const icons = [
+        {
+            symbol: "skull",
+            value: (roomState as RoomState).rules.type === "deathmatch" ? "Deathmatch" : "Error",
+            tooltip: "Game type",
+        },
+        {
+            symbol: "history",
+            value: (roomState as RoomState)?.rules.round_time,
+            tooltip: "Length of a round in seconds",
+        },
+        {
+            symbol: "start",
+            value: (roomState as RoomState)?.rules.start_score,
+            tooltip: "Amount of points each players starts with",
+        },
+        {
+            symbol: "check",
+            value: (roomState as RoomState)?.rules.reward,
+            tooltip: "Amount of points awarded for correct word",
+        },
+        {
+            symbol: "dangerous",
+            value: (roomState as RoomState)?.rules.penalty,
+            tooltip: "Amount of points subtracted due to wrong answer",
+        },
+    ];
+
+    return (
+        <Container className="border">
+            <Stack direction="horizontal" gap={2} className="py-2 justify-content-between">
+                {icons.map((icon, index) => (
+                    <>
+                        {index !== 0 && <div className="vr" />}
+                        <Icon {...icon} />
+                    </>
+                ))}
+            </Stack>
+        </Container>
+    );
+}
+
+function ButtonBar() {
+    const {
+        mode,
+        player,
+        roomState,
+        chatMessages,
+        setMode,
+        updateChatMessages,
+        purgeChatMessages,
+    } = useStore();
+    const navigate = useNavigate();
+
+    async function handleLeaveRoom(roomId: number) {
+        const prevMessages = [...chatMessages];
+        purgeChatMessages();
+
+        try {
+            await apiClient.post(`/rooms/${roomId}/leave`);
+        } catch (error) {
+            updateChatMessages(prevMessages); // Restore chat messages in case `leave` request fails
+            return;
+        }
+        setMode("lobby");
+        navigate("/");
+    }
+
+    async function handleToggleRoomStatus(roomId: number) {
+        try {
+            await apiClient.post(`/rooms/${roomId}/toggle`);
+        } catch (error) {
+            return;
+        }
+    }
+
+    return (
+        <Container className="border">
+            <Stack gap={2} direction="horizontal" className="py-2">
+                <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => handleLeaveRoom(roomState?.id as number)}
+                    className="ms-auto"
+                >
+                    Leave
+                </Button>
+                {roomState?.owner_name === player?.name ? (
+                    <>
+                        <Button
+                            variant="primary"
+                            size="sm"
+                            onClick={() => handleToggleRoomStatus(roomState?.id as number)}
+                        >
+                            {roomState?.status === "Open" ? "Close" : "Open"}
+                        </Button>
+                        <Button
+                            variant="primary"
+                            size="sm"
+                            onClick={() => handleLeaveRoom(roomState?.id as number)}
+                        >
+                            Edit rules
+                        </Button>
+                        <Button variant="primary" size="sm" onClick={() => true} disabled={true}>
+                            Start
+                        </Button>
+                    </>
+                ) : (
+                    <Button variant="primary" size="sm" onClick={() => true} disabled={true}>
+                        Ready
+                    </Button>
+                )}
+            </Stack>
+        </Container>
+    );
+}
+
 function ScoreCard() {
-    const player_1 = {
-        id: 1,
-        name: "Vecky",
-        points: 10,
-        mistakes: 0,
-        ranking: 0,
-    };
-    const player_2 = {
-        id: 2,
-        name: "John",
-        points: 8,
-        mistakes: 1,
-        ranking: 1,
-    };
-    const player_3 = {
-        id: 3,
-        name: "Paul",
-        points: 6,
-        mistakes: 0,
-        ranking: 2,
-    };
-    const player_4 = {
-        id: 4,
-        name: "George",
-        points: 4,
-        mistakes: 3,
-        ranking: 3,
-    };
-    const player_5 = {
-        id: 5,
-        name: "Ringo",
-        points: 2,
-        mistakes: 2,
-        ranking: 4,
-    };
-    let players = [player_1, player_2, player_3, player_4, player_5];
+    const { mode, roomState, gameState } = useStore();
 
     const style = {
         flexBasis: "25%",
@@ -78,40 +210,62 @@ function ScoreCard() {
                         <td style={style} className="p-0 border-0 text-end fw-bold">
                             Player
                         </td>
-                        <td style={style} className="p-0 border-0 text-end fw-bold">
-                            Points
-                        </td>
-                        <td style={style} className="p-0 border-0 text-end fw-bold">
-                            Mistakes
-                        </td>
+                        {mode === "game" ? (
+                            <>
+                                <td style={style} className="p-0 border-0 text-end fw-bold">
+                                    Points
+                                </td>
+                                <td style={style} className="p-0 border-0 text-end fw-bold">
+                                    Mistakes
+                                </td>
+                            </>
+                        ) : (
+                            <td style={style} className="p-0 border-0 text-end fw-bold">
+                                Ready
+                            </td>
+                        )}
                     </tr>
                 </thead>
                 <tbody className="border-top">
-                    {players.map((player) => {
-                        return (
-                            <tr key={player.id} className="d-flex py-1 justify-content-between">
-                                <td style={style} className="p-0 border-0 text-start">
-                                    {player.ranking + 1}
-                                </td>
-                                <td style={style} className="p-0 border-0 text-end">
-                                    {player.name}
-                                </td>
-                                <td style={style} className="p-0 border-0 text-end">
-                                    {player.points}
-                                </td>
-                                <td style={style} className="p-0 border-0 text-end">
-                                    {player.mistakes}
-                                </td>
-                            </tr>
-                        );
-                    })}
+                    {(mode === "room" ? Object.values((roomState as RoomState).players) : [])
+                        // : (gameState as GameState).players
+                        .map((player, index) => {
+                            return (
+                                <tr
+                                    key={player.name}
+                                    className={`d-flex py-1 justify-content-between`}
+                                >
+                                    <td style={style} className="p-0 border-0 text-start">
+                                        {index}
+                                    </td>
+                                    <td style={style} className="p-0 border-0 text-end">
+                                        {player.name}
+                                    </td>
+                                    {mode === "game" ? (
+                                        <>
+                                            <td style={style} className="p-0 border-0 text-end">
+                                                {/* {gameState.players[player.name].points} */}0
+                                            </td>
+                                            <td style={style} className="p-0 border-0 text-end">
+                                                {/* {gameState.players[player.name].mistakes} */}0
+                                            </td>
+                                        </>
+                                    ) : (
+                                        <td style={style} className="p-0 border-0 text-end">
+                                            1
+                                        </td>
+                                    )}
+                                </tr>
+                            );
+                        })}
                 </tbody>
             </Table>
         </Container>
     );
 }
-
 function WordList() {
+    const { roomState } = useStore();
+
     const positionToSize: Record<number, string> = {
         0: "fs-6",
         1: "fs-5",
@@ -121,7 +275,8 @@ function WordList() {
         5: "fs-1",
     };
     let symbol = (word: Word) => (word.is_correct ? "check" : "close");
-    let points = (word: Word) => (word.is_correct ? "+2" : "-2");
+    let points = (word: Word) =>
+        word.is_correct ? "+" + roomState?.rules.reward : roomState?.rules.penalty;
     let color = (word: Word) => (word.is_correct ? "text-success" : "text-danger"); // GREEN or RED
 
     const word_1 = {
@@ -167,21 +322,28 @@ function WordList() {
                                 <td style={{ flexBasis: "20%" }} className="p-0 border-0">
                                     {word.player_name}
                                 </td>
-                                <td
-                                    style={{ flexBasis: "60%" }}
-                                    className={`p-0 border-0 ${positionToSize[position]}`}
-                                >
-                                    {word.content}
+                                <td className="p-0 border-0">
+                                    <Stack direction="horizontal" gap={2}>
+                                        <div
+                                            style={{ flexBasis: "60%" }}
+                                            className={`p-0 border-0 ${positionToSize[position]}`}
+                                        >
+                                            {word.content}
+                                        </div>
+                                        <div
+                                            style={{ flexBasis: "10%" }}
+                                            className={`p-0 border-0 material-symbols-outlined ${color(
+                                                word
+                                            )}`}
+                                        >
+                                            {symbol(word)}
+                                        </div>
+                                    </Stack>
                                 </td>
                                 <td
                                     style={{ flexBasis: "10%" }}
-                                    className={`p-0 border-0 material-symbols-outlined ${color(
-                                        word
-                                    )}`}
+                                    className={`p-0 border-0$ ${color(word)}`}
                                 >
-                                    {symbol(word)}
-                                </td>
-                                <td style={{ flexBasis: "10%" }} className={"p-0 border-0"}>
                                     {points(word)}
                                 </td>
                             </tr>
@@ -201,125 +363,18 @@ function WordList() {
                                 className="py-1 mt-2 mb-2 w-50"
                             />
                         </td>
-                        <td style={{ flexBasis: "10%" }} className={"p-0 border-0"}>
-                            ...
-                        </td>
-                        <td style={{ flexBasis: "10%" }} className={"p-0 border-0"}>
-                            ...
+                        <td>
+                            <Stack direction="horizontal" gap={1}>
+                                <div
+                                    style={{ flexBasis: "10%" }}
+                                    className={`p-0 border-0 material-symbols-outlined`}
+                                ></div>
+                                <div style={{ flexBasis: "10%" }} className={"p-0 border-0"}></div>
+                            </Stack>
                         </td>
                     </tr>
                 </tbody>
             </Table>
-        </Container>
-    );
-}
-
-function RoomHeader() {
-    const { player, roomState, chatMessages, purgeChatMessages, updateChatMessages, setMode } =
-        useStore();
-    const navigate = useNavigate();
-
-    async function handleLeaveRoom(roomId: number) {
-        const prevMessages = [...chatMessages];
-        purgeChatMessages();
-
-        try {
-            await apiClient.post(`/rooms/${roomId}/leave`);
-        } catch (error) {
-            updateChatMessages(prevMessages); // Restore chat messages in case `leave` request fails
-            return;
-        }
-        setMode("lobby");
-        navigate("/");
-    }
-
-    async function handleToggleRoomStatus(roomId: number) {
-        try {
-            await apiClient.post(`/rooms/${roomId}/toggle`);
-        } catch (error) {
-            return;
-        }
-    }
-
-    return (
-        <Container className="border">
-            <Stack gap={2} direction="horizontal" className="py-2">
-                <Stack direction="horizontal" gap={3}>
-                    <h3>{roomState?.name}</h3>
-                    <span className="material-symbols-outlined fs-2">
-                        {roomState?.status === "Closed" ? "lock" : "lock_open_right"}
-                    </span>
-                    <Stack direction="horizontal" gap={1}>
-                        <span className="material-symbols-outlined fs-2">group</span>
-                        <span className="fs-5">
-                            {Object.keys(roomState?.players || {}).length}/{roomState?.capacity}
-                        </span>
-                    </Stack>
-                </Stack>
-                <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={() => handleLeaveRoom(roomState?.id as number)}
-                    className="ms-auto"
-                >
-                    Leave
-                </Button>
-                {roomState?.owner_name === player?.name && (
-                    <Button
-                        variant="primary"
-                        size="sm"
-                        onClick={() => handleToggleRoomStatus(roomState?.id as number)}
-                    >
-                        {roomState?.status === "Open" ? "Close" : "Open"}
-                    </Button>
-                )}
-            </Stack>
-        </Container>
-    );
-}
-
-function Rules() {
-    const { roomState } = useStore();
-    const tooltips = [
-        {
-            content: "Game type",
-            symbol: "skull",
-            value: roomState?.rules.type,
-        },
-        {
-            content: "Length of a round in seconds",
-            symbol: "history",
-            value: roomState?.rules.round_time,
-        },
-        {
-            content: "Amount of points each players starts with",
-            symbol: "start",
-            value: roomState?.rules.start_score,
-        },
-        {
-            content: "Amount of points awarded for correct word",
-            symbol: "check",
-            value: roomState?.rules.reward,
-        },
-        {
-            content: "Amount of points subtracted due to wrong answer",
-            symbol: "dangerous",
-            value: roomState?.rules.penalty,
-        },
-    ];
-
-    return (
-        <Container className="border">
-            <Stack direction="horizontal" gap={3} className="py-2 justify-content-between">
-                {tooltips.map((tooltip) => (
-                    <Tooltip content={tooltip.content} placement="bottom">
-                        <Stack direction="horizontal" gap={2}>
-                            <span className="material-symbols-outlined fs-2">{tooltip.symbol}</span>
-                            <span className=" fs-2">{tooltip.value}</span>
-                        </Stack>
-                    </Tooltip>
-                ))}
-            </Stack>
         </Container>
     );
 }
