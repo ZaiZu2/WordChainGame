@@ -8,8 +8,8 @@ import Statistics from "../components/Statistics";
 import { GameState, Player, RoomState, Word } from "../types";
 import { useStore } from "../contexts/storeContext";
 import apiClient from "../apiClient";
-import Tooltip from "../components/Tooltip";
 import { useEffect } from "react";
+import Bubble from "../components/Bubble";
 
 export default function RoomPage() {
     const { mode, roomState } = useStore();
@@ -26,9 +26,15 @@ export default function RoomPage() {
 
     return (
         <>
-            <RoomHeader />
-            <Rules />
-            <ButtonBar />
+            <Bubble>
+                <Stack gap={2} className="">
+                    <RoomHeader />
+                    <hr className="my-0" />
+                    <Rules />
+                    <hr className="my-0" />
+                    <ButtonBar />
+                </Stack>
+            </Bubble>
             <ScoreCard />
             <WordList />
         </>
@@ -59,17 +65,15 @@ function RoomHeader() {
     ];
 
     return (
-        <Container className="border">
-            <Stack direction="horizontal" gap={2} className="py-2">
-                <div className="fs-3">{roomState?.name}</div>
-                {icons.map((icon, index) => (
-                    <>
-                        {index !== 0 && <div className="vr" />}
-                        <Icon {...icon} />
-                    </>
-                ))}
-            </Stack>
-        </Container>
+        <Stack direction="horizontal" gap={2} className="px-2">
+            <div className="fs-3">{roomState?.name}</div>
+            {icons.map((icon, index) => (
+                <>
+                    {index !== 0 && <div className="vr" />}
+                    <Icon {...icon} />
+                </>
+            ))}
+        </Stack>
     );
 }
 
@@ -104,16 +108,14 @@ function Rules() {
     ];
 
     return (
-        <Container className="border">
-            <Stack direction="horizontal" gap={2} className="py-2 justify-content-between">
-                {icons.map((icon, index) => (
-                    <>
-                        {index !== 0 && <div className="vr" />}
-                        <Icon {...icon} />
-                    </>
-                ))}
-            </Stack>
-        </Container>
+        <Stack direction="horizontal" gap={2} className="justify-content-evenly">
+            {icons.map((icon, index) => (
+                <>
+                    {index !== 0 && <div className="vr" />}
+                    <Icon {...icon} />
+                </>
+            ))}
+        </Stack>
     );
 }
 
@@ -152,43 +154,41 @@ function ButtonBar() {
     }
 
     return (
-        <Container className="border">
-            <Stack gap={2} direction="horizontal" className="py-2">
-                <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={() => handleLeaveRoom(roomState?.id as number)}
-                    className="ms-auto"
-                >
-                    Leave
-                </Button>
-                {roomState?.owner_name === player?.name ? (
-                    <>
-                        <Button
-                            variant="primary"
-                            size="sm"
-                            onClick={() => handleToggleRoomStatus(roomState?.id as number)}
-                        >
-                            {roomState?.status === "Open" ? "Close" : "Open"}
-                        </Button>
-                        <Button
-                            variant="primary"
-                            size="sm"
-                            onClick={() => handleLeaveRoom(roomState?.id as number)}
-                        >
-                            Edit rules
-                        </Button>
-                        <Button variant="primary" size="sm" onClick={() => true} disabled={true}>
-                            Start
-                        </Button>
-                    </>
-                ) : (
-                    <Button variant="primary" size="sm" onClick={() => true} disabled={true}>
-                        Ready
+        <Stack gap={2} direction="horizontal">
+            <Button
+                variant="primary"
+                size="sm"
+                onClick={() => handleLeaveRoom(roomState?.id as number)}
+                className="ms-auto"
+            >
+                Leave
+            </Button>
+            {roomState?.owner_name === player?.name ? (
+                <>
+                    <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => handleToggleRoomStatus(roomState?.id as number)}
+                    >
+                        {roomState?.status === "Open" ? "Close" : "Open"}
                     </Button>
-                )}
-            </Stack>
-        </Container>
+                    <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => handleLeaveRoom(roomState?.id as number)}
+                    >
+                        Edit rules
+                    </Button>
+                    <Button variant="primary" size="sm" onClick={() => true} disabled={true}>
+                        Start
+                    </Button>
+                </>
+            ) : (
+                <Button variant="primary" size="sm" onClick={() => true} disabled={true}>
+                    Ready
+                </Button>
+            )}
+        </Stack>
     );
 }
 
@@ -200,10 +200,10 @@ function ScoreCard() {
     };
 
     return (
-        <Container className="border">
+        <Bubble>
             <Table borderless className="m-0 text-center">
                 <thead>
-                    <tr className="d-flex py-2 justify-content-between">
+                    <tr className="d-flex justify-content-between">
                         <td style={style} className="p-0 border-0 text-start fw-bold">
                             #
                         </td>
@@ -231,10 +231,7 @@ function ScoreCard() {
                         // : (gameState as GameState).players
                         .map((player, index) => {
                             return (
-                                <tr
-                                    key={player.name}
-                                    className={`d-flex py-1 justify-content-between`}
-                                >
+                                <tr key={player.name} className={`d-flex justify-content-between`}>
                                     <td style={style} className="p-0 border-0 text-start">
                                         {index}
                                     </td>
@@ -260,7 +257,7 @@ function ScoreCard() {
                         })}
                 </tbody>
             </Table>
-        </Container>
+        </Bubble>
     );
 }
 function WordList() {
@@ -313,7 +310,7 @@ function WordList() {
     };
 
     return (
-        <Container className="border">
+        <Bubble>
             <Table borderless className="m-0 text-center">
                 <tbody>
                     {words.map((word, position) => {
@@ -360,7 +357,7 @@ function WordList() {
                             <Form.Control
                                 type="text"
                                 placeholder="Write here..."
-                                className="py-1 mt-2 mb-2 w-50"
+                                className="py-1 mt-1 w-50"
                             />
                         </td>
                         <td>
@@ -375,6 +372,6 @@ function WordList() {
                     </tr>
                 </tbody>
             </Table>
-        </Container>
+        </Bubble>
     );
 }

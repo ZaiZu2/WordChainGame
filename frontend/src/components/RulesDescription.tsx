@@ -1,10 +1,11 @@
 import Container from "react-bootstrap/Container";
 import Accordion from "react-bootstrap/Accordion";
 import ListGroup from "react-bootstrap/ListGroup";
+import Bubble from "./Bubble";
 
 export default function RulesDescription() {
     return (
-        <Container className="border">
+        <Bubble>
             <Accordion flush>
                 <Accordion.Item eventKey="0">
                     <Accordion.Header>Rules</Accordion.Header>
@@ -47,6 +48,6 @@ export default function RulesDescription() {
                     </Accordion.Body>
                 </Accordion.Item>
             </Accordion>
-        </Container>
+        </Bubble>
     );
 }
