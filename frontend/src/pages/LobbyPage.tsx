@@ -8,6 +8,7 @@ import Statistics from "../components/Statistics";
 import apiClient from "../apiClient";
 import { RoomState, RoomOut } from "../types";
 import { useStore } from "../contexts/storeContext";
+import Bubble from "../components/Bubble";
 
 export default function LobbyPage() {
     const { toggleCreateRoomModal } = useStore();
@@ -15,8 +16,8 @@ export default function LobbyPage() {
     return (
         <>
             <Statistics />
-            <Container className="border">
-                <Stack gap={2} direction="horizontal" className="py-2">
+            <Bubble>
+                <Stack gap={2} direction="horizontal">
                     <Button
                         variant="primary"
                         size="sm"
@@ -26,7 +27,7 @@ export default function LobbyPage() {
                         Create room
                     </Button>
                 </Stack>
-            </Container>
+            </Bubble>
             <RoomList />
         </>
     );
@@ -52,10 +53,10 @@ function RoomList() {
     }
 
     return (
-        <Container className="d-flex flex-column border" style={{ alignItems: "center" }}>
+        <Bubble>
             <Table borderless className="m-0 pt-0">
                 <thead>
-                    <tr className="d-flex py-2">
+                    <tr className="d-flex">
                         <td
                             className="p-0 border-0 flex-grow-1 fw-bold"
                             style={{ flexBasis: "20%" }}
@@ -88,7 +89,7 @@ function RoomList() {
                         </td>
                     </tr>
                 </thead>
-                <tbody className="border-top py-2 d-flex flex-column gap-2">
+                <tbody className="border-top pt-2 d-flex flex-column gap-2">
                     {rooms === undefined ? (
                         <Spinner animation="border" className="my-3 mx-auto" />
                     ) : Object.values(rooms).length === 0 ? (
@@ -148,6 +149,6 @@ function RoomList() {
                     )}
                 </tbody>
             </Table>
-        </Container>
+        </Bubble>
     );
 }

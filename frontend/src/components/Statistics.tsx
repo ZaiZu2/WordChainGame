@@ -7,6 +7,7 @@ import { useStore } from "../contexts/storeContext";
 import Spinner from "react-bootstrap/Spinner";
 import apiClient from "../apiClient";
 import { AllTimeStatistics } from "../types";
+import Bubble from "./Bubble";
 
 export default function Statistics() {
     const { lobbyState, allTimeStatistics, setAllTimeStatistics } = useStore();
@@ -38,7 +39,7 @@ export default function Statistics() {
     return (
         <Container className="px-0">
             <Stack gap={3} direction="horizontal">
-                <Container className="h-100 border py-2">
+                <Bubble>
                     {lobbyState === null ? (
                         <Container className="d-flex">
                             <Spinner animation="border" className="my-3 mx-auto" />
@@ -59,8 +60,8 @@ export default function Statistics() {
                             );
                         })
                     )}
-                </Container>
-                <Container className="h-100 border py-2">
+                </Bubble>
+                <Bubble>
                     {allTimeStatistics === undefined ? (
                         <Container className="d-flex">
                             <Spinner animation="border" className="my-2 mx-auto" />
@@ -81,7 +82,7 @@ export default function Statistics() {
                             );
                         })
                     )}
-                </Container>
+                </Bubble>
             </Stack>
         </Container>
     );

@@ -4,6 +4,7 @@ import Form from "react-bootstrap/Form";
 import { useWebSocketContext } from "../contexts/WebsocketProvider";
 import { useEffect, useRef } from "react";
 import { useStore } from "../contexts/storeContext";
+import Bubble from "./Bubble";
 
 export default function Chat() {
     const { chatMessages } = useStore();
@@ -27,9 +28,9 @@ export default function Chat() {
     );
 
     return (
-        <Container className="border">
+        <Bubble>
             <Container
-                className="p-0 my-2"
+                className="p-0"
                 style={{
                     minHeight: "100px",
                     maxHeight: "300px",
@@ -52,10 +53,10 @@ export default function Chat() {
                 <Form.Control
                     type="text"
                     placeholder="Write here..."
-                    className="py-1 my-2"
+                    className="py-1 mt-2"
                     ref={messageInputRef}
                 />
             </Form>
-        </Container>
+        </Bubble>
     );
 }
