@@ -154,13 +154,13 @@ async def join_room(
 
     # Broadcast the info about all the players in the room, as the joining player
     # needs that context
-    player_ids = [conn.player_id for conn in conn_manager.connections[room_id]]
+    conns = list(conn_manager.connections[room_id])
     room_players = await db.scalars(
-        select(d.Player).where(d.Player.id_.in_(player_ids))
+        select(d.Player).where(d.Player.id_.in_([conn.player_id for conn in conns]))
     )
     players_out = {
-        room_player.name: s.PlayerOut(**room_player.to_dict())
-        for room_player in room_players
+        room_player.name: s.RoomPlayerOut(ready=conn.ready, **room_player.to_dict())
+        for room_player, conn in zip(room_players, conns)
     }
     room_state = s.RoomState(
         players=players_out, owner_name=room.owner.name, **room.to_dict()
@@ -189,11 +189,8 @@ async def leave_room(
     # TODO: Ensure that the player terminated any active game before leaving the room
     # TODO: Ensure that the player is not the owner of the room
 
-    room = await db.scalar(
-        select(d.Room).where(d.Room.id_ == room_id).options(joinedload(d.Room.owner))
-    )
-    _, old_room_id = conn_manager.find_connection(player.id_)
-    if room is None or room_id != old_room_id:
+    _, old_room_id = conn_manager.find_connection(player.id_, room_id=room_id)
+    if old_room_id is None or room_id != old_room_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail='Player is not in the room'
         )
@@ -202,13 +199,15 @@ async def leave_room(
         player, old_room_id, d.LOBBY.id_, db, conn_manager
     )
 
+    room = await db.scalar(
+        select(d.Room).where(d.Room.id_ == room_id).options(joinedload(d.Room.owner))
+    )
     # Ensure the room is not left by the owner in CLOSED status, as it will not be
     # accessible anymore
     if room.owner_id == player.id_ and room.status == d.RoomStatusEnum.CLOSED:
         room.status = d.RoomStatusEnum.OPEN
         db.add(room)
         await db.flush([room])
-    # TODO: Pass ownership to next player OR leave the room opened so the owner might come back
 
     # Broadcast only the info about the leaving player, as this is all the context other
     # clients need to keep their state up to date
@@ -228,13 +227,13 @@ async def leave_room(
     )
     lobby_state = s.LobbyState(
         rooms={room.id_: room_out},
-        players={player.name: s.PlayerOut(**player.to_dict())},
+        players={player.name: s.LobbyPlayerOut(**player.to_dict())},
     )
     await conn_manager.broadcast_lobby_state(lobby_state)
 
 
-@router.post('/rooms/{room_id}/toggle', status_code=status.HTTP_200_OK)
-async def toggle_room(
+@router.post('/rooms/{room_id}/status', status_code=status.HTTP_200_OK)
+async def toggle_room_status(
     room_id: int,
     player: Annotated[d.Player, Depends(get_player)],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -283,6 +282,32 @@ async def toggle_room(
         players={},
     )
     await conn_manager.broadcast_lobby_state(lobby_state)
+
+
+@router.post('/rooms/{room_id}/ready', status_code=status.HTTP_200_OK)
+async def toggle_player_readiness(
+    room_id: int,
+    player: Annotated[d.Player, Depends(get_player)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    conn_manager: Annotated[ConnectionManager, Depends(get_connection_manager)],
+):
+    conn, found_room_id = conn_manager.find_connection(player.id_, room_id=room_id)
+    if found_room_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail='Player is not in the room'
+        )
+
+    conn.ready = not conn.ready
+
+    room = await db.scalar(
+        select(d.Room).where(d.Room.id_ == room_id).options(joinedload(d.Room.owner))
+    )
+    room_state = s.RoomState(
+        **room.to_dict(),
+        owner_name=room.owner.name,
+        players={player.name: s.RoomPlayerOut(ready=conn.ready, **player.to_dict())},
+    )
+    await conn_manager.broadcast_room_state(room.id_, room_state)
 
 
 @router.get('/stats', status_code=status.HTTP_200_OK)

@@ -155,7 +155,7 @@ function ButtonBar() {
 
     async function toggleRoomStatus(roomId: number) {
         try {
-            await apiClient.post(`/rooms/${roomId}/toggle`);
+            await apiClient.post(`/rooms/${roomId}/status`);
         } catch (error) {
             //TODO: Handle error
         }

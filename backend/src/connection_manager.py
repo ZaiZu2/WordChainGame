@@ -10,6 +10,7 @@ import src.schemas as s  # s - schema
 class Connection:
     def __init__(self, player_id: UUID, websocket: WebSocket):
         self.player_id = player_id
+        self.ready: bool = False  # Player's ready state in a room
         self.websocket = websocket
 
     def __hash__(self) -> int:
@@ -23,7 +24,9 @@ class Connection:
 
 class ConnectionManager:
     def __init__(self):
-        # {room_id: {connection, ...}, ...}
+        # TODO: Rework into a different data structure. Idea to store connections in
+        # rooms as sets proves to be awkward when individual connections need to be
+        # accessed.
         self.connections: dict[int, set[Connection]] = {}
 
     def connect(self, player_id: UUID, room_id: int, websocket: WebSocket) -> bool:

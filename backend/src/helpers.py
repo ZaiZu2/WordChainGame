@@ -218,7 +218,7 @@ async def broadcast_full_lobby_state(
         select(d.Player).where(d.Player.id_.in_(player_ids))
     )
     players_out_map = {
-        room_player.name: s.PlayerOut(**room_player.to_dict())
+        room_player.name: s.LobbyPlayerOut(**room_player.to_dict())
         for room_player in room_players
     }
 
