@@ -22,6 +22,7 @@ export type StoreContext = {
     setAllTimeStatistics: (newAllTimeStatistics: AllTimeStatistics) => void;
     logIn: (id: UUID) => void;
     logOut: () => void;
+    isRoomOwner: (playerName?: string) => boolean;
     showCreateRoomModal: boolean;
     toggleCreateRoomModal: (show: boolean) => void;
 };
@@ -43,6 +44,7 @@ const StoreContextObject = createContext<StoreContext>({
     setAllTimeStatistics: (newAllTimeStatistics: AllTimeStatistics) => {},
     logIn: () => {},
     logOut: () => {},
+    isRoomOwner: (playerName?: string) => false,
     showCreateRoomModal: false,
     toggleCreateRoomModal: (show: boolean) => {},
 });
@@ -113,10 +115,10 @@ export default function StoreProvider({ children }: { children: React.ReactNode 
                     ...prevLobbyState,
                     ...newLobbyState,
                     rooms: newLobbyState.rooms
-                        ? runDifferentialUpdate(prevLobbyState.rooms, newLobbyState.rooms)
+                        ? _runDifferentialUpdate(prevLobbyState.rooms, newLobbyState.rooms)
                         : prevLobbyState.rooms,
                     players: newLobbyState.players
-                        ? runDifferentialUpdate(prevLobbyState.players, newLobbyState.players)
+                        ? _runDifferentialUpdate(prevLobbyState.players, newLobbyState.players)
                         : prevLobbyState.players,
                     stats: newLobbyState.stats
                         ? { ...prevLobbyState.stats, ...newLobbyState.stats }
@@ -139,7 +141,7 @@ export default function StoreProvider({ children }: { children: React.ReactNode 
                     ...prevRoomState,
                     ...newRoomState,
                     players: newRoomState.players
-                        ? runDifferentialUpdate(prevRoomState.players, newRoomState.players)
+                        ? _runDifferentialUpdate(prevRoomState.players, newRoomState.players)
                         : prevRoomState.players,
                 };
             }
@@ -156,7 +158,19 @@ export default function StoreProvider({ children }: { children: React.ReactNode 
         });
     }
 
-    function runDifferentialUpdate<T extends Record<string, unknown>>(prevObj: T, newObj: T): T {
+    /**
+     * Checks if the specified player is the owner of the room.
+     * If no player name is provided, check if the current, logged player is the owner.
+     */
+    function isRoomOwner(playerName?: string): boolean {
+        if (playerName === undefined) {
+            return (player as Player).name === (roomState as RoomState).owner_name;
+        } else {
+            return playerName === (roomState as RoomState).owner_name;
+        }
+    }
+
+    function _runDifferentialUpdate<T extends Record<string, unknown>>(prevObj: T, newObj: T): T {
         const merged = { ...prevObj, ...newObj };
         for (const [id, obj] of Object.entries(newObj)) {
             if (obj === null) {
@@ -185,6 +199,7 @@ export default function StoreProvider({ children }: { children: React.ReactNode 
                 setAllTimeStatistics,
                 logIn,
                 logOut,
+                isRoomOwner,
                 showCreateRoomModal,
                 toggleCreateRoomModal,
             }}
