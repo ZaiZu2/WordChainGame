@@ -22,6 +22,10 @@ export type Player = {
     created_on: Date;
 };
 
+export type RoomPlayer = Player & {
+    ready: boolean;
+};
+
 export type RequestOptions = {
     method: "GET" | "POST" | "PUT" | "DELETE";
     headers?: Record<string, string>;
@@ -53,7 +57,7 @@ export type ChatMessage = {
 export type GameState = {};
 
 export type RoomState = Omit<RoomOut, "players_no"> & {
-    players: Record<string, Player>;
+    players: Record<string, RoomPlayer>;
 };
 
 export type DeathmatchRules = {

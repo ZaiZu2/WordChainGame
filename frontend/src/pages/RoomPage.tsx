@@ -10,6 +10,7 @@ import { useStore } from "../contexts/storeContext";
 import apiClient from "../apiClient";
 import { useEffect } from "react";
 import Bubble from "../components/Bubble";
+import { UUID } from "crypto";
 
 export default function RoomPage() {
     const { mode, roomState } = useStore();
@@ -42,10 +43,12 @@ export default function RoomPage() {
 }
 
 function RoomHeader() {
-    const { roomState } = useStore();
+    const { roomState: _roomState } = useStore();
+    const roomState = _roomState as RoomState;
+
     const icons = [
         {
-            symbol: roomState?.status === "Closed" ? "lock" : "lock_open_right",
+            symbol: roomState.status === "Closed" ? "lock" : "lock_open_right",
             tooltip:
                 roomState?.status === "Closed"
                     ? "No new players can join the room"
@@ -54,19 +57,19 @@ function RoomHeader() {
         },
         {
             symbol: "group",
-            value: `${Object.keys(roomState?.players || {}).length}/${roomState?.capacity}`,
+            value: `${Object.keys(roomState.players).length}/${roomState.capacity}`,
             tooltip: "Number of players in the room",
         },
         {
             symbol: "manage_accounts",
-            value: roomState?.owner_name,
+            value: roomState.owner_name,
             tooltip: "Owner of the room",
         },
     ];
 
     return (
         <Stack direction="horizontal" gap={2} className="px-2">
-            <div className="fs-3">{roomState?.name}</div>
+            <div className="fs-3">{roomState.name}</div>
             {icons.map((icon, index) => (
                 <>
                     {index !== 0 && <div className="vr" />}
@@ -78,31 +81,33 @@ function RoomHeader() {
 }
 
 function Rules() {
-    const { roomState } = useStore();
+    const { roomState: _roomState } = useStore();
+    const roomState = _roomState as RoomState;
+
     const icons = [
         {
             symbol: "skull",
-            value: (roomState as RoomState).rules.type === "deathmatch" ? "Deathmatch" : "Error",
+            value: roomState.rules.type === "deathmatch" ? "Deathmatch" : "Error",
             tooltip: "Game type",
         },
         {
             symbol: "history",
-            value: (roomState as RoomState)?.rules.round_time,
+            value: roomState.rules.round_time,
             tooltip: "Length of a round in seconds",
         },
         {
             symbol: "start",
-            value: (roomState as RoomState)?.rules.start_score,
+            value: roomState.rules.start_score,
             tooltip: "Amount of points each players starts with",
         },
         {
             symbol: "check",
-            value: (roomState as RoomState)?.rules.reward,
+            value: roomState.rules.reward,
             tooltip: "Amount of points awarded for correct word",
         },
         {
             symbol: "dangerous",
-            value: (roomState as RoomState)?.rules.penalty,
+            value: roomState.rules.penalty,
             tooltip: "Amount of points subtracted due to wrong answer",
         },
     ];
@@ -121,14 +126,17 @@ function Rules() {
 
 function ButtonBar() {
     const {
-        mode,
-        player,
-        roomState,
+        player: _player,
+        roomState: _roomState,
         chatMessages,
         setMode,
         updateChatMessages,
         purgeChatMessages,
+        isRoomOwner,
     } = useStore();
+    const player = _player as Player;
+    const roomState = _roomState as RoomState;
+
     const navigate = useNavigate();
 
     async function handleLeaveRoom(roomId: number) {
@@ -145,11 +153,19 @@ function ButtonBar() {
         navigate("/");
     }
 
-    async function handleToggleRoomStatus(roomId: number) {
+    async function toggleRoomStatus(roomId: number) {
         try {
             await apiClient.post(`/rooms/${roomId}/toggle`);
         } catch (error) {
-            return;
+            //TODO: Handle error
+        }
+    }
+
+    async function toggleReady(playerId: UUID, roomId: number) {
+        try {
+            await apiClient.post(`/rooms/${roomId}/ready`);
+        } catch (error) {
+            //TODO: Handle error
         }
     }
 
@@ -163,29 +179,42 @@ function ButtonBar() {
             >
                 Leave
             </Button>
-            {roomState?.owner_name === player?.name ? (
+            {isRoomOwner() ? (
                 <>
                     <Button
                         variant="primary"
                         size="sm"
-                        onClick={() => handleToggleRoomStatus(roomState?.id as number)}
+                        onClick={() => toggleRoomStatus(roomState.id as number)}
                     >
-                        {roomState?.status === "Open" ? "Close" : "Open"}
+                        {roomState.status === "Open" ? "Close" : "Open"}
                     </Button>
                     <Button
                         variant="primary"
                         size="sm"
-                        onClick={() => handleLeaveRoom(roomState?.id as number)}
+                        onClick={() => handleLeaveRoom(roomState.id as number)}
                     >
                         Edit rules
                     </Button>
-                    <Button variant="primary" size="sm" onClick={() => true} disabled={true}>
+                    <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => true}
+                        disabled={
+                            !Object.values(roomState.players)
+                                .filter((p) => p.name !== player.name)
+                                .every((p) => p.ready)
+                        }
+                    >
                         Start
                     </Button>
                 </>
             ) : (
-                <Button variant="primary" size="sm" onClick={() => true} disabled={true}>
-                    Ready
+                <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => toggleReady(player?.id as UUID, roomState.id as number)}
+                >
+                    {roomState.players[player.name].ready ? "Unready" : "Ready"}
                 </Button>
             )}
         </Stack>
@@ -193,63 +222,66 @@ function ButtonBar() {
 }
 
 function ScoreCard() {
-    const { mode, roomState, gameState } = useStore();
-
-    const style = {
-        flexBasis: "25%",
-    };
+    const { mode, roomState: _roomState, gameState, isRoomOwner } = useStore();
+    const roomState = _roomState as RoomState;
 
     return (
         <Bubble>
-            <Table borderless className="m-0 text-center">
+            <Table borderless size="sm" className="m-0">
                 <thead>
-                    <tr className="d-flex justify-content-between">
-                        <td style={style} className="p-0 border-0 text-start fw-bold">
-                            #
-                        </td>
-                        <td style={style} className="p-0 border-0 text-end fw-bold">
-                            Player
-                        </td>
+                    <tr>
+                        <td className="fw-bold">#</td>
+                        <td className="fw-bold">Player</td>
                         {mode === "game" ? (
                             <>
-                                <td style={style} className="p-0 border-0 text-end fw-bold">
-                                    Points
-                                </td>
-                                <td style={style} className="p-0 border-0 text-end fw-bold">
-                                    Mistakes
-                                </td>
+                                <td className="fw-bold">Points</td>
+                                <td className="fw-bold">Mistakes</td>
                             </>
                         ) : (
-                            <td style={style} className="p-0 border-0 text-end fw-bold">
-                                Ready
-                            </td>
+                            <td className="fw-bold">Ready</td>
                         )}
                     </tr>
                 </thead>
                 <tbody className="border-top">
-                    {(mode === "room" ? Object.values((roomState as RoomState).players) : [])
+                    {(mode === "room" ? Object.values(roomState.players) : [])
                         // : (gameState as GameState).players
                         .map((player, index) => {
                             return (
-                                <tr key={player.name} className={`d-flex justify-content-between`}>
-                                    <td style={style} className="p-0 border-0 text-start">
-                                        {index}
-                                    </td>
-                                    <td style={style} className="p-0 border-0 text-end">
-                                        {player.name}
-                                    </td>
+                                <tr key={player.name}>
+                                    <td>{index + 1}</td>
+                                    <td>{player.name}</td>
                                     {mode === "game" ? (
                                         <>
-                                            <td style={style} className="p-0 border-0 text-end">
+                                            <td>
                                                 {/* {gameState.players[player.name].points} */}0
                                             </td>
-                                            <td style={style} className="p-0 border-0 text-end">
+                                            <td>
                                                 {/* {gameState.players[player.name].mistakes} */}0
                                             </td>
                                         </>
                                     ) : (
-                                        <td style={style} className="p-0 border-0 text-end">
-                                            1
+                                        <td>
+                                            {isRoomOwner(player.name) ? (
+                                                <Icon
+                                                    symbol="manage_accounts"
+                                                    tooltip="Owner of the room"
+                                                    iconSize={4}
+                                                />
+                                            ) : player.ready ? (
+                                                <Icon
+                                                    symbol="check"
+                                                    className="text-success"
+                                                    tooltip="Player ready to start the game"
+                                                    iconSize={4}
+                                                />
+                                            ) : (
+                                                <Icon
+                                                    symbol="close"
+                                                    className="text-danger"
+                                                    tooltip="Player not ready to start the game"
+                                                    iconSize={4}
+                                                />
+                                            )}
                                         </td>
                                     )}
                                 </tr>
