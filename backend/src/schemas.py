@@ -18,9 +18,17 @@ class MePlayer(GeneralBaseModel):
     created_on: datetime
 
 
-class PlayerOut(GeneralBaseModel):
+class LobbyPlayerOut(GeneralBaseModel):
+    """Player data sent as a part of LobbyState."""
+
     name: str
     created_on: datetime
+
+
+class RoomPlayerOut(LobbyPlayerOut):
+    """Player data sent as a part of RoomState."""
+
+    ready: bool
 
 
 class GameTypeEnum(str, Enum):
@@ -52,7 +60,7 @@ class RoomOut(GeneralBaseModel):
 
 
 class RoomIn(GeneralBaseModel):
-    name: str
+    name: str = Field(..., max_length=10)
     capacity: int = Field(5, ge=1, le=10)
     rules: DeathmatchRules
 
@@ -95,7 +103,7 @@ class AllTimeStatistics(GeneralBaseModel):
 
 class LobbyState(GeneralBaseModel):
     rooms: dict[int, RoomOut | None] | None = None  # room_id: room
-    players: dict[str, PlayerOut | None] | None = None  # player_name: player
+    players: dict[str, LobbyPlayerOut | None] | None = None  # player_name: player
     stats: CurrentStatistics | None = None
 
 
@@ -106,7 +114,7 @@ class RoomState(GeneralBaseModel):
     status: d.RoomStatusEnum
     rules: DeathmatchRules
     owner_name: str
-    players: dict[str, PlayerOut | None] | None = None  # player_name: player
+    players: dict[str, RoomPlayerOut | None] | None = None  # player_name: player
 
 
 class GameState(GeneralBaseModel):
