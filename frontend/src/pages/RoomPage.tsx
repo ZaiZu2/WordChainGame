@@ -193,7 +193,7 @@ function ButtonBar() {
                         size="sm"
                         onClick={() => handleLeaveRoom(roomState.id as number)}
                     >
-                        Edit rules
+                        Rules
                     </Button>
                     <Button
                         variant="primary"
@@ -230,19 +230,25 @@ function ScoreCard() {
             <Table borderless size="sm" className="m-0">
                 <thead>
                     <tr>
-                        <td className="fw-bold">#</td>
-                        <td className="fw-bold">Player</td>
+                        <Icon symbol="leaderboard" tooltip="Number" iconSize={4} />
+                        <td>
+                            <Icon symbol="person" tooltip="Name" iconSize={4} />
+                        </td>{" "}
                         {mode === "game" ? (
                             <>
                                 <td className="fw-bold">Points</td>
                                 <td className="fw-bold">Mistakes</td>
                             </>
                         ) : (
-                            <td className="fw-bold">Ready</td>
+                            <td>
+                                <Icon symbol="light_mode" tooltip="Readiness" iconSize={4} />
+                            </td>
                         )}
                     </tr>
+                    <tr style={{ height: "0.25rem" }} />
                 </thead>
                 <tbody className="border-top">
+                    <tr style={{ height: "0.25rem" }} />
                     {(mode === "room" ? Object.values(roomState.players) : [])
                         // : (gameState as GameState).players
                         .map((player, index) => {
@@ -271,14 +277,14 @@ function ScoreCard() {
                                                 <Icon
                                                     symbol="check"
                                                     className="text-success"
-                                                    tooltip="Player ready to start the game"
+                                                    tooltip="Unready to start the game"
                                                     iconSize={4}
                                                 />
                                             ) : (
                                                 <Icon
                                                     symbol="close"
                                                     className="text-danger"
-                                                    tooltip="Player not ready to start the game"
+                                                    tooltip="Ready to start the game"
                                                     iconSize={4}
                                                 />
                                             )}

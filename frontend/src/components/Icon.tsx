@@ -21,11 +21,11 @@ export default function Icon({
     className = "",
 }: IconProps) {
     return (
-        <Tooltip content={tooltip} placement={placement}>
-            <Stack direction="horizontal" gap={gap} className={className}>
+        <Stack direction="horizontal" gap={gap} className={className}>
+            <Tooltip content={tooltip} placement={placement}>
                 <span className={`material-symbols-outlined fs-${iconSize}`}>{symbol}</span>
-                <span className="fs-5">{value}</span>
-            </Stack>
-        </Tooltip>
+            </Tooltip>
+            <span className="fs-5">{value}</span>
+        </Stack>
     );
 }
