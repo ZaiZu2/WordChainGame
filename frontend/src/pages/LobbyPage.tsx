@@ -56,7 +56,7 @@ function RoomList() {
     return (
         <Bubble>
             <Table borderless size="sm" className="m-0">
-                <thead>
+                <thead className="border-bottom">
                     <tr>
                         <td>
                             <Icon symbol="home" tooltip="Name" iconSize={4} />
@@ -73,14 +73,13 @@ function RoomList() {
                     </tr>
                     <tr style={{ height: "0.25rem" }} />
                 </thead>
-                <tbody className="border-top">
-                    {rooms === undefined ? (
-                        <Spinner animation="border" className="my-3 mx-auto" />
-                    ) : Object.values(rooms).length === 0 ? (
+                <tbody>
+                    {rooms !== undefined && Object.values(rooms).length === 0 && (
                         <tr>
                             <td className="p-1 m-auto">No games available</td>
                         </tr>
-                    ) : (
+                    )}
+                    {rooms !== undefined && Object.values(rooms).length !== 0 && (
                         <>
                             <tr style={{ height: "0.25rem" }} />
                             {Object.values(rooms).map((room) => {
@@ -133,6 +132,11 @@ function RoomList() {
                     )}
                 </tbody>
             </Table>
+            {rooms === undefined && (
+                <div className="text-center">
+                    <Spinner animation="border" className="my-3 mx-auto" />
+                </div>
+            )}
         </Bubble>
     );
 }

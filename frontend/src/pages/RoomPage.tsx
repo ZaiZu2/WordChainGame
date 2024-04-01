@@ -69,7 +69,7 @@ function RoomHeader() {
 
     return (
         <Stack direction="horizontal" gap={2} className="px-2">
-            <div className="fs-3">{roomState.name}</div>
+            <div className="fs-4">{roomState.name}</div>
             {icons.map((icon, index) => (
                 <>
                     {index !== 0 && <div className="vr" />}
@@ -228,7 +228,7 @@ function ScoreCard() {
     return (
         <Bubble>
             <Table borderless size="sm" className="m-0">
-                <thead>
+                <thead className="border-bottom">
                     <tr>
                         <Icon symbol="leaderboard" tooltip="Number" iconSize={4} />
                         <td>
@@ -247,7 +247,7 @@ function ScoreCard() {
                     </tr>
                     <tr style={{ height: "0.25rem" }} />
                 </thead>
-                <tbody className="border-top">
+                <tbody>
                     <tr style={{ height: "0.25rem" }} />
                     {(mode === "room" ? Object.values(roomState.players) : [])
                         // : (gameState as GameState).players
