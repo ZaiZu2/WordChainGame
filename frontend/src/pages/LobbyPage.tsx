@@ -1,4 +1,3 @@
-import Container from "react-bootstrap/Container";
 import { Button, Stack } from "react-bootstrap";
 import Spinner from "react-bootstrap/Spinner";
 import Table from "react-bootstrap/Table";
@@ -12,7 +11,7 @@ import { useStore } from "../contexts/storeContext";
 import Bubble from "../components/Bubble";
 
 export default function LobbyPage() {
-    const { toggleCreateRoomModal } = useStore();
+    const { toggleModal } = useStore();
 
     return (
         <>
@@ -22,7 +21,9 @@ export default function LobbyPage() {
                     <Button
                         variant="primary"
                         size="sm"
-                        onClick={() => toggleCreateRoomModal(true)}
+                        onClick={() => {
+                            toggleModal("roomRules", { onSubmit: "POST" });
+                        }}
                         className="ms-auto"
                     >
                         Create room

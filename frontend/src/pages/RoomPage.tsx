@@ -133,6 +133,7 @@ function ButtonBar() {
         updateChatMessages,
         purgeChatMessages,
         isRoomOwner,
+        toggleModal,
     } = useStore();
     const player = _player as Player;
     const roomState = _roomState as RoomState;
@@ -161,7 +162,7 @@ function ButtonBar() {
         }
     }
 
-    async function toggleReady(playerId: UUID, roomId: number) {
+    async function toggleReady(roomId: number) {
         try {
             await apiClient.post(`/rooms/${roomId}/ready`);
         } catch (error) {
@@ -191,7 +192,23 @@ function ButtonBar() {
                     <Button
                         variant="primary"
                         size="sm"
-                        onClick={() => handleLeaveRoom(roomState.id as number)}
+                        onClick={() => {
+                            toggleModal("roomRules", {
+                                disabledFields: ["name"],
+                                defaultValues: {
+                                    name: roomState.name,
+                                    capacity: roomState.capacity,
+                                    rules: {
+                                        type: roomState.rules.type,
+                                        penalty: roomState.rules.penalty,
+                                        reward: roomState.rules.reward,
+                                        start_score: roomState.rules.start_score,
+                                        round_time: roomState.rules.round_time,
+                                    },
+                                },
+                                onSubmit: "PUT",
+                            });
+                        }}
                     >
                         Rules
                     </Button>
@@ -212,7 +229,7 @@ function ButtonBar() {
                 <Button
                     variant="primary"
                     size="sm"
-                    onClick={() => toggleReady(player?.id as UUID, roomState.id as number)}
+                    onClick={() => toggleReady(roomState.id as number)}
                 >
                     {roomState.players[player.name].ready ? "Unready" : "Ready"}
                 </Button>

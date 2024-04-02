@@ -2,16 +2,21 @@ import Modal from "react-bootstrap/Modal";
 import Stack from "react-bootstrap/Stack";
 import Form from "react-bootstrap/Form";
 import { Button } from "react-bootstrap";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import apiClient from "../apiClient";
 import { useStore } from "../contexts/storeContext";
-import { RoomOut, RoomIn } from "@/types";
+import { RoomOut, RoomIn, RoomRulesConfig, RoomState } from "@/types";
 import { ApiError } from "../errors";
 import Row from "react-bootstrap/Row";
 import Col from "react-bootstrap/Col";
 
-export default function NewRoomModal() {
-    const { showCreateRoomModal, toggleCreateRoomModal } = useStore();
+export default function RoomRulesModal({
+    defaultValues,
+    disabledFields,
+    onSubmit,
+}: RoomRulesConfig) {
+    const { toggleModal, modalConfigs, roomState: _roomState } = useStore();
+    const roomState = _roomState as RoomState;
 
     const [nameErrors, setErrors] = useState<string[]>([]);
     const nameRef = useRef<HTMLInputElement>(null);
@@ -31,10 +36,19 @@ export default function NewRoomModal() {
     const [capacity, setCapacity] = useState(5);
     const capacityRef = useRef<HTMLInputElement>(null);
 
-    async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
+    useEffect(() => {
+        if (defaultValues) {
+            setPenalty(defaultValues.rules.penalty);
+            setReward(defaultValues.rules.reward);
+            setStartPoints(defaultValues.rules.start_score);
+            setRoundTime(defaultValues.rules.round_time);
+            setCapacity(defaultValues.capacity);
+        }
+    }, [defaultValues]);
+
+    async function onSubmitCreate(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
         const name = nameRef.current?.value;
-        const capacity = capacityRef.current?.valueAsNumber;
 
         if (!name) {
             setErrors(["Name field must not be empty"]);
@@ -59,29 +73,66 @@ export default function NewRoomModal() {
             if (error instanceof ApiError) {
                 setErrors(error.messages);
             }
+            return;
         }
-        toggleCreateRoomModal(false);
+        toggleModal("roomRules", undefined, true);
+    }
+
+    async function onSubmitModify(event: React.FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+        const name = nameRef.current?.value;
+
+        if (!name) {
+            setErrors(["Name field must not be empty"]);
+            return;
+        }
+
+        try {
+            await apiClient.put<RoomOut>(`/rooms/${roomState.id}`, {
+                body: {
+                    capacity: capacityRef.current?.valueAsNumber as number,
+                    rules: {
+                        type: "deathmatch",
+                        penalty: penaltyRef.current?.valueAsNumber as number,
+                        reward: rewardRef.current?.valueAsNumber as number,
+                        start_score: startPointsRef.current?.valueAsNumber as number,
+                        round_time: roundTimeRef.current?.valueAsNumber as number,
+                    },
+                } as Omit<RoomIn, "name">,
+            });
+        } catch (error) {
+            if (error instanceof ApiError) {
+                setErrors(error.messages);
+            }
+            return;
+        }
+        toggleModal("roomRules", undefined, true);
     }
 
     return (
         <Modal
             centered
             animation
-            show={showCreateRoomModal}
-            onHide={() => toggleCreateRoomModal(false)}
+            show={Boolean(modalConfigs.roomRules)}
+            onHide={() => toggleModal("roomRules", undefined, true)}
         >
             <Modal.Header closeButton>
                 <Modal.Title>
-                    <h5 className="m-0">Create game room</h5>
+                    <h5 className="m-0">Room rules</h5>
                 </Modal.Title>
             </Modal.Header>
             <Modal.Body className="pt-2">
-                <Form onSubmit={onSubmit}>
+                <Form onSubmit={onSubmit === "POST" ? onSubmitCreate : onSubmitModify}>
                     <Row className="mb-2">
                         <Col>
                             <Form.Group>
                                 <Form.Label>Name</Form.Label>
-                                <Form.Control type="string" ref={nameRef} />
+                                <Form.Control
+                                    type="string"
+                                    defaultValue={defaultValues?.name}
+                                    ref={nameRef}
+                                    disabled={disabledFields?.includes("name")}
+                                />
                             </Form.Group>
                         </Col>
                         <Col>

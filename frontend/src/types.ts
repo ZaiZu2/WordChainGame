@@ -103,3 +103,13 @@ export type Word = {
     game_id: number;
     player_name: string;
 };
+
+export type ModalConfigs = {
+    roomRules?: RoomRulesConfig;
+};
+
+export type RoomRulesConfig = {
+    defaultValues?: RoomIn;
+    disabledFields?: "name"[];
+    onSubmit: "PUT" | "POST";
+};

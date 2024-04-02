@@ -10,10 +10,10 @@ import RulesDescription from "./components/RulesDescription";
 import { LoginModal } from "./components/NewPlayerModal";
 import { useStore } from "./contexts/storeContext";
 import { WebSocketProvider } from "./contexts/WebsocketProvider";
-import NewRoomModal from "./components/NewRoomModal";
+import RoomRulesModal from "./components/RoomRulesModal";
 
 export default function App() {
-    const { player } = useStore();
+    const { player, modalConfigs } = useStore();
 
     return (
         <BrowserRouter>
@@ -21,7 +21,13 @@ export default function App() {
                 <LoginModal />
             ) : (
                 <>
-                    <NewRoomModal />
+                    {modalConfigs.roomRules && (
+                        <RoomRulesModal
+                            disabledFields={modalConfigs.roomRules.disabledFields}
+                            defaultValues={modalConfigs.roomRules.defaultValues}
+                            onSubmit={modalConfigs.roomRules.onSubmit}
+                        />
+                    )}
                     <Header />
                     <Container fluid className="p-3">
                         <WebSocketProvider>

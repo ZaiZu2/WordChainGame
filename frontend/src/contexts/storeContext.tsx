@@ -1,5 +1,14 @@
 import { createContext, useContext, useState, useEffect } from "react";
-import { Player, ChatMessage, LobbyState, GameState, RoomState, AllTimeStatistics } from "@/types";
+import {
+    Player,
+    ChatMessage,
+    LobbyState,
+    GameState,
+    RoomState,
+    AllTimeStatistics,
+    RoomRulesConfig,
+    ModalConfigs,
+} from "@/types";
 import apiClient from "../apiClient";
 import { AuthError } from "../errors";
 import { UUID } from "crypto";
@@ -23,8 +32,13 @@ export type StoreContext = {
     logIn: (id: UUID) => void;
     logOut: () => void;
     isRoomOwner: (playerName?: string) => boolean;
-    showCreateRoomModal: boolean;
-    toggleCreateRoomModal: (show: boolean) => void;
+
+    modalConfigs: ModalConfigs;
+    toggleModal: <K extends keyof ModalConfigs>(
+        name: K,
+        config?: ModalConfigs[K],
+        close?: boolean
+    ) => void;
 };
 
 const StoreContextObject = createContext<StoreContext>({
@@ -45,8 +59,13 @@ const StoreContextObject = createContext<StoreContext>({
     logIn: () => {},
     logOut: () => {},
     isRoomOwner: (playerName?: string) => false,
-    showCreateRoomModal: false,
-    toggleCreateRoomModal: (show: boolean) => {},
+
+    modalConfigs: {},
+    toggleModal: <K extends keyof ModalConfigs>(
+        name: K,
+        config?: ModalConfigs[K],
+        close?: boolean
+    ) => {},
 });
 
 export function useStore() {
@@ -64,7 +83,7 @@ export default function StoreProvider({ children }: { children: React.ReactNode 
         undefined
     );
 
-    const [showCreateRoomModal, toggleCreateRoomModal] = useState(false);
+    const [modalConfigs, setModalConfig] = useState<ModalConfigs>({});
 
     useEffect(function checkPlayerSessionCookie() {
         // If HTTP-only cookie is set and still valid, the player will get immediately
@@ -170,6 +189,26 @@ export default function StoreProvider({ children }: { children: React.ReactNode 
         }
     }
 
+    function toggleModal<K extends keyof ModalConfigs>(
+        name: K,
+        config?: ModalConfigs[K],
+        close?: boolean
+    ) {
+        if (close) {
+            setModalConfig((prevModalConfig) => {
+                const newModalConfig = { ...prevModalConfig };
+                delete newModalConfig[name];
+                return newModalConfig;
+            });
+            return;
+        }
+
+        setModalConfig((prevModalConfig) => {
+            console.log("nextModalConfig", { ...prevModalConfig, [name]: config || {} });
+            return { ...prevModalConfig, [name]: config || {} };
+        });
+    }
+
     function _runDifferentialUpdate<T extends Record<string, unknown>>(prevObj: T, newObj: T): T {
         const merged = { ...prevObj, ...newObj };
         for (const [id, obj] of Object.entries(newObj)) {
@@ -200,8 +239,8 @@ export default function StoreProvider({ children }: { children: React.ReactNode 
                 logIn,
                 logOut,
                 isRoomOwner,
-                showCreateRoomModal,
-                toggleCreateRoomModal,
+                modalConfigs,
+                toggleModal,
             }}
         >
             {children}
