@@ -65,6 +65,11 @@ class RoomIn(GeneralBaseModel):
     rules: DeathmatchRules
 
 
+class RoomInModify(GeneralBaseModel):
+    capacity: int = Field(5, ge=1, le=10)
+    rules: DeathmatchRules
+
+
 class WebSocketMessageTypeEnum(str, Enum):
     CHAT = 'chat'  # chat messages sent by players
     GAME_STATE = 'game_state'  # issued words, scores, ...?

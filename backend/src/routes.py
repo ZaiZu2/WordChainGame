@@ -124,6 +124,40 @@ async def create_room(
     await conn_manager.broadcast_lobby_state(lobby_state)
 
 
+@router.put('/rooms/{room_id}', status_code=status.HTTP_200_OK)
+async def modify_room(
+    room_id: int,
+    room_in: s.RoomInModify,
+    player: Annotated[d.Player, Depends(get_player)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    conn_manager: Annotated[ConnectionManager, Depends(get_connection_manager)],
+) -> s.RoomState:
+    room = await db.scalar(
+        select(d.Room).where(d.Room.id_ == room_id).options(joinedload(d.Room.owner))
+    )
+    if not room:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail='Room does not exist'
+        )
+
+    room.update(room_in.model_dump())
+    db.add(room)
+    await db.flush([room])
+
+    room_state = s.RoomState(owner_name=room.owner.name, **room.to_dict())
+    await conn_manager.broadcast_room_state(room_state.id_, room_state)
+
+    room_out = s.RoomOut(
+        players_no=len(conn_manager.connections[room_id]),
+        owner_name=room.owner.name,
+        **room.to_dict(),
+    )
+    lobby_state = s.LobbyState(rooms={room.id_: room_out})
+    await conn_manager.broadcast_lobby_state(lobby_state)
+
+    return room_state
+
+
 @router.post('/rooms/{room_id}/join', status_code=status.HTTP_200_OK)
 async def join_room(
     room_id: int,
@@ -185,7 +219,7 @@ async def leave_room(
     player: Annotated[d.Player, Depends(get_player)],
     db: Annotated[AsyncSession, Depends(get_db)],
     conn_manager: Annotated[ConnectionManager, Depends(get_connection_manager)],
-):
+) -> s.LobbyState:
     # TODO: Ensure that the player terminated any active game before leaving the room
     # TODO: Ensure that the player is not the owner of the room
 
@@ -230,6 +264,8 @@ async def leave_room(
         players={player.name: s.LobbyPlayerOut(**player.to_dict())},
     )
     await conn_manager.broadcast_lobby_state(lobby_state)
+
+    return lobby_state
 
 
 @router.post('/rooms/{room_id}/status', status_code=status.HTTP_200_OK)

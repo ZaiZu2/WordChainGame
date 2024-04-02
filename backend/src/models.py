@@ -38,6 +38,10 @@ class Base(AsyncAttrs, so.DeclarativeBase):
             col_name: getattr(self, col_name) for col_name in self.__mapper__.c.keys()
         }
 
+    def update(self, data: dict) -> None:
+        for column, value in data.items():
+            setattr(self, column, value)
+
 
 # NOTE: CASCADE ON DELETE behavior not resolved as no resources are to be deleted in this project
 
