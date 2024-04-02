@@ -37,19 +37,28 @@ export default function LobbyPage() {
 
 function RoomList() {
     const navigate = useNavigate();
-    const { setMode, lobbyState, chatMessages, updateChatMessages, purgeChatMessages } = useStore();
+    const {
+        setMode,
+        lobbyState,
+        chatMessages,
+        updateChatMessages,
+        purgeChatMessages,
+        updateRoomState,
+    } = useStore();
     const rooms = lobbyState?.rooms as Record<number, RoomOut>;
 
     async function handleJoinRoom(roomId: number) {
         const prevMessages = [...chatMessages];
         purgeChatMessages();
 
+        let response;
         try {
-            await apiClient.post<RoomState>(`/rooms/${roomId}/join`);
+            response = await apiClient.post<RoomState>(`/rooms/${roomId}/join`);
         } catch (error) {
             updateChatMessages(prevMessages); // Restore chat messages in case `join` request fails
             return;
         }
+        updateRoomState(response.body);
         setMode("room");
         navigate(`/rooms/${roomId}`);
     }

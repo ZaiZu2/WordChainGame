@@ -5,7 +5,7 @@ import { Button, Stack } from "react-bootstrap";
 import { useNavigate, useParams } from "react-router-dom";
 import Icon from "../components/Icon";
 import Statistics from "../components/Statistics";
-import { GameState, Player, RoomState, Word } from "../types";
+import { GameState, LobbyState, Player, RoomState, Word } from "../types";
 import { useStore } from "../contexts/storeContext";
 import apiClient from "../apiClient";
 import { useEffect } from "react";
@@ -134,6 +134,7 @@ function ButtonBar() {
         purgeChatMessages,
         isRoomOwner,
         toggleModal,
+        updateLobbyState,
     } = useStore();
     const player = _player as Player;
     const roomState = _roomState as RoomState;
@@ -144,12 +145,14 @@ function ButtonBar() {
         const prevMessages = [...chatMessages];
         purgeChatMessages();
 
+        let response;
         try {
-            await apiClient.post(`/rooms/${roomId}/leave`);
+            response = await apiClient.post<LobbyState>(`/rooms/${roomId}/leave`);
         } catch (error) {
             updateChatMessages(prevMessages); // Restore chat messages in case `leave` request fails
             return;
         }
+        updateLobbyState(response.body);
         setMode("lobby");
         navigate("/");
     }
