@@ -168,6 +168,10 @@ async def join_room(
     room = await db.scalar(
         select(d.Room).where(d.Room.id_ == room_id).options(joinedload(d.Room.owner))
     )
+    _, old_room_id = conn_manager.find_connection(player.id_)
+
+    if room_id == old_room_id:
+        return s.RoomState(owner_name=room.owner.name, **room.to_dict())
     if room is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail='Room does not exist'
@@ -181,7 +185,6 @@ async def join_room(
             status_code=status.HTTP_400_BAD_REQUEST, detail='Room is full'
         )
 
-    _, old_room_id = conn_manager.find_connection(player.id_)
     await move_player_and_broadcast_message(
         player, old_room_id, room_id, db, conn_manager
     )

@@ -164,7 +164,11 @@ class ConnectionManager:
     def move_player(self, player_id: UUID, from_room_id: int, to_room_id: int) -> None:
         """Move a player's websocket connection from one room to another."""
         player_conn, _ = self.find_connection(player_id, room_id=from_room_id)
+
         self.connections[from_room_id].remove(player_conn)
+        if from_room_id != d.LOBBY.id_:
+            player_conn.ready = False
+
         self.connections[to_room_id].add(player_conn)
 
     def find_connection(
