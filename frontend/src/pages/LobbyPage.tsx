@@ -81,17 +81,17 @@ function RoomList() {
                             <Icon symbol="manage_accounts" tooltip="Owner" iconSize={4} />
                         </td>
                     </tr>
-                    <tr style={{ height: "0.25rem" }} />
+                    <tr style={{ height: "0.25rem" }}></tr>
                 </thead>
                 <tbody>
                     {rooms !== undefined && Object.values(rooms).length === 0 && (
                         <tr>
-                            <td className="p-1 m-auto">No games available</td>
+                            <td className="p-1 ms-auto">No games available</td>
                         </tr>
                     )}
                     {rooms !== undefined && Object.values(rooms).length !== 0 && (
                         <>
-                            <tr style={{ height: "0.25rem" }} />
+                            <tr style={{ height: "0.25rem" }}></tr>
                             {Object.values(rooms).map((room) => {
                                 return (
                                     <tr key={room.id}>

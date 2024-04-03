@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import React, { useEffect } from "react";
 import { Button, Spinner, Stack } from "react-bootstrap";
 import Form from "react-bootstrap/Form";
 import Table from "react-bootstrap/Table";
@@ -72,10 +72,10 @@ function RoomHeader() {
         <Stack direction="horizontal" gap={2} className="px-2">
             <div className="fs-4">{roomState.name}</div>
             {icons.map((icon, index) => (
-                <>
+                <React.Fragment key={index}>
                     {index !== 0 && <div className="vr" />}
                     <Icon {...icon} />
-                </>
+                </React.Fragment>
             ))}
         </Stack>
     );
@@ -116,10 +116,10 @@ function Rules() {
     return (
         <Stack direction="horizontal" gap={2} className="justify-content-evenly">
             {icons.map((icon, index) => (
-                <>
+                <React.Fragment key={index}>
                     {index !== 0 && <div className="vr" />}
                     <Icon {...icon} />
-                </>
+                </React.Fragment>
             ))}
         </Stack>
     );
@@ -251,10 +251,12 @@ function ScoreCard() {
             <Table borderless size="sm" className="m-0">
                 <thead className="border-bottom">
                     <tr>
-                        <Icon symbol="leaderboard" tooltip="Number" iconSize={4} />
+                        <td>
+                            <Icon symbol="leaderboard" tooltip="Number" iconSize={4} />
+                        </td>
                         <td>
                             <Icon symbol="person" tooltip="Name" iconSize={4} />
-                        </td>{" "}
+                        </td>
                         {mode === "game" ? (
                             <>
                                 <td className="fw-bold">Points</td>
@@ -266,10 +268,10 @@ function ScoreCard() {
                             </td>
                         )}
                     </tr>
-                    <tr style={{ height: "0.25rem" }} />
+                    <tr style={{ height: "0.25rem" }}></tr>
                 </thead>
                 <tbody>
-                    <tr style={{ height: "0.25rem" }} />
+                    <tr style={{ height: "0.25rem" }}></tr>
                     {(mode === "room" ? Object.values(roomState.players) : [])
                         // : (gameState as GameState).players
                         .map((player, index) => {
@@ -359,7 +361,24 @@ function WordList() {
         is_correct: false,
         game_id: 1,
     } as Word;
-    const words = [word_1, word_2, word_3, word_2, word_1];
+    const word_4 = {
+        id: 4,
+        player_name: "Becky",
+        created_on: new Date("2024-01-01 12:00:00"),
+        content: "Rotor",
+        is_correct: false,
+        game_id: 1,
+    } as Word;
+    const word_5 = {
+        id: 5,
+        player_name: "Becky",
+        created_on: new Date("2024-01-01 12:00:00"),
+        content: "Rotor",
+        is_correct: false,
+        game_id: 1,
+    } as Word;
+
+    const words = [word_1, word_2, word_3, word_4, word_5];
 
     const style = {
         flexGrow: 1,
@@ -374,7 +393,11 @@ function WordList() {
                 <tbody>
                     {words.map((word, position) => {
                         return (
-                            <tr style={style} className="d-flex justify-content-between">
+                            <tr
+                                style={style}
+                                className="d-flex justify-content-between"
+                                key={word.id}
+                            >
                                 <td style={{ flexBasis: "20%" }} className="p-0 border-0">
                                     {word.player_name}
                                 </td>
