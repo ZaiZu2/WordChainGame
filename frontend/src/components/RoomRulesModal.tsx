@@ -1,14 +1,16 @@
-import Modal from "react-bootstrap/Modal";
-import Stack from "react-bootstrap/Stack";
-import Form from "react-bootstrap/Form";
-import { Button } from "react-bootstrap";
 import { useEffect, useRef, useState } from "react";
+import { Button } from "react-bootstrap";
+import Col from "react-bootstrap/Col";
+import Form from "react-bootstrap/Form";
+import Modal from "react-bootstrap/Modal";
+import Row from "react-bootstrap/Row";
+import Stack from "react-bootstrap/Stack";
+
+import { RoomIn, RoomOut, RoomRulesConfig, RoomState } from "@/types";
+
 import apiClient from "../apiClient";
 import { useStore } from "../contexts/storeContext";
-import { RoomOut, RoomIn, RoomRulesConfig, RoomState } from "@/types";
 import { ApiError } from "../errors";
-import Row from "react-bootstrap/Row";
-import Col from "react-bootstrap/Col";
 
 export default function RoomRulesModal({
     defaultValues,

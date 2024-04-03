@@ -54,7 +54,7 @@ export type ChatMessage = {
     room_id: number;
 };
 
-export type GameState = {};
+export type GameState = object;
 
 export type RoomState = Omit<RoomOut, "players_no"> & {
     players: Record<string, RoomPlayer>;

@@ -1,6 +1,6 @@
 import { BASE_API_URL } from "./config";
+import { ApiError, AuthError, ConnectionError } from "./errors";
 import { ApiResponse, RequestOptions, ValidatedFields } from "./types";
-import { ConnectionError, ApiError, AuthError } from "./errors";
 
 class ApiClient {
     private BASE_API_URL: string;

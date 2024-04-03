@@ -1,6 +1,6 @@
-import Container from "react-bootstrap/Container";
 import Accordion from "react-bootstrap/Accordion";
 import ListGroup from "react-bootstrap/ListGroup";
+
 import Bubble from "./Bubble";
 
 export default function RulesDescription() {

@@ -1,18 +1,19 @@
-import { createContext, useContext, useState, useEffect } from "react";
-import {
-    Player,
-    ChatMessage,
-    LobbyState,
-    GameState,
-    RoomState,
-    AllTimeStatistics,
-    RoomRulesConfig,
-    ModalConfigs,
-} from "@/types";
-import apiClient from "../apiClient";
-import { AuthError } from "../errors";
 import { UUID } from "crypto";
+import { createContext, useContext, useEffect, useState } from "react";
+
+import {
+    AllTimeStatistics,
+    ChatMessage,
+    GameState,
+    LobbyState,
+    ModalConfigs,
+    Player,
+    RoomState,
+} from "@/types";
+
+import apiClient from "../apiClient";
 import { CHAT_MESSAGE_LIMIT } from "../config";
+import { AuthError } from "../errors";
 
 export type StoreContext = {
     chatMessages: ChatMessage[];

@@ -1,13 +1,15 @@
+import { UUID } from "crypto";
+import { RefObject, useRef, useState } from "react";
+import { Button } from "react-bootstrap";
+import Form from "react-bootstrap/Form";
 import Modal from "react-bootstrap/Modal";
 import Stack from "react-bootstrap/Stack";
-import Form from "react-bootstrap/Form";
-import { Button } from "react-bootstrap";
-import { RefObject, useRef, useState } from "react";
+
+import { Player } from "@/types";
+
 import apiClient from "../apiClient";
 import { useStore } from "../contexts/storeContext";
-import { Player } from "@/types";
 import { ApiError, AuthError } from "../errors";
-import { UUID } from "crypto";
 
 export function LoginModal() {
     const { logIn } = useStore();

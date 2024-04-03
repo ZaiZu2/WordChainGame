@@ -1,4 +1,4 @@
-import React, { createRef, ReactNode, ErrorInfo } from "react";
+import React, { createRef, ErrorInfo, ReactNode } from "react";
 
 interface ErrorBoundaryState {
     hasError: boolean;

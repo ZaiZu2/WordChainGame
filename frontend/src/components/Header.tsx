@@ -1,8 +1,7 @@
-import { useState } from "react";
-
+import { Button, Stack } from "react-bootstrap";
 import Container from "react-bootstrap/Container";
 import Navbar from "react-bootstrap/Navbar";
-import { Button, Stack } from "react-bootstrap";
+
 import { useStore } from "../contexts/storeContext";
 
 export default function Header() {
