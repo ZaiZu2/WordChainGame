@@ -2,13 +2,13 @@ import { Button, Stack } from "react-bootstrap";
 import Spinner from "react-bootstrap/Spinner";
 import Table from "react-bootstrap/Table";
 import { useNavigate } from "react-router-dom";
-import Icon from "../components/Icon";
 
-import Statistics from "../components/Statistics";
 import apiClient from "../apiClient";
-import { RoomState, RoomOut } from "../types";
-import { useStore } from "../contexts/storeContext";
 import Bubble from "../components/Bubble";
+import Icon from "../components/Icon";
+import Statistics from "../components/Statistics";
+import { useStore } from "../contexts/storeContext";
+import { RoomOut, RoomState } from "../types";
 
 export default function LobbyPage() {
     const { toggleModal } = useStore();
@@ -60,7 +60,7 @@ function RoomList() {
         }
         updateRoomState(response.body);
         setMode("room");
-        navigate(`/rooms/${roomId}`);
+        navigate(`/room`);
     }
 
     return (

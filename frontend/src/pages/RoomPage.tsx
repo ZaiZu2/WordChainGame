@@ -1,31 +1,32 @@
-import Container from "react-bootstrap/Container";
+import { useEffect } from "react";
+import { Button, Spinner, Stack } from "react-bootstrap";
 import Form from "react-bootstrap/Form";
 import Table from "react-bootstrap/Table";
-import { Button, Stack } from "react-bootstrap";
-import { useNavigate, useParams } from "react-router-dom";
-import Icon from "../components/Icon";
-import Statistics from "../components/Statistics";
-import { GameState, LobbyState, Player, RoomState, Word } from "../types";
-import { useStore } from "../contexts/storeContext";
+import { useNavigate } from "react-router-dom";
+
 import apiClient from "../apiClient";
-import { useEffect } from "react";
 import Bubble from "../components/Bubble";
-import { UUID } from "crypto";
+import Icon from "../components/Icon";
+import { useStore } from "../contexts/storeContext";
+import { LobbyState, Player, RoomState, Word } from "../types";
 
 export default function RoomPage() {
-    const { mode, roomState } = useStore();
+    const { mode } = useStore();
     const navigate = useNavigate();
-    const { roomId } = useParams();
 
-    // TODO: Create a guard to prevent entering the room simply by changing the URL
     useEffect(() => {
-        console.log("Room stats", mode, roomId, roomState);
-        // if (mode !== "room" || roomState?.id !== roomId) {
-        //     navigate("/");
-        // }
-    });
+        if (mode === "lobby") {
+            navigate("/");
+        }
+    }, [mode, navigate]);
 
-    return (
+    return mode === "lobby" ? (
+        <Bubble>
+            <div className="d-flex">
+                <Spinner animation="border" className="my-3 mx-auto" />
+            </div>
+        </Bubble>
+    ) : (
         <>
             <Bubble>
                 <Stack gap={2} className="">
@@ -290,21 +291,21 @@ function ScoreCard() {
                                             {isRoomOwner(player.name) ? (
                                                 <Icon
                                                     symbol="manage_accounts"
-                                                    tooltip="Owner of the room"
+                                                    tooltip="Owner"
                                                     iconSize={4}
                                                 />
                                             ) : player.ready ? (
                                                 <Icon
                                                     symbol="check"
                                                     className="text-success"
-                                                    tooltip="Unready to start the game"
+                                                    tooltip="Ready"
                                                     iconSize={4}
                                                 />
                                             ) : (
                                                 <Icon
                                                     symbol="close"
                                                     className="text-danger"
-                                                    tooltip="Ready to start the game"
+                                                    tooltip="Unready"
                                                     iconSize={4}
                                                 />
                                             )}
@@ -329,10 +330,10 @@ function WordList() {
         4: "fs-2",
         5: "fs-1",
     };
-    let symbol = (word: Word) => (word.is_correct ? "check" : "close");
-    let points = (word: Word) =>
+    const symbol = (word: Word) => (word.is_correct ? "check" : "close");
+    const points = (word: Word) =>
         word.is_correct ? "+" + roomState?.rules.reward : roomState?.rules.penalty;
-    let color = (word: Word) => (word.is_correct ? "text-success" : "text-danger"); // GREEN or RED
+    const color = (word: Word) => (word.is_correct ? "text-success" : "text-danger"); // GREEN or RED
 
     const word_1 = {
         id: 1,
@@ -358,7 +359,7 @@ function WordList() {
         is_correct: false,
         game_id: 1,
     } as Word;
-    let words = [word_1, word_2, word_3, word_2, word_1];
+    const words = [word_1, word_2, word_3, word_2, word_1];
 
     const style = {
         flexGrow: 1,

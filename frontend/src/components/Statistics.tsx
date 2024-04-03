@@ -1,11 +1,12 @@
 import { useEffect } from "react";
+import { Stack } from "react-bootstrap";
+import Col from "react-bootstrap/Col";
 import Container from "react-bootstrap/Container";
 import Row from "react-bootstrap/Row";
-import Col from "react-bootstrap/Col";
-import { Stack } from "react-bootstrap";
-import { useStore } from "../contexts/storeContext";
 import Spinner from "react-bootstrap/Spinner";
+
 import apiClient from "../apiClient";
+import { useStore } from "../contexts/storeContext";
 import { AllTimeStatistics } from "../types";
 import Bubble from "./Bubble";
 
@@ -47,7 +48,7 @@ export default function Statistics() {
                     ) : (
                         Object.entries(lobbyState.stats).map(([key, value]) => {
                             return (
-                                <Row>
+                                <Row key={key}>
                                     <Col>
                                         {
                                             currentStatsNameMap[
@@ -55,7 +56,7 @@ export default function Statistics() {
                                             ]
                                         }
                                     </Col>
-                                    <Col className="flex-shrink-1">{value}</Col>
+                                    <Col>{value}</Col>
                                 </Row>
                             );
                         })
@@ -69,7 +70,7 @@ export default function Statistics() {
                     ) : (
                         Object.entries(allTimeStatistics).map(([key, value]) => {
                             return (
-                                <Row>
+                                <Row key={key}>
                                     <Col>
                                         {
                                             allTimeStatsNameMap[
@@ -77,7 +78,7 @@ export default function Statistics() {
                                             ]
                                         }
                                     </Col>
-                                    <Col className="flex-shrink-1">{value}</Col>
+                                    <Col>{value}</Col>
                                 </Row>
                             );
                         })
