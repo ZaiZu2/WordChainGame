@@ -5,7 +5,7 @@ import Tooltip from "../components/Tooltip";
 type IconProps = {
     symbol: string;
     value?: string | number;
-    tooltip: string;
+    tooltip?: string;
     iconSize?: 1 | 2 | 3 | 4 | 5 | 6;
     gap?: number;
     placement?: "top" | "bottom" | "left" | "right";
@@ -14,7 +14,7 @@ type IconProps = {
 
 export default function Icon({
     symbol,
-    value = "",
+    value,
     tooltip,
     iconSize = 2,
     gap = 1,
@@ -23,10 +23,14 @@ export default function Icon({
 }: IconProps) {
     return (
         <Stack direction="horizontal" gap={gap} className={className}>
-            <Tooltip content={tooltip} placement={placement}>
+            {tooltip !== undefined ? (
+                <Tooltip content={tooltip} placement={placement}>
+                    <span className={`material-symbols-outlined fs-${iconSize}`}>{symbol}</span>
+                </Tooltip>
+            ) : (
                 <span className={`material-symbols-outlined fs-${iconSize}`}>{symbol}</span>
-            </Tooltip>
-            <span className="fs-5">{value}</span>
+            )}
+            {value && <span className="fs-5">{value}</span>}
         </Stack>
     );
 }

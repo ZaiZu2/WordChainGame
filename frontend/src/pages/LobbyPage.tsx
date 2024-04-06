@@ -44,6 +44,7 @@ function RoomList() {
         updateChatMessages,
         purgeChatMessages,
         updateRoomState,
+        updateGameState,
     } = useStore();
     const rooms = lobbyState?.rooms as Record<number, RoomOut>;
 
@@ -57,8 +58,62 @@ function RoomList() {
         } catch (error) {
             updateChatMessages(prevMessages); // Restore chat messages in case `join` request fails
             return;
+            // TODO: Inform user about the error
         }
         updateRoomState(response.body);
+        // Temporary state update for testing purposes
+        updateGameState({
+            players: [
+                {
+                    name: "Player 1",
+                    score: 10,
+                    mistakes: 0,
+                },
+                {
+                    name: "Player 2",
+                    score: 8,
+                    mistakes: 1,
+                },
+                {
+                    name: "Player 3",
+                    score: 8,
+                    mistakes: 1,
+                },
+                {
+                    name: "Player 4",
+                    score: 8,
+                    mistakes: 1,
+                },
+            ],
+            words: [
+                {
+                    id: 1,
+                    content: "word1",
+                    is_correct: true,
+                    created_on: new Date(),
+                    game_id: 1,
+                    player_name: "Player 1",
+                },
+                {
+                    id: 2,
+                    content: "word2",
+                    is_correct: false,
+                    created_on: new Date(),
+                    game_id: 1,
+                    player_name: "Player 2",
+                },
+            ],
+            rules: {
+                type: "deathmatch",
+                round_time: 60,
+                start_score: 0,
+                penalty: -1,
+                reward: 1,
+            },
+            turn: {
+                currentPlayer: 0, // Index of the current player in the `players` array
+            },
+        });
         setMode("room");
         navigate(`/room`);
     }

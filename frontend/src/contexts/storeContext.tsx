@@ -205,7 +205,6 @@ export default function StoreProvider({ children }: { children: React.ReactNode 
         }
 
         setModalConfig((prevModalConfig) => {
-            console.log("nextModalConfig", { ...prevModalConfig, [name]: config || {} });
             return { ...prevModalConfig, [name]: config || {} };
         });
     }

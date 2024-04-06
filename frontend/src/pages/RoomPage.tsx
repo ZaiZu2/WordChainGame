@@ -8,7 +8,7 @@ import apiClient from "../apiClient";
 import Bubble from "../components/Bubble";
 import Icon from "../components/Icon";
 import { useStore } from "../contexts/storeContext";
-import { LobbyState, Player, RoomState, Word } from "../types";
+import { GameState, LobbyState, Player, RoomState, Word } from "../types";
 
 export default function RoomPage() {
     const { mode } = useStore();
@@ -38,6 +38,7 @@ export default function RoomPage() {
                 </Stack>
             </Bubble>
             <ScoreCard />
+            <CurrentPlayer />
             <WordList />
         </>
     );
@@ -321,6 +322,51 @@ function ScoreCard() {
         </Bubble>
     );
 }
+
+function CurrentPlayer() {
+    const { gameState: _gameState } = useStore();
+    const gameState = _gameState as GameState;
+
+    let players;
+    if (gameState.players.length < 3) {
+        players = gameState.players;
+    } else {
+        const prevIndex = (gameState.turn.currentPlayer - 1) % gameState.players.length;
+        const nextIndex = (gameState.turn.currentPlayer + 1) % gameState.players.length;
+        players = [
+            // Find the previous, current and next player to be render in the bubble
+            gameState.players[prevIndex < 0 ? prevIndex + gameState.players.length : prevIndex],
+            gameState.players[gameState.turn.currentPlayer],
+            gameState.players[nextIndex],
+        ];
+    }
+
+    return (
+        <Bubble>
+            <Stack direction="horizontal" gap={2} className="justify-content-evenly">
+                {Object.values(players).map((player, index) => {
+                    return (
+                        <>
+                            {index !== 0 && <Icon symbol="trending_flat" iconSize={3} />}
+                            {index === 1 ? (
+                                <Stack key={player.name} direction="horizontal" gap={2}>
+                                    <Icon symbol="arrow_forward_ios" iconSize={5} />
+                                    <div className="fs-5">{player.name}</div>
+                                    <Icon symbol="arrow_back_ios" iconSize={5} />
+                                </Stack>
+                            ) : (
+                                <div className="fs-6" key={player.name}>
+                                    {player.name}
+                                </div>
+                            )}
+                        </>
+                    );
+                })}
+            </Stack>
+        </Bubble>
+    );
+}
+
 function WordList() {
     const { roomState } = useStore();
 

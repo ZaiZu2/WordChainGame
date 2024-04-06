@@ -54,7 +54,20 @@ export type ChatMessage = {
     room_id: number;
 };
 
-export type GameState = object;
+export type GamePlayer = {
+    name: string;
+    score: number;
+    mistakes: number;
+};
+
+export type GameState = {
+    players: GamePlayer[]; // Players ordered by their turns
+    words: Word[];
+    rules: DeathmatchRules;
+    turn: {
+        currentPlayer: number; // Index of the current player in the `players` array
+    };
+};
 
 export type RoomState = Omit<RoomOut, "players_no"> & {
     players: Record<string, RoomPlayer>;

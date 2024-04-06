@@ -30,7 +30,7 @@ export default function Chat() {
     return (
         <Bubble>
             <Container
-                className="p-0"
+                className="p-0 px-1"
                 style={{
                     minHeight: "100px",
                     maxHeight: "300px",
