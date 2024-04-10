@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import src.models as d
 from config import Config, get_config
 from src.connection_manager import ConnectionManager
+from src.game import GameManager
 from src.models import async_session
 
 
@@ -27,6 +28,12 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 def get_connection_manager() -> ConnectionManager:
     """FastAPI dependency injection function to pass a ConnectionManager instance into endpoints."""
     return ConnectionManager()
+
+
+@lru_cache
+def get_game_manager() -> GameManager:
+    """FastAPI dependency injection function to pass a GameManager instance into endpoints."""
+    return GameManager()
 
 
 async def get_player(
@@ -59,9 +66,9 @@ async def set_auth_cookie(
 ) -> None:
     response.set_cookie(
         key=config.AUTH_COOKIE_NAME,
-        value=value,
+        value=str(value),
         max_age=config.AUTH_COOKIE_EXPIRATION,
         httponly=True,
-        samesite='None',
+        samesite='none',
         secure=True,
     )

@@ -22,9 +22,11 @@ from src.connection_manager import ConnectionManager
 from src.dependencies import (
     get_connection_manager,
     get_db,
+    get_game_manager,
     get_player,
     set_auth_cookie,
 )
+from src.game import GameManager
 from src.helpers import (
     TagsEnum,
     accept_websocket_connection,
@@ -349,6 +351,87 @@ async def toggle_player_readiness(
     await conn_manager.broadcast_room_state(room.id_, room_state)
 
 
+@router.post('/rooms/{room_id}/start', status_code=status.HTTP_201_CREATED)
+async def start_game(
+    room_id: int,
+    player: Annotated[d.Player, Depends(get_player)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    conn_manager: Annotated[ConnectionManager, Depends(get_connection_manager)],
+    game_manager: Annotated[GameManager, Depends(get_game_manager)],
+) -> None:
+    room = await db.scalar(
+        select(d.Room).where(d.Room.id_ == room_id).options(joinedload(d.Room.owner))
+    )
+    if room is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail='Room not found'
+        )
+    if room.owner_id != player.id_:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail='Player is not the owner'
+        )
+
+    conn, found_room_id = conn_manager.find_connection(player.id_, room_id=room_id)
+    if found_room_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail='Player is not in the room'
+        )
+    if not all(conn.ready for conn in conn_manager.connections[room_id]):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail='Not all players are ready'
+        )
+
+    room.status = d.RoomStatusEnum.IN_PROGRESS
+    # Load all players from the db to create a many-to-many relationship with the game placeholder
+    players = await db.scalars(
+        select(d.Player).where(
+            d.Player.id_.in_(
+                [conn.player_id for conn in conn_manager.connections[room_id]]
+            )
+        )
+    )
+    # Create game placeholder in the database to assign the ID
+    game_db = d.Game(
+        status=d.GameStatusEnum.IN_PROGRESS,
+        rules=room.rules,
+        room_id=room_id,
+        players=players,
+    )
+    db.add_all([game_db, room])
+    await db.commit()
+    await db.refresh(game_db)
+
+    # Store the game in memory during it's progress
+    game = game_manager.create(game_db)
+
+    # Broadcast the initial game state to all players
+    game_state = s.GameState(
+        id_=game.id_,
+        status=game.status,
+        players=game.players,
+        lost_players=game.lost_players,
+        rules=game.rules,
+        current_turn=None,
+    )
+    await conn_manager.broadcast_game_state(room.id_, game_state)
+
+    # Delay the game start to prime the players
+    await asyncio.sleep(3)
+    # TODO: Should i return `TurnResults` from methods or simply access object properties?
+    turn_results = game.start_turn()
+    game_state = s.GameState(
+        id_=game.id_,
+        status=game.status,
+        players=game.players,
+        lost_players=game.lost_players,
+        rules=game.rules,
+        current_turn=s.Turn(
+            current_player_idx=game.players.current_idx, **game.current_turn.to_dict()
+        ),
+    )
+    await conn_manager.broadcast_game_state(room.id_, game_state)
+
+
 @router.get('/stats', status_code=status.HTTP_200_OK)
 async def get_stats(
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -368,6 +451,7 @@ async def connect(
     player: Annotated[d.Player, Depends(get_player)],
     db: Annotated[AsyncSession, Depends(get_db)],
     conn_manager: Annotated[ConnectionManager, Depends(get_connection_manager)],
+    game_manager: Annotated[GameManager, Depends(get_game_manager)],
 ) -> None:
     await accept_websocket_connection(player, websocket, db, conn_manager)
     await broadcast_full_lobby_state(db, conn_manager)
@@ -377,7 +461,7 @@ async def connect(
         # Run as a separate task so blocking operations can coexist with polling
         # operations inside this endpoint.
         listening_task = asyncio.create_task(
-            listen_for_messages(player, websocket, db, conn_manager)
+            listen_for_messages(player, websocket, db, conn_manager, game_manager)
         )
 
         await asyncio.gather(listening_task)

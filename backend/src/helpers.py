@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import cast
 
 from fastapi import WebSocket, WebSocketException
 from sqlalchemy import and_, select
@@ -8,6 +9,7 @@ from sqlalchemy.orm import joinedload
 import src.models as d  # d - database
 import src.schemas as s  # s - schema
 from src.connection_manager import ConnectionManager
+from src.game import GameManager
 
 
 class TagsEnum(str, Enum):
@@ -187,6 +189,7 @@ async def listen_for_messages(
     websocket: WebSocket,
     db: AsyncSession,
     conn_manager: ConnectionManager,
+    game_manager: GameManager,
 ):
     while True:
         # TODO: Make a wrapper which deserializes the websocket message when it arrives
@@ -197,14 +200,31 @@ async def listen_for_messages(
         match websocket_message.type:
             # TODO: Make a wrapper which handles CHAT type websocket messages
             case s.WebSocketMessageTypeEnum.CHAT:
+                chat_message = cast(s.ChatMessage, websocket_message.payload)
                 message = d.Message(
-                    content=websocket_message.payload.content,
-                    room_id=websocket_message.payload.room_id,
+                    content=chat_message.content,
+                    room_id=chat_message.room_id,
                     player=player,
                 )
                 await save_and_broadcast_message(message, db, conn_manager)
-            case s.WebSocketMessageTypeEnum.GAME_STATE:
-                pass
+            case s.WebSocketMessageTypeEnum.GAME_INPUT:
+                game_input = cast(s.GameInput, websocket_message.payload)
+                game = game_manager.get(game_input.game_id)
+                # TODO: Input data validation?
+                turn_result = game.process_turn(game_input.word)
+                game_state = s.GameState(
+                    id_=game.id_,
+                    status=game.status,
+                    players=game.players,
+                    lost_players=game.lost_players,
+                    rules=game.rules,
+                    current_turn=s.Turn(
+                        current_player_idx=game.players.current_idx,
+                        **game.current_turn.to_dict(),
+                    ),
+                )
+                _, room_id = conn_manager.find_connection(player.id_)
+                await conn_manager.broadcast_game_state(room_id, game_state)
 
         # Commit all flushed resources to DB every time a message is received
         await db.commit()

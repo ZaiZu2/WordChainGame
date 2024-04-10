@@ -23,7 +23,7 @@ class Connection:
 
 
 class ConnectionManager:
-    def __init__(self):
+    def __init__(self) -> None:
         # TODO: Rework into a different data structure. Idea to store connections in
         # rooms as sets proves to be awkward when individual connections need to be
         # accessed.
@@ -146,8 +146,22 @@ class ConnectionManager:
         ]
         await asyncio.gather(*send_messages)
 
+    async def broadcast_game_state(self, room_id: int, game_state: s.GameState) -> None:
+        """Send the game state to all players in the room."""
+        room_conns = self.connections[room_id]
+
+        websocket_message = s.WebSocketMessage(
+            type=s.WebSocketMessageTypeEnum.GAME_STATE,
+            payload=game_state,
+        )
+        send_messages = [
+            conn.websocket.send_json(websocket_message.model_dump_json(by_alias=True))
+            for conn in room_conns
+        ]
+        await asyncio.gather(*send_messages)
+
     async def send_connection_state(
-        self, code: int | s.CustomWebsocketCodeEnum, reason: str, websocket: WebSocket
+        self, code: s.CustomWebsocketCodeEnum, reason: str, websocket: WebSocket
     ) -> None:
         """
         Send a connection state message to the client, usually on connection events

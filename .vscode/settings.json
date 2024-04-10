@@ -20,5 +20,6 @@
   "[python]": {
     "editor.rulers": [88],
     "editor.defaultFormatter": "charliermarsh.ruff"
-  }
+  },
+  "mypy.configFile": "backend/pyproject.toml"
 }

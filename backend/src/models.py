@@ -62,7 +62,7 @@ class Player(Base):
     last_active_on: so.Mapped[datetime] = so.mapped_column(default=sa.func.now())
 
     messages: so.Mapped[list[Message]] = so.relationship(back_populates='player')
-    words: so.Mapped[list[Word]] = so.relationship(back_populates='player')
+    turns: so.Mapped[list[Turn]] = so.relationship(back_populates='player')
     games: so.Mapped[list[Game]] = so.relationship(
         secondary=players_games_table, back_populates='players'
     )
@@ -71,7 +71,7 @@ class Player(Base):
 class RoomStatusEnum(str, Enum):
     OPEN = 'Open'
     CLOSED = 'Closed'
-    PRIVATE = 'Private'
+    IN_PROGRESS = 'In progress'
     EXPIRED = 'Expired'
 
 
@@ -114,7 +114,7 @@ class Game(Base):
     room_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('rooms.id'))
     room: so.Mapped[Room] = so.relationship(back_populates='games')
 
-    words: so.Mapped[list[Word]] = so.relationship(back_populates='game')
+    turns: so.Mapped[list[Turn]] = so.relationship(back_populates='game')
     players: so.Mapped[list[Player]] = so.relationship(
         secondary=players_games_table, back_populates='games'
     )
@@ -133,20 +133,20 @@ class Message(Base):
     player: so.Mapped[Player] = so.relationship(back_populates='messages')
 
 
-# TODO: Add composite unique constraint on `content` and `game_id`?
-class Word(Base):
-    __tablename__ = 'words'
+# TODO: Add composite unique constraint on `word` and `game_id`?
+class Turn(Base):
+    __tablename__ = 'turns'
 
     id_: so.Mapped[int] = so.mapped_column('id', primary_key=True)
-    content: so.Mapped[str] = so.mapped_column(sa.String(255))
+    word: so.Mapped[str | None] = so.mapped_column(sa.String(255))
     is_correct: so.Mapped[bool] = so.mapped_column()
-    created_on: so.Mapped[datetime] = so.mapped_column(default=sa.func.now())
+    started_on: so.Mapped[datetime] = so.mapped_column(default=sa.func.now())
+    ended_on: so.Mapped[datetime | None] = so.mapped_column(nullable=True)
 
     game_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey('games.id'))
-    game: so.Mapped[Game] = so.relationship(back_populates='words')
-
+    game: so.Mapped[Game] = so.relationship(back_populates='turns')
     player_id: so.Mapped[UUID] = so.mapped_column(sa.ForeignKey('players.id'))
-    player: so.Mapped[Player] = so.relationship(back_populates='words')
+    player: so.Mapped[Player] = so.relationship(back_populates='turns')
 
 
 async def recreate_database():
@@ -194,5 +194,5 @@ LOBBY = Room(
     status=RoomStatusEnum.OPEN,
     capacity=0,
     owner=ROOT,
-    rules=s.DeathmatchRules().model_dump(by_alias=True),
+    rules=s.DeathmatchRules().model_dump(by_alias=True),  # type: ignore
 )

@@ -14,10 +14,12 @@ class Config(BaseSettings):
     AUTH_COOKIE_NAME: str = 'player_id'
     AUTH_COOKIE_EXPIRATION: int = 1200  # seconds
 
+    DICTIONARY_API_URL: str = 'https://api.dictionaryapi.dev/api/v2/entries/en/'
+
 
 @lru_cache
 def get_config() -> Config:
-    return Config()
+    return Config()  # type: ignore
 
 
 LOGGING_CONFIG = {

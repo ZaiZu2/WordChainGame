@@ -12,7 +12,7 @@ class GeneralBaseModel(BaseModel):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
 
-class MePlayer(GeneralBaseModel):
+class Player(GeneralBaseModel):
     id_: UUID = Field(serialization_alias='id')
     name: str
     created_on: datetime
@@ -29,6 +29,12 @@ class RoomPlayerOut(LobbyPlayerOut):
     """Player data sent as a part of RoomState."""
 
     ready: bool
+
+
+class GamePlayer(GeneralBaseModel):
+    name: str
+    score: int
+    mistakes: int
 
 
 class GameTypeEnum(str, Enum):
@@ -73,6 +79,7 @@ class RoomInModify(GeneralBaseModel):
 class WebSocketMessageTypeEnum(str, Enum):
     CHAT = 'chat'  # chat messages sent by players
     GAME_STATE = 'game_state'  # issued words, scores, ...?
+    GAME_INPUT = 'game_input'  # player's input his turn
     LOBBY_STATE = 'lobby_state'  # available rooms, ...?
     ROOM_STATE = 'room_state'  # players in the room, ...?
     CONNECTION_STATE = 'connection_state'
@@ -122,13 +129,53 @@ class RoomState(GeneralBaseModel):
     players: dict[str, RoomPlayerOut | None] | None = None  # player_name: player
 
 
+class Word(GeneralBaseModel):
+    content: str
+    description: dict[str, str] | None = None
+
+
+class Turn(GeneralBaseModel):
+    word: Word | None = None
+    is_correct: bool | None = None  # Necessary?
+    started_on: datetime
+    ended_on: datetime | None = None
+    current_player_idx: int
+
+
+class PlayerLostEvent(GeneralBaseModel):
+    type_: Literal['PlayerLost'] = 'PlayerLost'
+    player_name: str
+
+
+class GameFinishedEvent(GeneralBaseModel):
+    type_: Literal['GameFinished'] = 'GameFinished'
+
+
+class TurnResults(GeneralBaseModel):
+    turn: d.Turn
+    event: list[PlayerLostEvent | GameFinishedEvent] = Field(default_factory=list)
+
+
+class GameInput(BaseModel):
+    game_id: int
+    type: Literal['word_input']
+    word: str
+
+
 class GameState(GeneralBaseModel):
-    pass
+    id_: int = Field(serialization_alias='id')
+    status: d.GameStatusEnum
+    players: list[GamePlayer]
+    lost_players: list[GamePlayer]
+    rules: DeathmatchRules
+    current_turn: Turn | None
 
 
 class WebSocketMessage(GeneralBaseModel):
     type: WebSocketMessageTypeEnum
-    payload: ChatMessage | GameState | LobbyState | RoomState | ConnectionState
+    payload: (
+        ChatMessage | GameState | GameInput | LobbyState | RoomState | ConnectionState
+    )
 
     @model_validator(mode='after')
     @classmethod
@@ -136,13 +183,17 @@ class WebSocketMessage(GeneralBaseModel):
         payload_types = {
             WebSocketMessageTypeEnum.CHAT: ChatMessage,
             WebSocketMessageTypeEnum.GAME_STATE: GameState,
+            WebSocketMessageTypeEnum.GAME_INPUT: GameInput,
             WebSocketMessageTypeEnum.LOBBY_STATE: LobbyState,
             WebSocketMessageTypeEnum.ROOM_STATE: RoomState,
             WebSocketMessageTypeEnum.CONNECTION_STATE: ConnectionState,
         }
 
         expected_payload_type = payload_types.get(message.type)
-        if not isinstance(message.payload, expected_payload_type):
+
+        if expected_payload_type is None:
+            raise ValueError(f'Unexpected message type: {message.type}')
+        elif not isinstance(message.payload, expected_payload_type):
             raise ValueError(
                 f'Wrong payload provided for the {message.type} message type'
             )
