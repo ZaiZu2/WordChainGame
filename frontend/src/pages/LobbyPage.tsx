@@ -38,7 +38,7 @@ export default function LobbyPage() {
 function RoomList() {
     const navigate = useNavigate();
     const {
-        setMode,
+        switchMode,
         lobbyState,
         chatMessages,
         updateChatMessages,
@@ -63,58 +63,69 @@ function RoomList() {
         updateRoomState(response.body);
         // Temporary state update for testing purposes
         updateGameState({
+            id: 1,
+            status: "In progress",
             players: [
-                {
-                    name: "Player 1",
-                    score: 10,
-                    mistakes: 0,
-                },
-                {
-                    name: "Player 2",
-                    score: 8,
-                    mistakes: 1,
-                },
-                {
-                    name: "Player 3",
-                    score: 8,
-                    mistakes: 1,
-                },
-                {
-                    name: "Player 4",
-                    score: 8,
-                    mistakes: 1,
-                },
+                { name: "player1", score: 0, mistakes: 0 },
+                { name: "player2", score: 0, mistakes: 0 },
+                { name: "player3", score: 0, mistakes: 0 },
             ],
-            words: [
-                {
-                    id: 1,
-                    content: "word1",
-                    is_correct: true,
-                    created_on: new Date(),
-                    game_id: 1,
-                    player_name: "Player 1",
-                },
-                {
-                    id: 2,
-                    content: "word2",
-                    is_correct: false,
-                    created_on: new Date(),
-                    game_id: 1,
-                    player_name: "Player 2",
-                },
-            ],
+            lost_players: [],
             rules: {
                 type: "deathmatch",
                 round_time: 60,
-                start_score: 0,
-                penalty: -1,
-                reward: 1,
+                start_score: 100,
+                penalty: -10,
+                reward: 10,
             },
-            turn: {
-                currentPlayer: 0, // Index of the current player in the `players` array
+            current_turn: {
+                word: {
+                    content: "word3",
+                    is_correct: true,
+                    description: { en: "third word" },
+                },
+                is_correct: null,
+                started_on: new Date().toISOString(),
+                ended_on: null,
+                current_player_idx: 2,
             },
+            turns: [
+                {
+                    word: {
+                        content: "word1",
+                        is_correct: true,
+                        description: { en: "first word" },
+                    },
+                    is_correct: true,
+                    started_on: new Date().toISOString(),
+                    ended_on: new Date().toISOString(),
+                    current_player_idx: 0,
+                },
+                {
+                    word: {
+                        content: "word2",
+                        is_correct: true,
+                        description: { en: "second word" },
+                    },
+                    is_correct: true,
+                    started_on: new Date().toISOString(),
+                    ended_on: new Date().toISOString(),
+                    current_player_idx: 1,
+                },
+                {
+                    word: {
+                        content: "word3",
+                        is_correct: false,
+                        description: { en: "third word" },
+                    },
+                    is_correct: true,
+                    started_on: new Date().toISOString(),
+                    ended_on: null,
+                    current_player_idx: 2,
+                },
+            ],
         });
-        setMode("room");
+        switchMode("room");
         navigate(`/room`);
     }
 

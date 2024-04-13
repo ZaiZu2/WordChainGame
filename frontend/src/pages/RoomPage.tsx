@@ -8,7 +8,7 @@ import apiClient from "../apiClient";
 import Bubble from "../components/Bubble";
 import Icon from "../components/Icon";
 import { useStore } from "../contexts/storeContext";
-import { GameState, LobbyState, Player, RoomState, Word } from "../types";
+import { GamePlayer, GameState, LobbyState, Player, RoomState, Turn, Word } from "../types";
 
 export default function RoomPage() {
     const { mode } = useStore();
@@ -131,12 +131,14 @@ function ButtonBar() {
         player: _player,
         roomState: _roomState,
         chatMessages,
-        setMode,
+        switchMode,
         updateChatMessages,
         purgeChatMessages,
         isRoomOwner,
         toggleModal,
         updateLobbyState,
+        updateGameState,
+        resetGameState,
     } = useStore();
     const player = _player as Player;
     const roomState = _roomState as RoomState;
@@ -155,7 +157,7 @@ function ButtonBar() {
             return;
         }
         updateLobbyState(response.body);
-        setMode("lobby");
+        switchMode("lobby");
         navigate("/");
     }
 
@@ -173,6 +175,19 @@ function ButtonBar() {
         } catch (error) {
             //TODO: Handle error
         }
+    }
+
+    async function startGame(roomId: number) {
+        let response;
+        try {
+            response = await apiClient.post<GameState>(`/rooms/${roomId}/start`);
+        } catch (error) {
+            //TODO: Handle error
+            return;
+        }
+        resetGameState();
+        updateGameState(response.body);
+        switchMode("game");
     }
 
     return (
@@ -220,7 +235,7 @@ function ButtonBar() {
                     <Button
                         variant="primary"
                         size="sm"
-                        onClick={() => true}
+                        onClick={() => startGame(roomState.id as number)}
                         disabled={
                             !Object.values(roomState.players)
                                 .filter((p) => p.name !== player.name)
@@ -244,7 +259,7 @@ function ButtonBar() {
 }
 
 function ScoreCard() {
-    const { mode, roomState: _roomState, gameState, isRoomOwner } = useStore();
+    const { mode, roomState: _roomState, isRoomOwner } = useStore();
     const roomState = _roomState as RoomState;
 
     return (
@@ -282,12 +297,8 @@ function ScoreCard() {
                                     <td>{player.name}</td>
                                     {mode === "game" ? (
                                         <>
-                                            <td>
-                                                {/* {gameState.players[player.name].points} */}0
-                                            </td>
-                                            <td>
-                                                {/* {gameState.players[player.name].mistakes} */}0
-                                            </td>
+                                            <td>{/* {gamePlayers[player.name].points} */}0</td>
+                                            <td>{/* {gamePlayers[player.name].mistakes} */}0</td>
                                         </>
                                     ) : (
                                         <td>
@@ -324,20 +335,21 @@ function ScoreCard() {
 }
 
 function CurrentPlayer() {
-    const { gameState: _gameState } = useStore();
-    const gameState = _gameState as GameState;
+    const { gamePlayers: _gamePlayers, gameCurrentTurn: _gameCurrentTurn } = useStore();
+    const gamePlayers = _gamePlayers as GamePlayer[];
+    const gameCurrentTurn = _gameCurrentTurn as Turn;
 
     let players;
-    if (gameState.players.length < 3) {
-        players = gameState.players;
+    if (gamePlayers.length < 3) {
+        players = gamePlayers;
     } else {
-        const prevIndex = (gameState.turn.currentPlayer - 1) % gameState.players.length;
-        const nextIndex = (gameState.turn.currentPlayer + 1) % gameState.players.length;
+        const prevIndex = (gameCurrentTurn.current_player_idx - 1) % gamePlayers.length;
+        const nextIndex = (gameCurrentTurn.current_player_idx + 1) % gamePlayers.length;
         players = [
             // Find the previous, current and next player to be render in the bubble
-            gameState.players[prevIndex < 0 ? prevIndex + gameState.players.length : prevIndex],
-            gameState.players[gameState.turn.currentPlayer],
-            gameState.players[nextIndex],
+            gamePlayers[prevIndex < 0 ? prevIndex + gamePlayers.length : prevIndex],
+            gamePlayers[gameCurrentTurn.current_player_idx],
+            gamePlayers[nextIndex],
         ];
     }
 
@@ -368,7 +380,11 @@ function CurrentPlayer() {
 }
 
 function WordList() {
-    const { roomState } = useStore();
+    const { roomState, gamePlayers: _gamePlayers, gameTurns: _gameTurns } = useStore();
+    const gamePlayers = _gamePlayers as GamePlayer[];
+    const gameTurns = _gameTurns as Turn[];
+
+    const turns = gameTurns.length > 5 ? gameTurns.slice(-5) : gameTurns;
 
     const positionToSize: Record<number, string> = {
         0: "fs-6",
@@ -383,49 +399,6 @@ function WordList() {
         word.is_correct ? "+" + roomState?.rules.reward : roomState?.rules.penalty;
     const color = (word: Word) => (word.is_correct ? "text-success" : "text-danger"); // GREEN or RED
 
-    const word_1 = {
-        id: 1,
-        player_name: "Vecky",
-        created_on: new Date("2024-01-01 12:00:00"),
-        content: "Elephant",
-        is_correct: true,
-        game_id: 1,
-    } as Word;
-    const word_2 = {
-        id: 2,
-        player_name: "Adam",
-        created_on: new Date("2024-01-01 12:00:00"),
-        content: "Tiger",
-        is_correct: false,
-        game_id: 1,
-    } as Word;
-    const word_3 = {
-        id: 3,
-        player_name: "Becky",
-        created_on: new Date("2024-01-01 12:00:00"),
-        content: "Rotor",
-        is_correct: false,
-        game_id: 1,
-    } as Word;
-    const word_4 = {
-        id: 4,
-        player_name: "Becky",
-        created_on: new Date("2024-01-01 12:00:00"),
-        content: "Rotor",
-        is_correct: false,
-        game_id: 1,
-    } as Word;
-    const word_5 = {
-        id: 5,
-        player_name: "Becky",
-        created_on: new Date("2024-01-01 12:00:00"),
-        content: "Rotor",
-        is_correct: false,
-        game_id: 1,
-    } as Word;
-
-    const words = [word_1, word_2, word_3, word_4, word_5];
-
     const style = {
         flexGrow: 1,
         flexShrink: 0,
@@ -437,21 +410,32 @@ function WordList() {
         <Bubble>
             <Table borderless className="m-0 text-center">
                 <tbody>
-                    {words.map((word, position) => {
+                    {Array.from({ length: 5 }).map((_, index) => {
+                        const turnOffset = 5 - turns.length;
+                        const turnIndex = index - turnOffset;
+                        if (turnIndex < 0) {
+                            return;
+                        }
+
+                        const word = turns[turnIndex].word as Word;
+                        const player_name = gamePlayers[turns[turnIndex].current_player_idx].name;
+                        console.log("turnIndex", turnIndex);
+                        console.log("index", index);
+                        console.log("turnOffset", turnOffset);
                         return (
                             <tr
                                 style={style}
                                 className="d-flex justify-content-between"
-                                key={word.id}
+                                key={word.content}
                             >
                                 <td style={{ flexBasis: "20%" }} className="p-0 border-0">
-                                    {word.player_name}
+                                    {player_name}
                                 </td>
                                 <td className="p-0 border-0">
                                     <Stack direction="horizontal" gap={2}>
                                         <div
                                             style={{ flexBasis: "60%" }}
-                                            className={`p-0 border-0 ${positionToSize[position]}`}
+                                            className={`p-0 border-0 ${positionToSize[index]}`}
                                         >
                                             {word.content}
                                         </div>

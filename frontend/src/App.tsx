@@ -17,7 +17,7 @@ export default function App() {
 
     return (
         <BrowserRouter>
-            {!player ? (
+            {player === null ? (
                 <LoginModal />
             ) : (
                 <>

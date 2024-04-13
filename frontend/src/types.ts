@@ -60,13 +60,34 @@ export type GamePlayer = {
     mistakes: number;
 };
 
+export type GameInput = {
+    game_id: number;
+    type: "word_input";
+    word: string;
+};
+
+export type Word = {
+    content: string;
+    is_correct?: boolean;
+    description?: Record<string, string>;
+};
+
+export type Turn = {
+    word: Word | null;
+    is_correct: boolean | null;
+    started_on: string;
+    ended_on: string | null;
+    current_player_idx: number;
+};
+
 export type GameState = {
-    players: GamePlayer[]; // Players ordered by their turns
-    words: Word[];
-    rules: DeathmatchRules;
-    turn: {
-        currentPlayer: number; // Index of the current player in the `players` array
-    };
+    id: number;
+    status: "In progress" | "Finished";
+    players: GamePlayer[]; // Players ordered by their turns, differential updates are possible as `currentPlayer` index is passed in `turn` object
+    lost_players: GamePlayer[]; // Players who lost the game, in loss order
+    rules: DeathmatchRules; // sent only when the game starts
+    current_turn: Turn;
+    turns: Turn[];
 };
 
 export type RoomState = Omit<RoomOut, "players_no"> & {
@@ -106,15 +127,6 @@ export type ConnectionState = {
 export type WebSocketMessage = {
     type: "chat" | "game_state" | "lobby_state" | "room_state" | "connection_state";
     payload: ChatMessage | GameState | LobbyState | RoomState | ConnectionState;
-};
-
-export type Word = {
-    id?: number;
-    content: string;
-    is_correct: boolean;
-    created_on: Date;
-    game_id: number;
-    player_name: string;
 };
 
 export type ModalConfigs = {

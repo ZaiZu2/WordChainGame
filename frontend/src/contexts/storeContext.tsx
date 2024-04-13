@@ -14,21 +14,21 @@ import {
 import apiClient from "../apiClient";
 import { CHAT_MESSAGE_LIMIT } from "../config";
 import { AuthError } from "../errors";
+import GameStoreSlice, { initialGameStoreSlice } from "./gameStore";
 
 export type StoreContext = {
     chatMessages: ChatMessage[];
     lobbyState: LobbyState | null;
     roomState: RoomState | null;
-    gameState: GameState | null;
     allTimeStatistics: AllTimeStatistics | undefined;
     mode: "lobby" | "room" | "game";
     player: Player | null | undefined;
-    setMode: (mode: "lobby" | "room" | "game") => void;
+    switchMode: (mode: "lobby" | "room" | "game") => void;
     updateChatMessages: (newChatMessages: ChatMessage[]) => void;
     purgeChatMessages: () => void;
     updateLobbyState: (newLobbyState: LobbyState | null) => void;
     updateRoomState: (newRoomState: RoomState | null) => void;
-    updateGameState: (newGameState: GameState | null) => void;
+    updateGameState: (newGameState: GameState) => void;
     setAllTimeStatistics: (newAllTimeStatistics: AllTimeStatistics) => void;
     logIn: (id: UUID) => void;
     logOut: () => void;
@@ -40,22 +40,20 @@ export type StoreContext = {
         config?: ModalConfigs[K],
         close?: boolean
     ) => void;
-};
+} & ReturnType<typeof GameStoreSlice>;
 
 const StoreContextObject = createContext<StoreContext>({
     chatMessages: [],
     lobbyState: null,
     roomState: null,
-    gameState: null,
     mode: "lobby",
     player: null,
     allTimeStatistics: undefined,
-    setMode: (mode: "lobby" | "room" | "game") => {},
+    switchMode: (mode: "lobby" | "room" | "game") => {},
     updateChatMessages: (newChatMessages: ChatMessage[]) => {},
     purgeChatMessages: () => {},
     updateLobbyState: (newLobbyState: LobbyState | null) => {},
     updateRoomState: (newRoomState: RoomState | null) => {},
-    updateGameState: (newGameState: GameState | null) => {},
     setAllTimeStatistics: (newAllTimeStatistics: AllTimeStatistics) => {},
     logIn: () => {},
     logOut: () => {},
@@ -67,6 +65,8 @@ const StoreContextObject = createContext<StoreContext>({
         config?: ModalConfigs[K],
         close?: boolean
     ) => {},
+
+    ...initialGameStoreSlice,
 });
 
 export function useStore() {
@@ -79,10 +79,10 @@ export default function StoreProvider({ children }: { children: React.ReactNode 
     const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
     const [lobbyState, setLobbyState] = useState<LobbyState | null>(null);
     const [roomState, setRoomState] = useState<RoomState | null>(null);
-    const [gameState, setGameState] = useState<GameState | null>(null);
     const [allTimeStatistics, setAllTimeStatistics] = useState<AllTimeStatistics | undefined>(
         undefined
     );
+    const gameStoreSlice = GameStoreSlice();
 
     const [modalConfigs, setModalConfig] = useState<ModalConfigs>({});
 
@@ -168,14 +168,15 @@ export default function StoreProvider({ children }: { children: React.ReactNode 
         });
     }
 
-    function updateGameState(newGameState: GameState | null) {
-        setGameState((prevGameState) => {
-            if (newGameState === null || prevGameState === null) {
-                return newGameState;
-            } else {
-                return { ...prevGameState, ...newGameState };
-            }
-        });
+    function switchMode(newMode: "lobby" | "room" | "game") {
+        setMode(newMode);
+
+        if (newMode === "lobby") {
+            setRoomState(null);
+            gameStoreSlice.resetGameState();
+        } else if (newMode === "room") {
+            // setGameState(null);
+        }
     }
 
     /**
@@ -225,22 +226,21 @@ export default function StoreProvider({ children }: { children: React.ReactNode 
                 chatMessages,
                 lobbyState,
                 roomState,
-                gameState,
                 allTimeStatistics,
                 mode,
-                setMode,
+                switchMode,
                 player,
                 updateChatMessages,
                 purgeChatMessages,
                 updateLobbyState,
                 updateRoomState,
-                updateGameState,
                 setAllTimeStatistics,
                 logIn,
                 logOut,
                 isRoomOwner,
                 modalConfigs,
                 toggleModal,
+                ...gameStoreSlice,
             }}
         >
             {children}
