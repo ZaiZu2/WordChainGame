@@ -3,13 +3,16 @@ from enum import Enum
 from typing import Literal, Protocol
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field
 
 import src.models as d
 
 
 class GeneralBaseModel(BaseModel):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+
+#################################### DOMAIN SCHEMAS ####################################
 
 
 class Player(GeneralBaseModel):
@@ -123,83 +126,3 @@ class RoomIn(GeneralBaseModel):
 class RoomInModify(GeneralBaseModel):
     capacity: int = Field(5, ge=1, le=10)
     rules: DeathmatchRules
-
-
-class GameInput(BaseModel):
-    game_id: int
-    type: Literal['word_input']
-    word: str
-
-
-################################## WEBSOCKET SCHEMAS ##################################
-
-
-class LobbyState(GeneralBaseModel):
-    rooms: dict[int, RoomOut | None] | None = None  # room_id: room
-    players: dict[str, LobbyPlayerOut | None] | None = None  # player_name: player
-    stats: CurrentStatistics | None = None
-
-
-class RoomState(GeneralBaseModel):
-    id_: int = Field(serialization_alias='id')
-    name: str
-    capacity: int
-    status: d.RoomStatusEnum
-    rules: DeathmatchRules
-    owner_name: str
-    players: dict[str, RoomPlayerOut | None] | None = None  # player_name: player
-
-
-class GameState(GeneralBaseModel):
-    id_: int = Field(serialization_alias='id')
-    status: d.GameStatusEnum
-    players: list[GamePlayer]
-    lost_players: list[GamePlayer]
-    rules: DeathmatchRules
-    current_turn: Turn | None
-
-
-class CustomWebsocketCodeEnum(int, Enum):
-    MULTIPLE_CLIENTS = 4001  # Player is already connected with another client
-
-
-class ConnectionState(GeneralBaseModel):
-    code: CustomWebsocketCodeEnum
-    reason: str
-
-
-class WebSocketMessageTypeEnum(str, Enum):
-    CHAT = 'chat'  # chat messages sent by players
-    GAME_STATE = 'game_state'  # issued words, scores, ...?
-    GAME_INPUT = 'game_input'  # player's input his turn
-    LOBBY_STATE = 'lobby_state'  # available rooms, ...?
-    ROOM_STATE = 'room_state'  # players in the room, ...?
-    CONNECTION_STATE = 'connection_state'
-
-
-class WebSocketMessage(GeneralBaseModel):
-    type: WebSocketMessageTypeEnum
-    payload: (
-        ChatMessage | GameState | GameInput | LobbyState | RoomState | ConnectionState
-    )
-
-    @model_validator(mode='after')
-    @classmethod
-    def _check_corresponding_payload(cls, message: 'WebSocketMessage'):
-        payload_types = {
-            WebSocketMessageTypeEnum.CHAT: ChatMessage,
-            WebSocketMessageTypeEnum.GAME_STATE: GameState,
-            WebSocketMessageTypeEnum.GAME_INPUT: GameInput,
-            WebSocketMessageTypeEnum.LOBBY_STATE: LobbyState,
-            WebSocketMessageTypeEnum.ROOM_STATE: RoomState,
-            WebSocketMessageTypeEnum.CONNECTION_STATE: ConnectionState,
-        }
-
-        expected_payload_type = payload_types.get(message.type)
-
-        if expected_payload_type is None:
-            raise ValueError(f'Unexpected message type: {message.type}')
-        elif not isinstance(message.payload, expected_payload_type):
-            raise ValueError(
-                f'Wrong payload provided for the {message.type} message type'
-            )

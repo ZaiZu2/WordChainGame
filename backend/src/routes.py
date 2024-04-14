@@ -12,7 +12,7 @@ from fastapi import (
     WebSocketDisconnect,
     status,
 )
-from sqlalchemy import func, select
+from sqlalchemy import func, insert, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
@@ -40,7 +40,9 @@ router = APIRouter(tags=[TagsEnum.ALL])
 
 
 @router.get('/players/me', status_code=status.HTTP_200_OK)
-async def get_player(player: Annotated[d.Player, Depends(get_player)]) -> s.MePlayer:
+async def get_client_player(
+    player: Annotated[d.Player, Depends(get_player)],
+) -> s.Player:
     return player
 
 
@@ -48,7 +50,7 @@ async def get_player(player: Annotated[d.Player, Depends(get_player)]) -> s.MePl
 async def create_player(
     name: Annotated[str, Body(embed=True, max_length=10)],
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> s.MePlayer:
+) -> s.Player:
     if await db.scalar(select(d.Player).where(d.Player.name == name)):
         raise HTTPException(
             status_code=409, detail=[f'Player with name {name} already exists']
@@ -59,7 +61,7 @@ async def create_player(
     await db.flush()
     await db.refresh(player)
 
-    return s.MePlayer.model_validate(player)
+    return s.Player.model_validate(player)
 
 
 @router.post('/players/login', status_code=status.HTTP_200_OK)
@@ -67,13 +69,13 @@ async def login_player(
     id_: Annotated[UUID, Body(embed=True, alias='id')],
     response: Response,
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> s.MePlayer:
+) -> s.Player:
     player = await db.scalar(select(d.Player).where(d.Player.id_ == id_))
     if not player:
         raise HTTPException(status.HTTP_403_FORBIDDEN, 'Player not found')
 
     await set_auth_cookie(player.id_, response)
-    return s.MePlayer.model_validate(player)
+    return s.Player.model_validate(player)
 
 
 @router.post('/players/logout', status_code=status.HTTP_200_OK)
@@ -88,7 +90,7 @@ async def update_player_name(
     name: Annotated[str, Body(embed=True)],
     player: Annotated[d.Player, Depends(get_player)],
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> s.MePlayer:
+) -> s.Player:
     if db.scalar(select(d.Player).where(d.Player.name == name)):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -115,7 +117,7 @@ async def create_room(
             detail=f'Game room with name {room_in.name} already exists',
         )
 
-    room = d.Room(**room_in.model_dump(exclude_unset=True))
+    room = d.Room(**room_in.model_dump())
     room.owner = player
     db.add(room)
     await db.flush([room])
@@ -170,7 +172,7 @@ async def join_room(
     room = await db.scalar(
         select(d.Room).where(d.Room.id_ == room_id).options(joinedload(d.Room.owner))
     )
-    _, old_room_id = conn_manager.find_connection(player.id_)
+    conn, old_room_id = conn_manager.find_connection(player.id_)
 
     if room_id == old_room_id:
         return s.RoomState(owner_name=room.owner.name, **room.to_dict())
@@ -190,6 +192,8 @@ async def join_room(
     await move_player_and_broadcast_message(
         player, old_room_id, room_id, db, conn_manager
     )
+    if player.id_ == room.owner_id:
+        conn.ready = True
 
     # Broadcast the info about all the players in the room, as the joining player
     # needs that context
@@ -383,53 +387,62 @@ async def start_game(
 
     room.status = d.RoomStatusEnum.IN_PROGRESS
     # Load all players from the db to create a many-to-many relationship with the game placeholder
-    players = await db.scalars(
-        select(d.Player).where(
-            d.Player.id_.in_(
-                [conn.player_id for conn in conn_manager.connections[room_id]]
+    players = (
+        await db.scalars(
+            select(d.Player).where(
+                d.Player.id_.in_(
+                    [conn.player_id for conn in conn_manager.connections[room_id]]
+                )
             )
         )
-    )
+    ).fetchall()
+
     # Create game placeholder in the database to assign the ID
-    game_db = d.Game(
-        status=d.GameStatusEnum.IN_PROGRESS,
-        rules=room.rules,
-        room_id=room_id,
-        players=players,
-    )
-    db.add_all([game_db, room])
-    await db.commit()
-    await db.refresh(game_db)
+    with db.no_autoflush:
+        game_db = d.Game(
+            status=d.GameStatusEnum.IN_PROGRESS,
+            rules=room.rules,
+            room_id=room_id,
+            # TODO: Figure out why instantiating `d.Game` with `players` issues multiple
+            # INSERT statements, violating the unique constraint
+            # players=players,
+        )
+        db.add_all([game_db, room])
+        await db.flush([game_db, room])
+
+        # HACK: Insert the many-to-many relationship manually
+        await db.execute(
+            insert(d.players_games_table).values(
+                [
+                    {'game_id': game_db.id_, 'player_id': player.id_}
+                    for player in players
+                ]
+            )
+        )
+        await db.refresh(game_db, attribute_names=['players'])
 
     # Store the game in memory during it's progress
     game = game_manager.create(game_db)
 
     # Broadcast the initial game state to all players
-    game_state = s.GameState(
+    game_state = s.StartGameState(
         id_=game.id_,
         status=game.status,
         players=game.players,
         lost_players=game.lost_players,
         rules=game.rules,
-        current_turn=None,
-    )
+    )  # type: ignore
     await conn_manager.broadcast_game_state(room.id_, game_state)
 
     # Delay the game start to prime the players
     await asyncio.sleep(3)
-    # TODO: Should i return `TurnResults` from methods or simply access object properties?
-    turn_results = game.start_turn()
-    game_state = s.GameState(
-        id_=game.id_,
-        status=game.status,
-        players=game.players,
-        lost_players=game.lost_players,
-        rules=game.rules,
+    game.start_turn()
+    turn_state = s.StartTurnState(
         current_turn=s.Turn(
             current_player_idx=game.players.current_idx, **game.current_turn.to_dict()
         ),
-    )
-    await conn_manager.broadcast_game_state(room.id_, game_state)
+    )  # type: ignore
+    await conn_manager.broadcast_game_state(room.id_, turn_state)
 
 
 @router.get('/stats', status_code=status.HTTP_200_OK)
