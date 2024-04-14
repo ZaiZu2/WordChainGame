@@ -1,6 +1,6 @@
 from datetime import datetime
 from enum import Enum
-from typing import Literal
+from typing import Literal, Protocol
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -16,6 +16,73 @@ class Player(GeneralBaseModel):
     id_: UUID = Field(serialization_alias='id')
     name: str
     created_on: datetime
+
+
+class GameTypeEnum(str, Enum):
+    DEATHMATCH = 'deathmatch'
+
+
+class Rules(GeneralBaseModel):
+    type_: GameTypeEnum = Field(serialization_alias='type')
+
+
+class DeathmatchRules(Rules):
+    type_: Literal[GameTypeEnum.DEATHMATCH] = Field(
+        GameTypeEnum.DEATHMATCH, serialization_alias='type'
+    )
+    round_time: int = Field(10, ge=3, le=30)
+    start_score: int = Field(0, ge=0, le=10)
+    penalty: int = Field(-5, ge=-10, le=0)  # If 0, player loses after a single mistake
+    reward: int = Field(2, ge=0, le=10)
+
+
+class ChatMessage(GeneralBaseModel):
+    id_: int | None = Field(None, serialization_alias='id')
+    created_on: datetime | None = None
+    content: str
+    player_name: str
+    room_id: int
+
+
+class CurrentStatistics(GeneralBaseModel):
+    active_players: int
+    active_rooms: int
+
+
+class AllTimeStatistics(GeneralBaseModel):
+    longest_chain: int
+    longest_game_time: int
+    total_games: int
+
+
+class Word(GeneralBaseModel):
+    content: str
+    description: dict[str, str] | None = None
+    is_correct: bool | None = None  # Necessary?
+
+
+class Turn(GeneralBaseModel):
+    word: Word | None = None
+    is_correct: bool | None = None  # Necessary?
+    started_on: datetime
+    ended_on: datetime | None = None
+    current_player_idx: int
+
+
+class GameEvent(Protocol):
+    type_: Literal['GameFinished', 'PlayerLost']
+
+
+class PlayerLostEvent(GeneralBaseModel):
+    type_: Literal['PlayerLost'] = 'PlayerLost'
+    player_name: str
+
+
+class GameFinishedEvent(GeneralBaseModel):
+    type_: Literal['GameFinished'] = 'GameFinished'
+
+
+################################## VALIDATION SCHEMAS ##################################
 
 
 class LobbyPlayerOut(GeneralBaseModel):
@@ -35,24 +102,6 @@ class GamePlayer(GeneralBaseModel):
     name: str
     score: int
     mistakes: int
-
-
-class GameTypeEnum(str, Enum):
-    DEATHMATCH = 'deathmatch'
-
-
-class Rules(GeneralBaseModel):
-    type_: GameTypeEnum = Field(serialization_alias='type')
-
-
-class DeathmatchRules(Rules):
-    type_: Literal[GameTypeEnum.DEATHMATCH] = Field(
-        GameTypeEnum.DEATHMATCH, serialization_alias='type'
-    )
-    round_time: int = Field(10, ge=3, le=30)
-    start_score: int = Field(0, ge=0, le=10)
-    penalty: int = Field(-5, ge=-10, le=0)  # If 0, player loses after a single mistake
-    reward: int = Field(2, ge=0, le=10)
 
 
 class RoomOut(GeneralBaseModel):
@@ -76,41 +125,13 @@ class RoomInModify(GeneralBaseModel):
     rules: DeathmatchRules
 
 
-class WebSocketMessageTypeEnum(str, Enum):
-    CHAT = 'chat'  # chat messages sent by players
-    GAME_STATE = 'game_state'  # issued words, scores, ...?
-    GAME_INPUT = 'game_input'  # player's input his turn
-    LOBBY_STATE = 'lobby_state'  # available rooms, ...?
-    ROOM_STATE = 'room_state'  # players in the room, ...?
-    CONNECTION_STATE = 'connection_state'
+class GameInput(BaseModel):
+    game_id: int
+    type: Literal['word_input']
+    word: str
 
 
-class ChatMessage(GeneralBaseModel):
-    id_: int | None = Field(None, serialization_alias='id')
-    created_on: datetime | None = None
-    content: str
-    player_name: str
-    room_id: int
-
-
-class CustomWebsocketCodeEnum(int, Enum):
-    MULTIPLE_CLIENTS = 4001  # Player is already connected with another client
-
-
-class ConnectionState(GeneralBaseModel):
-    code: CustomWebsocketCodeEnum
-    reason: str
-
-
-class CurrentStatistics(GeneralBaseModel):
-    active_players: int
-    active_rooms: int
-
-
-class AllTimeStatistics(GeneralBaseModel):
-    longest_chain: int
-    longest_game_time: int
-    total_games: int
+################################## WEBSOCKET SCHEMAS ##################################
 
 
 class LobbyState(GeneralBaseModel):
@@ -129,39 +150,6 @@ class RoomState(GeneralBaseModel):
     players: dict[str, RoomPlayerOut | None] | None = None  # player_name: player
 
 
-class Word(GeneralBaseModel):
-    content: str
-    description: dict[str, str] | None = None
-
-
-class Turn(GeneralBaseModel):
-    word: Word | None = None
-    is_correct: bool | None = None  # Necessary?
-    started_on: datetime
-    ended_on: datetime | None = None
-    current_player_idx: int
-
-
-class PlayerLostEvent(GeneralBaseModel):
-    type_: Literal['PlayerLost'] = 'PlayerLost'
-    player_name: str
-
-
-class GameFinishedEvent(GeneralBaseModel):
-    type_: Literal['GameFinished'] = 'GameFinished'
-
-
-class TurnResults(GeneralBaseModel):
-    turn: d.Turn
-    event: list[PlayerLostEvent | GameFinishedEvent] = Field(default_factory=list)
-
-
-class GameInput(BaseModel):
-    game_id: int
-    type: Literal['word_input']
-    word: str
-
-
 class GameState(GeneralBaseModel):
     id_: int = Field(serialization_alias='id')
     status: d.GameStatusEnum
@@ -169,6 +157,24 @@ class GameState(GeneralBaseModel):
     lost_players: list[GamePlayer]
     rules: DeathmatchRules
     current_turn: Turn | None
+
+
+class CustomWebsocketCodeEnum(int, Enum):
+    MULTIPLE_CLIENTS = 4001  # Player is already connected with another client
+
+
+class ConnectionState(GeneralBaseModel):
+    code: CustomWebsocketCodeEnum
+    reason: str
+
+
+class WebSocketMessageTypeEnum(str, Enum):
+    CHAT = 'chat'  # chat messages sent by players
+    GAME_STATE = 'game_state'  # issued words, scores, ...?
+    GAME_INPUT = 'game_input'  # player's input his turn
+    LOBBY_STATE = 'lobby_state'  # available rooms, ...?
+    ROOM_STATE = 'room_state'  # players in the room, ...?
+    CONNECTION_STATE = 'connection_state'
 
 
 class WebSocketMessage(GeneralBaseModel):
