@@ -143,7 +143,6 @@ function ButtonBar() {
         updateLobbyState,
         updateGameState,
         resetGameState,
-        initializeGame,
     } = useStore();
     const player = _player as Player;
     const roomState = _roomState as RoomState;
@@ -191,7 +190,6 @@ function ButtonBar() {
             return;
         }
         resetGameState();
-        initializeGame();
         updateGameState(response.body);
         switchMode("game");
     }

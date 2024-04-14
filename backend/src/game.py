@@ -31,8 +31,8 @@ def validate_word(word: str) -> dict:
 class OrderedPlayers(list):
     """Augmented list class which mimics circular singly-linked list. Randomizes the order of players upon instantiation and keeps track of the current player."""
 
-    def __init__(self, players: list[d.Player]) -> None:
-        super().__init__([s.GamePlayer(**player.to_dict()) for player in players])
+    def __init__(self, players: list[s.GamePlayer]) -> None:
+        super().__init__(players)
         random.shuffle(self)
 
         self.current_idx = 0
@@ -73,28 +73,30 @@ class Deathmatch:
         self, id_: int, players: list[d.Player], rules: s.DeathmatchRules
     ) -> None:
         self.id_ = id_
+        self.status = d.GameStatusEnum.IN_PROGRESS
+        self.rules = rules
 
-        self.players = OrderedPlayers(players)
+        game_players = [
+            s.GamePlayer(score=self.rules.start_score, mistakes=0, **player.to_dict())
+            for player in players
+        ]
+        self.players = OrderedPlayers(game_players)
         self.lost_players: list[s.GamePlayer] = []
 
         self.turns: list[d.Turn] = []
         self.current_turn: d.Turn | None = None
 
-        self.status = d.GameStatusEnum.IN_PROGRESS
-        self.rules = rules
-
-    def start_turn(self) -> s.TurnResults:
+    def start_turn(self) -> None:
         if self.status == d.GameStatusEnum.FINISHED:
             raise ValueError('Game is already finished')
 
         if self.turns:  # Don't iterate on the first turn
             self.players.next()
         self.current_turn = d.Turn(
-            started_on=datetime.utcnow(), player=self.players.current
+            started_on=datetime.utcnow(), player_id=self.players.current
         )
-        return s.TurnResults(turn=self.current_turn)
 
-    def process_turn(self, word: str) -> s.TurnResults:
+    def process_turn(self, word: str) -> list[s.PlayerLostEvent | s.GameFinishedEvent]:
         current_turn = cast(d.Turn, self.current_turn)
         current_turn.ended_on = datetime.utcnow()
         time_elapsed = current_turn.ended_on - current_turn.started_on
@@ -114,7 +116,7 @@ class Deathmatch:
 
         self.turns.append(current_turn)
         self.current_turn = None
-        return s.TurnResults(turn=current_turn, event=[*turn_event, *game_event])
+        return [*turn_event, *game_event]
 
     # def _finalize_turn(self) -> s.TurnResults:
     #     current_turn = cast(d.Turn, self.current_turn)
@@ -159,7 +161,7 @@ class GameManager:
         return self.games[game_id]
 
     def create(self, game_db: d.Game) -> Deathmatch:
-        if game_db.rules['type'] == s.GameTypeEnum.DEATHMATCH:
+        if game_db.rules['type_'] == s.GameTypeEnum.DEATHMATCH:
             rules = s.DeathmatchRules(**game_db.rules)
             game = self.games[game_db.id_] = Deathmatch(
                 game_db.id_, game_db.players, rules

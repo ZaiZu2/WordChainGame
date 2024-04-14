@@ -70,10 +70,8 @@ class ConnectionManager:
             payload=message,
         )
 
-        send_messages = [
-            conn.websocket.send_json(websocket_message.model_dump_json(by_alias=True))
-            for conn in room_conns
-        ]
+        message_json = websocket_message.model_dump_json(by_alias=True)
+        send_messages = [conn.websocket.send_json(message_json) for conn in room_conns]
         await asyncio.gather(*send_messages)
 
     async def send_chat_message(
@@ -104,10 +102,8 @@ class ConnectionManager:
             payload=lobby_state,
         )
 
-        send_messages = [
-            conn.websocket.send_json(websocket_message.model_dump_json(by_alias=True))
-            for conn in lobby_conns
-        ]
+        message_json = websocket_message.model_dump_json(by_alias=True)
+        send_messages = [conn.websocket.send_json(message_json) for conn in lobby_conns]
         await asyncio.gather(*send_messages)
 
     async def send_lobby_state(
@@ -140,10 +136,8 @@ class ConnectionManager:
             type=s.WebSocketMessageTypeEnum.ROOM_STATE,
             payload=room_state,
         )
-        send_messages = [
-            conn.websocket.send_json(websocket_message.model_dump_json(by_alias=True))
-            for conn in room_conns
-        ]
+        message_json = websocket_message.model_dump_json(by_alias=True)
+        send_messages = [conn.websocket.send_json(message_json) for conn in room_conns]
         await asyncio.gather(*send_messages)
 
     async def broadcast_game_state(self, room_id: int, game_state: s.GameState) -> None:
@@ -154,10 +148,8 @@ class ConnectionManager:
             type=s.WebSocketMessageTypeEnum.GAME_STATE,
             payload=game_state,
         )
-        send_messages = [
-            conn.websocket.send_json(websocket_message.model_dump_json(by_alias=True))
-            for conn in room_conns
-        ]
+        message_json = websocket_message.model_dump_json(by_alias=True)
+        send_messages = [conn.websocket.send_json(message_json) for conn in room_conns]
         await asyncio.gather(*send_messages)
 
     async def send_connection_state(
