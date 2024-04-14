@@ -80,15 +80,33 @@ export type Turn = {
     current_player_idx: number;
 };
 
-export type GameState = {
+type StartGameState = {
+    type_: "start_game";
     id: number;
-    status: "In progress" | "Finished";
-    players: GamePlayer[]; // Players ordered by their turns, differential updates are possible as `currentPlayer` index is passed in `turn` object
-    lost_players: GamePlayer[]; // Players who lost the game, in loss order
-    rules: DeathmatchRules; // sent only when the game starts
-    current_turn: Turn;
-    turns: Turn[];
+    status: "In progress";
+    players: GamePlayer[];
+    lost_players: GamePlayer[];
+    rules: DeathmatchRules;
 };
+
+type EndGameState = {
+    type_: "end_game";
+    status: "Finished";
+};
+
+type StartTurnState = {
+    type_: "start_turn";
+    current_turn: Turn;
+};
+
+type EndTurnState = {
+    type_: "end_turn";
+    players: GamePlayer[];
+    lost_players: GamePlayer[];
+    current_turn: Turn;
+};
+
+export type GameState = StartGameState | EndGameState | StartTurnState | EndTurnState;
 
 export type RoomState = Omit<RoomOut, "players_no"> & {
     players: Record<string, RoomPlayer>;

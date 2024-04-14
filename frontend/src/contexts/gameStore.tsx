@@ -29,17 +29,34 @@ export default function GameStoreSlice() {
     const [gamePlayers, setGamePlayers] = useState<GamePlayer[] | undefined>(undefined);
     const [gameLostPlayers, setGameLostPlayers] = useState<GamePlayer[] | undefined>(undefined);
 
-    const [gameCurrentTurn, setGameCurrentTurn] = useState<Turn | undefined>(undefined);
+    const [gameCurrentTurn, setGameCurrentTurn] = useState<Turn | null | undefined>(undefined);
     const [gameTurns, setGameTurns] = useState<Turn[] | undefined>(undefined);
 
     function updateGameState(newGameState: GameState) {
-        setGameId(newGameState.id);
-        setGameStatus(newGameState.status);
-        setGameRules(newGameState.rules);
-        setGamePlayers(newGameState.players);
-        setGameLostPlayers(newGameState.lost_players);
-        setGameCurrentTurn(newGameState.current_turn);
-        setGameTurns(newGameState.turns);
+        switch (newGameState.type_) {
+            case "start_game":
+                setGameId(newGameState.id);
+                setGameStatus(newGameState.status);
+                setGameRules(newGameState.rules);
+                setGamePlayers(newGameState.players);
+                setGameLostPlayers(newGameState.lost_players);
+
+                // Also initialize FE-only state
+                setGameTurns([]);
+                break;
+            case "end_game":
+                setGameStatus("Finished");
+                break;
+            case "start_turn":
+                setGameCurrentTurn(newGameState.current_turn);
+                break;
+            case "end_turn":
+                setGamePlayers(newGameState.players);
+                setGameLostPlayers(newGameState.lost_players);
+                setGameCurrentTurn(null);
+                setGameTurns([...(gameTurns || []), newGameState.current_turn]);
+                break;
+        }
     }
 
     function resetGameState() {

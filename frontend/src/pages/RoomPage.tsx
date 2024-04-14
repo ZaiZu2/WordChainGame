@@ -38,8 +38,12 @@ export default function RoomPage() {
                 </Stack>
             </Bubble>
             <ScoreCard />
-            <CurrentPlayer />
-            <WordList />
+            {mode === "game" && (
+                <>
+                    <CurrentPlayer />
+                    <WordList />
+                </>
+            )}
         </>
     );
 }
@@ -139,6 +143,7 @@ function ButtonBar() {
         updateLobbyState,
         updateGameState,
         resetGameState,
+        initializeGame,
     } = useStore();
     const player = _player as Player;
     const roomState = _roomState as RoomState;
@@ -186,6 +191,7 @@ function ButtonBar() {
             return;
         }
         resetGameState();
+        initializeGame();
         updateGameState(response.body);
         switchMode("game");
     }
