@@ -421,6 +421,9 @@ async def start_game(
     game = game_manager.create(game_db)
 
     # Broadcast the initial game state to all players
+    room_state = s.RoomState(**room.to_dict(), owner_name=room.owner.name)
+    await conn_manager.broadcast_room_state(room.id_, room_state)
+
     game_state = s.StartGameState(
         id_=game.id_,
         status=game.status,

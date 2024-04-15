@@ -102,6 +102,8 @@ function RoomList() {
                                                 symbol={
                                                     room.status === "Closed"
                                                         ? "lock"
+                                                        : room.status === "In progress"
+                                                        ? "clock_loader_40"
                                                         : "lock_open_right"
                                                 }
                                                 tooltip={room.status}

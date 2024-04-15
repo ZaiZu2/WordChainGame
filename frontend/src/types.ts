@@ -5,7 +5,7 @@ export type RoomOut = {
     name: string;
     players_no: number;
     capacity: number;
-    status: "Open" | "Closed" | "Private";
+    status: "Open" | "Closed" | "In progress";
     rules: DeathmatchRules;
     owner_name: string;
 };

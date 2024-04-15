@@ -56,10 +56,17 @@ function RoomHeader() {
 
     const icons = [
         {
-            symbol: roomState.status === "Closed" ? "lock" : "lock_open_right",
+            symbol:
+                roomState?.status === "Closed"
+                    ? "lock"
+                    : roomState?.status === "In progress"
+                    ? "clock_loader_40"
+                    : "lock_open_right",
             tooltip:
                 roomState?.status === "Closed"
                     ? "No new players can join the room"
+                    : roomState?.status === "In progress"
+                    ? "Game in progress"
                     : "Players can freely join the room",
             className: "ms-auto",
         },
@@ -392,7 +399,7 @@ function CurrentPlayer() {
             <Stack direction="horizontal" gap={2} className="justify-content-evenly">
                 {Object.values(players).map((player, index) => {
                     return (
-                        <>
+                        <React.Fragment key={player.name}>
                             {index !== 0 && <Icon symbol="trending_flat" iconSize={3} />}
                             {index === 1 ? (
                                 <Stack key={player.name} direction="horizontal" gap={2}>
@@ -405,7 +412,7 @@ function CurrentPlayer() {
                                     {player.name}
                                 </div>
                             )}
-                        </>
+                        </React.Fragment>
                     );
                 })}
             </Stack>
