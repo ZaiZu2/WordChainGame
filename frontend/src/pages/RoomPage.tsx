@@ -8,7 +8,7 @@ import apiClient from "../apiClient";
 import Bubble from "../components/Bubble";
 import Icon from "../components/Icon";
 import { useStore } from "../contexts/storeContext";
-import { GamePlayer, GameState, LobbyState, Player, RoomState, Turn, Word } from "../types";
+import { GamePlayer, LobbyState, Player, RoomState, Turn, Word } from "../types";
 
 export default function RoomPage() {
     const { mode } = useStore();
@@ -37,9 +37,11 @@ export default function RoomPage() {
                     <ButtonBar />
                 </Stack>
             </Bubble>
-            <ScoreCard />
-            {mode === "game" && (
+            {mode === "room" ? (
+                <PlayerCard />
+            ) : (
                 <>
+                    <ScoreCard />
                     <CurrentPlayer />
                     <WordList />
                 </>
@@ -182,15 +184,12 @@ function ButtonBar() {
     }
 
     async function startGame(roomId: number) {
-        let response;
         try {
-            response = await apiClient.post<GameState>(`/rooms/${roomId}/start`);
+            await apiClient.post<null>(`/rooms/${roomId}/start`);
         } catch (error) {
             //TODO: Handle error
             return;
         }
-        resetGameState();
-        updateGameState(response.body);
         switchMode("game");
     }
 
@@ -262,7 +261,7 @@ function ButtonBar() {
     );
 }
 
-function ScoreCard() {
+function PlayerCard() {
     const { mode, roomState: _roomState, isRoomOwner } = useStore();
     const roomState = _roomState as RoomState;
 
@@ -277,58 +276,89 @@ function ScoreCard() {
                         <td>
                             <Icon symbol="person" tooltip="Name" iconSize={4} />
                         </td>
-                        {mode === "game" ? (
-                            <>
-                                <td className="fw-bold">Points</td>
-                                <td className="fw-bold">Mistakes</td>
-                            </>
-                        ) : (
-                            <td>
-                                <Icon symbol="light_mode" tooltip="Readiness" iconSize={4} />
-                            </td>
-                        )}
+                        <td>
+                            <Icon symbol="light_mode" tooltip="Readiness" iconSize={4} />
+                        </td>
                     </tr>
-                    <tr style={{ height: "0.25rem" }}></tr>
+                    <tr style={{ height: "0.25rem" }} />
+                </thead>
+
+                <tbody>
+                    <tr style={{ height: "0.25rem" }} />
+                    {Object.values(roomState.players).map((player, index) => {
+                        return (
+                            <tr key={player.name}>
+                                <td>{index + 1}</td>
+                                <td>{player.name}</td>
+
+                                <td>
+                                    {isRoomOwner(player.name) ? (
+                                        <Icon
+                                            symbol="manage_accounts"
+                                            tooltip="Owner"
+                                            iconSize={4}
+                                        />
+                                    ) : player.ready ? (
+                                        <Icon
+                                            symbol="check"
+                                            className="text-success"
+                                            tooltip="Ready"
+                                            iconSize={4}
+                                        />
+                                    ) : (
+                                        <Icon
+                                            symbol="close"
+                                            className="text-danger"
+                                            tooltip="Unready"
+                                            iconSize={4}
+                                        />
+                                    )}
+                                </td>
+                            </tr>
+                        );
+                    })}
+                </tbody>
+            </Table>
+        </Bubble>
+    );
+}
+
+function ScoreCard() {
+    const { gamePlayers: _gamePlayers } = useStore();
+    const gamePlayers = _gamePlayers as GamePlayer[];
+
+    return (
+        <Bubble>
+            <Table borderless size="sm" className="m-0">
+                <thead className="border-bottom">
+                    <tr>
+                        <td>
+                            <Icon symbol="leaderboard" tooltip="Position" iconSize={4} />
+                        </td>
+                        <td>
+                            <Icon symbol="person" tooltip="Name" iconSize={4} />
+                        </td>
+                        <td>
+                            <Icon symbol="scoreboard" tooltip="Score" iconSize={4} />
+                        </td>
+                        <td>
+                            <Icon symbol="error" tooltip="Mistakes" iconSize={4} />
+                        </td>
+                    </tr>
+                    <tr style={{ height: "0.25rem" }} />
                 </thead>
                 <tbody>
-                    <tr style={{ height: "0.25rem" }}></tr>
-                    {(mode === "room" ? Object.values(roomState.players) : [])
-                        // : (gameState as GameState).players
+                    <tr style={{ height: "0.25rem" }} />
+                    {[...gamePlayers]
+                        .sort((a, b) => a.score - b.score)
                         .map((player, index) => {
                             return (
                                 <tr key={player.name}>
                                     <td>{index + 1}</td>
                                     <td>{player.name}</td>
-                                    {mode === "game" ? (
-                                        <>
-                                            <td>{/* {gamePlayers[player.name].points} */}0</td>
-                                            <td>{/* {gamePlayers[player.name].mistakes} */}0</td>
-                                        </>
-                                    ) : (
-                                        <td>
-                                            {isRoomOwner(player.name) ? (
-                                                <Icon
-                                                    symbol="manage_accounts"
-                                                    tooltip="Owner"
-                                                    iconSize={4}
-                                                />
-                                            ) : player.ready ? (
-                                                <Icon
-                                                    symbol="check"
-                                                    className="text-success"
-                                                    tooltip="Ready"
-                                                    iconSize={4}
-                                                />
-                                            ) : (
-                                                <Icon
-                                                    symbol="close"
-                                                    className="text-danger"
-                                                    tooltip="Unready"
-                                                    iconSize={4}
-                                                />
-                                            )}
-                                        </td>
-                                    )}
+
+                                    <td>{player.score}</td>
+                                    <td>{player.mistakes}</td>
                                 </tr>
                             );
                         })}

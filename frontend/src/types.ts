@@ -81,7 +81,7 @@ export type Turn = {
 };
 
 type StartGameState = {
-    type_: "start_game";
+    type: "start_game";
     id: number;
     status: "In progress";
     players: GamePlayer[];
@@ -90,17 +90,17 @@ type StartGameState = {
 };
 
 type EndGameState = {
-    type_: "end_game";
+    type: "end_game";
     status: "Finished";
 };
 
 type StartTurnState = {
-    type_: "start_turn";
+    type: "start_turn";
     current_turn: Turn;
 };
 
 type EndTurnState = {
-    type_: "end_turn";
+    type: "end_turn";
     players: GamePlayer[];
     lost_players: GamePlayer[];
     current_turn: Turn;

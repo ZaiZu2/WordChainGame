@@ -33,7 +33,7 @@ export default function GameStoreSlice() {
     const [gameTurns, setGameTurns] = useState<Turn[] | undefined>(undefined);
 
     function updateGameState(newGameState: GameState) {
-        switch (newGameState.type_) {
+        switch (newGameState.type) {
             case "start_game":
                 setGameId(newGameState.id);
                 setGameStatus(newGameState.status);
@@ -54,7 +54,10 @@ export default function GameStoreSlice() {
                 setGamePlayers(newGameState.players);
                 setGameLostPlayers(newGameState.lost_players);
                 setGameCurrentTurn(null);
-                setGameTurns([...(gameTurns || []), newGameState.current_turn]);
+                setGameTurns((prevGameTurns) => [
+                    ...(prevGameTurns || []),
+                    newGameState.current_turn,
+                ]);
                 break;
         }
     }

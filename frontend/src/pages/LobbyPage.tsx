@@ -44,7 +44,6 @@ function RoomList() {
         updateChatMessages,
         purgeChatMessages,
         updateRoomState,
-        updateGameState,
     } = useStore();
     const rooms = lobbyState?.rooms as Record<number, RoomOut>;
 
