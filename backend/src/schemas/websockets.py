@@ -18,7 +18,7 @@ class GameInput(s.GeneralBaseModel):
 
 
 class StartGameState(s.GeneralBaseModel):
-    type_: Literal['start_game'] = Field('start_turn', serialization_alias='type')
+    type_: Literal['start_game'] = Field('start_game', serialization_alias='type')
     id_: int = Field(serialization_alias='id')
     status: d.GameStatusEnum
     players: list[s.GamePlayer]

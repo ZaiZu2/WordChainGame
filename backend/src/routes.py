@@ -398,28 +398,24 @@ async def start_game(
     ).fetchall()
 
     # Create game placeholder in the database to assign the ID
-    with db.no_autoflush:
-        game_db = d.Game(
-            status=d.GameStatusEnum.IN_PROGRESS,
-            rules=room.rules,
-            room_id=room_id,
-            # TODO: Figure out why instantiating `d.Game` with `players` issues multiple
-            # INSERT statements, violating the unique constraint
-            # players=players,
-        )
-        db.add_all([game_db, room])
-        await db.flush([game_db, room])
+    game_db = d.Game(
+        status=d.GameStatusEnum.IN_PROGRESS,
+        rules=room.rules,
+        room_id=room_id,
+        # TODO: Figure out why instantiating `d.Game` with `players` issues multiple
+        # INSERT statements, violating the unique constraint
+        # players=players,
+    )
+    db.add_all([game_db, room])
+    await db.flush([game_db, room])
 
-        # HACK: Insert the many-to-many relationship manually
-        await db.execute(
-            insert(d.players_games_table).values(
-                [
-                    {'game_id': game_db.id_, 'player_id': player.id_}
-                    for player in players
-                ]
-            )
+    # HACK: Insert the many-to-many relationship manually
+    await db.execute(
+        insert(d.players_games_table).values(
+            [{'game_id': game_db.id_, 'player_id': player.id_} for player in players]
         )
-        await db.refresh(game_db, attribute_names=['players'])
+    )
+    await db.refresh(game_db, attribute_names=['players'])
 
     # Store the game in memory during it's progress
     game = game_manager.create(game_db)
