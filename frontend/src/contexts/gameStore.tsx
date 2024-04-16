@@ -23,7 +23,9 @@ export const initialGameStoreSlice = {
 
 export default function GameStoreSlice(switchMode: (mode: "lobby" | "room" | "game") => void) {
     const [gameId, setGameId] = useState<number | undefined>(undefined);
-    const [gameStatus, setGameStatus] = useState<"In progress" | "Finished" | undefined>(undefined);
+    const [gameStatus, setGameStatus] = useState<
+        "Starting" | "In progress" | "Finished" | undefined
+    >(undefined);
     const [gameRules, setGameRules] = useState<DeathmatchRules | undefined>(undefined);
 
     const [gamePlayers, setGamePlayers] = useState<GamePlayer[] | undefined>(undefined);
@@ -52,6 +54,7 @@ export default function GameStoreSlice(switchMode: (mode: "lobby" | "room" | "ga
                 switchMode("room");
                 break;
             case "start_turn":
+                newGameState.status && setGameStatus(newGameState.status);
                 setGameCurrentTurn(newGameState.current_turn);
                 break;
             case "end_turn":

@@ -6,10 +6,10 @@ import { useNavigate } from "react-router-dom";
 
 import apiClient from "../apiClient";
 import Bubble from "../components/Bubble";
+import CountdownTimer from "../components/CountdownTimer";
 import Icon from "../components/Icon";
 import { useStore } from "../contexts/storeContext";
 import { DeathmatchRules, GamePlayer, LobbyState, Player, RoomState, Turn, Word } from "../types";
-import CountdownTimer from "../components/CountdownTimer";
 
 export default function RoomPage() {
     const { mode } = useStore();
@@ -447,9 +447,11 @@ function WordList() {
         gameTurns: _gameTurns,
         isLocalPlayersTurn,
         currentTurn,
+        gameStatus: _gameStatus,
     } = useStore();
     const gamePlayers = _gamePlayers as GamePlayer[];
     const gameTurns = _gameTurns as Turn[];
+    const gameStatus = _gameStatus as string;
 
     const turns = gameTurns.length > 5 ? gameTurns.slice(-5) : gameTurns;
 
@@ -486,9 +488,7 @@ function WordList() {
 
                         const word = turns[turnIndex].word as Word;
                         const player_name = gamePlayers[turns[turnIndex].player_idx].name;
-                        console.log("turnIndex", turnIndex);
-                        console.log("index", index);
-                        console.log("turnOffset", turnOffset);
+
                         return (
                             <tr
                                 style={style}
@@ -509,7 +509,7 @@ function WordList() {
                                         <div
                                             style={{ flexBasis: "10%" }}
                                             className={`p-0 border-0 material-symbols-outlined ${color(
-                                                word,
+                                                word
                                             )}`}
                                         >
                                             {symbol(word)}
@@ -527,22 +527,30 @@ function WordList() {
                     })}
                     <tr style={style} className="d-flex justify-content-between">
                         <td style={{ flexBasis: "20%" }} className="p-0 border-0">
-                            {gamePlayers[currentTurn?.player_idx as number].name}
+                            {gameStatus === "In progress"
+                                ? gamePlayers[currentTurn?.player_idx as number].name
+                                : gamePlayers[0].name}
                         </td>
-                        <td
-                            style={{ flexBasis: "60%" }}
-                            className={`d-flex p-0 border-0 ${positionToSize[5]} justify-content-center`}
-                        >
-                            {isLocalPlayersTurn() ? (
+                        {isLocalPlayersTurn() ? (
+                            <td
+                                style={{ flexBasis: "60%" }}
+                                className={`d-flex p-0 border-0 ${positionToSize[5]} justify-content-center`}
+                            >
                                 <Form.Control
                                     type="text"
                                     placeholder="Write here..."
                                     className="py-1 mt-1 w-50"
+                                    disabled={gameStatus !== "In progress"}
                                 />
-                            ) : (
-                                <Spinner animation="border" size="sm" className="my-3 mx-auto" />
-                            )}
-                        </td>
+                            </td>
+                        ) : (
+                            <td
+                                style={{ flexBasis: "60%" }}
+                                className={`d-flex p-0 border-0 justify-content-center`}
+                            >
+                                <Spinner animation="border" size="sm" className="my-2 mx-auto" />
+                            </td>
+                        )}
                         <td>
                             <Stack direction="horizontal" gap={1}>
                                 <div
