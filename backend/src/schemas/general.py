@@ -1,9 +1,15 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import Enum
-from typing import Literal, Protocol
+from typing import Annotated, Literal, Protocol
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    ConfigDict,
+    Field,
+    PlainSerializer,
+)
 
 import src.models as d
 
@@ -12,13 +18,30 @@ class GeneralBaseModel(BaseModel):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
 
+def is_date_utc(date: datetime) -> datetime:
+    if date.utcoffset() is not None and date.utcoffset() != timedelta(0):
+        raise ValueError('Only datetimes in a UTC zone are allowed')
+    date = date.replace(tzinfo=None)  # Cast to naive datetime after validation
+    return date
+
+
+# NOTE: Only UTC timestamps should be accepted by API server.
+# NOTE: Currently used only for APITriggers, as zulu datetime formating can potentially break Desktop
+UTCDatetime = Annotated[
+    datetime,
+    AfterValidator(is_date_utc),  # Validate if the date is in UTC zone (zulu format)
+    PlainSerializer(
+        lambda date: f'{date.isoformat()}Z', when_used='json'
+    ),  # Serialize Timestamps to zulu format
+]
+
 #################################### DOMAIN SCHEMAS ####################################
 
 
 class Player(GeneralBaseModel):
     id_: UUID = Field(serialization_alias='id')
     name: str
-    created_on: datetime
+    created_on: UTCDatetime
 
 
 class GameTypeEnum(str, Enum):
@@ -41,7 +64,7 @@ class DeathmatchRules(Rules):
 
 class ChatMessage(GeneralBaseModel):
     id_: int | None = Field(None, serialization_alias='id')
-    created_on: datetime | None = None
+    created_on: UTCDatetime | None = None
     content: str
     player_name: str
     room_id: int
@@ -67,9 +90,9 @@ class Word(GeneralBaseModel):
 class Turn(GeneralBaseModel):
     word: Word | None = None
     is_correct: bool | None = None  # Necessary?
-    started_on: datetime
-    ended_on: datetime | None = None
-    current_player_idx: int
+    started_on: UTCDatetime
+    ended_on: UTCDatetime | None = None
+    player_idx: int
 
 
 class GameEvent(Protocol):
@@ -92,7 +115,7 @@ class LobbyPlayerOut(GeneralBaseModel):
     """Player data sent as a part of LobbyState."""
 
     name: str
-    created_on: datetime
+    created_on: UTCDatetime
 
 
 class RoomPlayerOut(LobbyPlayerOut):

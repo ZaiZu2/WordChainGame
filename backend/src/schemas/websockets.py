@@ -34,6 +34,7 @@ class EndGameState(s.GeneralBaseModel):
 class StartTurnState(s.GeneralBaseModel):
     type_: Literal['start_turn'] = Field('start_turn', serialization_alias='type')
     current_turn: s.Turn
+    status: d.GameStatusEnum | None = None
 
 
 class EndTurnState(s.GeneralBaseModel):
