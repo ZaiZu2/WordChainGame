@@ -83,7 +83,7 @@ function RoomHeader() {
     ];
 
     return (
-        <Stack direction="horizontal" gap={2} className="px-2">
+        <Stack direction="horizontal" gap={3} className="px-2">
             <div className="fs-4">{roomState.name}</div>
             {icons.map((icon, index) => (
                 <React.Fragment key={index}>
@@ -216,6 +216,7 @@ function ButtonBar() {
                         variant="primary"
                         size="sm"
                         onClick={() => toggleRoomStatus(roomState.id as number)}
+                        disabled={roomState.status === "In progress"}
                     >
                         {roomState.status === "Open" ? "Close" : "Open"}
                     </Button>
@@ -239,6 +240,7 @@ function ButtonBar() {
                                 onSubmit: "PUT",
                             });
                         }}
+                        disabled={roomState.status === "In progress"}
                     >
                         Rules
                     </Button>
@@ -249,7 +251,7 @@ function ButtonBar() {
                         disabled={
                             !Object.values(roomState.players)
                                 .filter((p) => p.name !== player.name)
-                                .every((p) => p.ready)
+                                .every((p) => p.ready) || roomState.status === "In progress"
                         }
                     >
                         Start
@@ -260,6 +262,7 @@ function ButtonBar() {
                     variant="primary"
                     size="sm"
                     onClick={() => toggleReady(roomState.id as number)}
+                    disabled={roomState.status === "In progress"}
                 >
                     {roomState.players[player.name].ready ? "Unready" : "Ready"}
                 </Button>
@@ -376,20 +379,20 @@ function ScoreCard() {
 }
 
 function CurrentPlayer() {
-    const { gamePlayers: _gamePlayers, gameCurrentTurn: _gameCurrentTurn } = useStore();
+    const { gamePlayers: _gamePlayers, currentTurn: _gameCurrentTurn } = useStore();
     const gamePlayers = _gamePlayers as GamePlayer[];
-    const gameCurrentTurn = _gameCurrentTurn as Turn;
+    const currentTurn = _gameCurrentTurn as Turn;
 
     let players;
     if (gamePlayers.length < 3) {
         players = gamePlayers;
     } else {
-        const prevIndex = (gameCurrentTurn.current_player_idx - 1) % gamePlayers.length;
-        const nextIndex = (gameCurrentTurn.current_player_idx + 1) % gamePlayers.length;
+        const prevIndex = (currentTurn.player_idx - 1) % gamePlayers.length;
+        const nextIndex = (currentTurn.player_idx + 1) % gamePlayers.length;
         players = [
             // Find the previous, current and next player to be render in the bubble
             gamePlayers[prevIndex < 0 ? prevIndex + gamePlayers.length : prevIndex],
-            gamePlayers[gameCurrentTurn.current_player_idx],
+            gamePlayers[currentTurn.player_idx],
             gamePlayers[nextIndex],
         ];
     }
@@ -401,7 +404,8 @@ function CurrentPlayer() {
                     return (
                         <React.Fragment key={player.name}>
                             {index !== 0 && <Icon symbol="trending_flat" iconSize={3} />}
-                            {index === 1 ? (
+                            {(players.length >= 3 && index === 1) ||
+                            (players.length < 3 && index === 0) ? (
                                 <Stack key={player.name} direction="horizontal" gap={2}>
                                     <Icon symbol="arrow_forward_ios" iconSize={5} />
                                     <div className="fs-5">{player.name}</div>
@@ -421,7 +425,13 @@ function CurrentPlayer() {
 }
 
 function WordList() {
-    const { roomState, gamePlayers: _gamePlayers, gameTurns: _gameTurns } = useStore();
+    const {
+        roomState,
+        gamePlayers: _gamePlayers,
+        gameTurns: _gameTurns,
+        isLocalPlayersTurn,
+        currentTurn,
+    } = useStore();
     const gamePlayers = _gamePlayers as GamePlayer[];
     const gameTurns = _gameTurns as Turn[];
 
@@ -459,7 +469,7 @@ function WordList() {
                         }
 
                         const word = turns[turnIndex].word as Word;
-                        const player_name = gamePlayers[turns[turnIndex].current_player_idx].name;
+                        const player_name = gamePlayers[turns[turnIndex].player_idx].name;
                         console.log("turnIndex", turnIndex);
                         console.log("index", index);
                         console.log("turnOffset", turnOffset);
@@ -483,7 +493,7 @@ function WordList() {
                                         <div
                                             style={{ flexBasis: "10%" }}
                                             className={`p-0 border-0 material-symbols-outlined ${color(
-                                                word
+                                                word,
                                             )}`}
                                         >
                                             {symbol(word)}
@@ -501,17 +511,21 @@ function WordList() {
                     })}
                     <tr style={style} className="d-flex justify-content-between">
                         <td style={{ flexBasis: "20%" }} className="p-0 border-0">
-                            Vecky
+                            {gamePlayers[currentTurn?.player_idx as number].name}
                         </td>
                         <td
                             style={{ flexBasis: "60%" }}
                             className={`d-flex p-0 border-0 ${positionToSize[5]} justify-content-center`}
                         >
-                            <Form.Control
-                                type="text"
-                                placeholder="Write here..."
-                                className="py-1 mt-1 w-50"
-                            />
+                            {isLocalPlayersTurn() ? (
+                                <Form.Control
+                                    type="text"
+                                    placeholder="Write here..."
+                                    className="py-1 mt-1 w-50"
+                                />
+                            ) : (
+                                <Spinner animation="border" size="sm" className="my-3 mx-auto" />
+                            )}
                         </td>
                         <td>
                             <Stack direction="horizontal" gap={1}>

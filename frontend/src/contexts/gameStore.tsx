@@ -13,7 +13,7 @@ export const initialGameStoreSlice = {
     setGamePlayers: () => {},
     gameLostPlayers: undefined,
     setGameLostPlayers: () => {},
-    gameCurrentTurn: undefined,
+    currentTurn: undefined,
     setGameCurrentTurn: () => {},
     gameTurns: undefined,
     setGameTurns: () => {},
@@ -21,7 +21,7 @@ export const initialGameStoreSlice = {
     resetGameState: () => {},
 };
 
-export default function GameStoreSlice() {
+export default function GameStoreSlice(switchMode: (mode: "lobby" | "room" | "game") => void) {
     const [gameId, setGameId] = useState<number | undefined>(undefined);
     const [gameStatus, setGameStatus] = useState<"In progress" | "Finished" | undefined>(undefined);
     const [gameRules, setGameRules] = useState<DeathmatchRules | undefined>(undefined);
@@ -29,12 +29,14 @@ export default function GameStoreSlice() {
     const [gamePlayers, setGamePlayers] = useState<GamePlayer[] | undefined>(undefined);
     const [gameLostPlayers, setGameLostPlayers] = useState<GamePlayer[] | undefined>(undefined);
 
-    const [gameCurrentTurn, setGameCurrentTurn] = useState<Turn | null | undefined>(undefined);
+    const [currentTurn, setGameCurrentTurn] = useState<Turn | null | undefined>(undefined);
     const [gameTurns, setGameTurns] = useState<Turn[] | undefined>(undefined);
 
     function updateGameState(newGameState: GameState) {
         switch (newGameState.type) {
             case "start_game":
+                switchMode("game");
+
                 setGameId(newGameState.id);
                 setGameStatus(newGameState.status);
                 setGameRules(newGameState.rules);
@@ -46,6 +48,8 @@ export default function GameStoreSlice() {
                 break;
             case "end_game":
                 setGameStatus("Finished");
+
+                switchMode("room");
                 break;
             case "start_turn":
                 setGameCurrentTurn(newGameState.current_turn);
@@ -83,7 +87,7 @@ export default function GameStoreSlice() {
         setGameLostPlayers,
         gameRules,
         setGameRules,
-        gameCurrentTurn,
+        currentTurn,
         setGameCurrentTurn,
         gameTurns,
         setGameTurns,

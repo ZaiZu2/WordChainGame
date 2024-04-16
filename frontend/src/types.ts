@@ -77,7 +77,7 @@ export type Turn = {
     is_correct: boolean | null;
     started_on: string;
     ended_on: string | null;
-    current_player_idx: number;
+    player_idx: number;
 };
 
 type StartGameState = {

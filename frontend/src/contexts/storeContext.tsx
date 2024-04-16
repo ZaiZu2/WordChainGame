@@ -33,6 +33,7 @@ export type StoreContext = {
     logIn: (id: UUID) => void;
     logOut: () => void;
     isRoomOwner: (playerName?: string) => boolean;
+    isLocalPlayersTurn: () => boolean;
 
     modalConfigs: ModalConfigs;
     toggleModal: <K extends keyof ModalConfigs>(
@@ -58,6 +59,7 @@ const StoreContextObject = createContext<StoreContext>({
     logIn: () => {},
     logOut: () => {},
     isRoomOwner: (playerName?: string) => false,
+    isLocalPlayersTurn: () => true,
 
     modalConfigs: {},
     toggleModal: <K extends keyof ModalConfigs>(
@@ -82,7 +84,7 @@ export default function StoreProvider({ children }: { children: React.ReactNode 
     const [allTimeStatistics, setAllTimeStatistics] = useState<AllTimeStatistics | undefined>(
         undefined
     );
-    const gameStoreSlice = GameStoreSlice();
+    const gameStoreSlice = GameStoreSlice(switchMode);
 
     const [modalConfigs, setModalConfig] = useState<ModalConfigs>({});
 
@@ -191,6 +193,12 @@ export default function StoreProvider({ children }: { children: React.ReactNode 
         }
     }
 
+    function isLocalPlayersTurn(): boolean {
+        const currentPlayerName =
+            gameStoreSlice.gamePlayers?.[gameStoreSlice.currentTurn?.player_idx as number]?.name;
+        return currentPlayerName === player?.name;
+    }
+
     function toggleModal<K extends keyof ModalConfigs>(
         name: K,
         config?: ModalConfigs[K],
@@ -238,6 +246,7 @@ export default function StoreProvider({ children }: { children: React.ReactNode 
                 logIn,
                 logOut,
                 isRoomOwner,
+                isLocalPlayersTurn,
                 modalConfigs,
                 toggleModal,
                 ...gameStoreSlice,
