@@ -13,13 +13,18 @@ from src.game import GameManager
 
 
 class TagsEnum(str, Enum):
-    ALL = 'all'
+    MAIN = 'main'
+    ROOMS = 'rooms'
 
 
 tags_metadata = [
     {
-        'name': TagsEnum.ALL,
-        'description': 'All routes',
+        'name': TagsEnum.MAIN,
+        'description': 'General purpose routes',
+    },
+    {
+        'name': TagsEnum.ROOMS,
+        'description': 'Room-related routes',
     },
 ]
 
@@ -98,10 +103,10 @@ async def accept_websocket_connection(
     await websocket.accept()
     did_connect = conn_manager.connect(player.id_, d.LOBBY.id_, websocket)
     if not did_connect:
-        exc_args = [
+        exc_args = (
             s.CustomWebsocketCodeEnum.MULTIPLE_CLIENTS,
             'Player is already connected with another client.',
-        ]
+        )
         # Send a message to the duplicate client, then terminate the connection
         await conn_manager.send_connection_state(*exc_args, websocket)
 
@@ -211,15 +216,14 @@ async def listen_for_messages(
                 game_input = cast(s.GameInput, websocket_message.payload)
                 game = game_manager.get(game_input.game_id)
                 # TODO: Input data validation?
-                turn_result = game.process_turn(game_input.word)
-                game_state = s.GameState(
-                    id_=game.id_,
-                    status=game.status,
+                events = game.process_turn(game_input.word)  # noqa: F841
+                # TODO: Handle the events
+                game_state = s.EndTurnState(
+                    type_='end_turn',
                     players=game.players,
                     lost_players=game.lost_players,
-                    rules=game.rules,
                     current_turn=s.Turn(
-                        current_player_idx=game.players.current_idx,
+                        player_idx=game.players.current_idx,
                         **game.current_turn.to_dict(),
                     ),
                 )

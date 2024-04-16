@@ -6,8 +6,8 @@ from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 
-import src.routes as routes
 from config import LOGGING_CONFIG
+from src.api import main, rooms
 from src.error_handlers import request_validation_handler
 from src.helpers import tags_metadata
 from src.models import create_root_objects, recreate_database
@@ -37,7 +37,8 @@ def create_app() -> FastAPI:
         allow_headers=['*'],
     )
 
-    app.include_router(routes.router)
+    app.include_router(main.router)
+    app.include_router(rooms.router)
 
     app.add_exception_handler(RequestValidationError, request_validation_handler)
 
