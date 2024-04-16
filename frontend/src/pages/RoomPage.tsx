@@ -8,7 +8,8 @@ import apiClient from "../apiClient";
 import Bubble from "../components/Bubble";
 import Icon from "../components/Icon";
 import { useStore } from "../contexts/storeContext";
-import { GamePlayer, LobbyState, Player, RoomState, Turn, Word } from "../types";
+import { DeathmatchRules, GamePlayer, LobbyState, Player, RoomState, Turn, Word } from "../types";
+import CountdownTimer from "../components/CountdownTimer";
 
 export default function RoomPage() {
     const { mode } = useStore();
@@ -379,9 +380,12 @@ function ScoreCard() {
 }
 
 function CurrentPlayer() {
-    const { gamePlayers: _gamePlayers, currentTurn: _gameCurrentTurn } = useStore();
-    const gamePlayers = _gamePlayers as GamePlayer[];
-    const currentTurn = _gameCurrentTurn as Turn;
+    const { gamePlayers, currentTurn, gameStatus, gameRules } = useStore() as {
+        gamePlayers: GamePlayer[];
+        currentTurn: Turn;
+        gameStatus: string;
+        gameRules: DeathmatchRules;
+    };
 
     let players;
     if (gamePlayers.length < 3) {
@@ -419,6 +423,18 @@ function CurrentPlayer() {
                         </React.Fragment>
                     );
                 })}
+            </Stack>
+
+            <Stack direction="horizontal" gap={2} className="fs-4 justify-content-evenly">
+                {gameStatus === "In progress" ? (
+                    <CountdownTimer
+                        time={gameRules.round_time}
+                        start_date={currentTurn.started_on}
+                        precisionDigit={2}
+                    />
+                ) : (
+                    <CountdownTimer time={3} precisionDigit={0} />
+                )}
             </Stack>
         </Bubble>
     );
