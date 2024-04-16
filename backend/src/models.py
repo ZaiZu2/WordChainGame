@@ -98,6 +98,7 @@ class Room(Base):
 
 
 class GameStatusEnum(str, Enum):
+    STARTING = 'Starting'
     IN_PROGRESS = 'In progress'
     FINISHED = 'Finished'
 
