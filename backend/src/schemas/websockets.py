@@ -9,10 +9,13 @@ import src.schemas.general as s
 #################################### GAME INPUTS ####################################
 
 
-class GameInput(s.GeneralBaseModel):
+class WordInput(s.GeneralBaseModel):
+    type_: Literal['word_input'] = Field('word_input', serialization_alias='type')
     game_id: int
     word: str
 
+
+GameInput = WordInput
 
 #################################### GAME OUTPUTS ####################################
 
@@ -33,7 +36,7 @@ class EndGameState(s.GeneralBaseModel):
 
 class StartTurnState(s.GeneralBaseModel):
     type_: Literal['start_turn'] = Field('start_turn', serialization_alias='type')
-    current_turn: s.Turn
+    current_turn: s.TurnOut
     status: d.GameStatusEnum | None = None
 
 
@@ -41,14 +44,10 @@ class EndTurnState(s.GeneralBaseModel):
     type_: Literal['end_turn'] = Field('end_turn', serialization_alias='type')
     players: list[s.GamePlayer]
     lost_players: list[s.GamePlayer]
-    current_turn: s.Turn
+    current_turn: s.TurnOut
 
 
 GameState = StartGameState | EndGameState | StartTurnState | EndTurnState
-
-# Unnecessary discriminator as game state is not sent by the client.
-# class _GameState(s.GeneralBaseModel):
-#     state: GameState = Field(..., serialization_alias='type', discriminator='type_')
 
 
 #################################### OTHER MESSAGES ####################################
@@ -105,7 +104,7 @@ class WebSocketMessage(s.GeneralBaseModel):
                 StartTurnState,
                 EndTurnState,
             ],
-            WebSocketMessageTypeEnum.GAME_INPUT: [GameInput],
+            WebSocketMessageTypeEnum.GAME_INPUT: [WordInput],
             WebSocketMessageTypeEnum.LOBBY_STATE: [LobbyState],
             WebSocketMessageTypeEnum.ROOM_STATE: [RoomState],
             WebSocketMessageTypeEnum.CONNECTION_STATE: [ConnectionState],
