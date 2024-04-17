@@ -6,10 +6,12 @@ Be advised that this is an ongoing project (started in January).
 ### ***Features***
   - [x] Play without the necessity to create the account - a UUID can be used to access your account
   - [x] Create and join game rooms - no matter if you play with your friends or alone
+  - [x] Close and open rooms to avoid unexpected guests
   - [x] Communicate with other players in a lobby and room chats.
+  - [x] Define game type (well, for now just one) and it's game parameters
   - [ ] Play a game
   - [ ] Check the leaderboards and your game history
-  - [ ] Deploy using Nginx & Uvicorn
+  - [ ] Deploy fully containerized on AWS using Nginx & Uvicorn
 
 ### ***Tech Stack***
   - Frontend – Typescript, React, Boostrap/Bootstrap-React
