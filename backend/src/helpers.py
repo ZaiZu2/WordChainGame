@@ -203,7 +203,6 @@ async def listen_for_messages(
 
         await db.refresh(player)
         match websocket_message.type:
-            # TODO: Make a wrapper which handles CHAT type websocket messages
             case s.WebSocketMessageTypeEnum.CHAT:
                 chat_message = cast(s.ChatMessage, websocket_message.payload)
                 message = d.Message(
@@ -212,23 +211,29 @@ async def listen_for_messages(
                     player=player,
                 )
                 await save_and_broadcast_message(message, db, conn_manager)
+
             case s.WebSocketMessageTypeEnum.GAME_INPUT:
-                game_input = cast(s.GameInput, websocket_message.payload)
-                game = game_manager.get(game_input.game_id)
-                # TODO: Input data validation?
-                events = game.process_turn(game_input.word)  # noqa: F841
-                # TODO: Handle the events
-                game_state = s.EndTurnState(
-                    type_='end_turn',
-                    players=game.players,
-                    lost_players=game.lost_players,
-                    current_turn=s.Turn(
-                        player_idx=game.players.current_idx,
-                        **game.current_turn.to_dict(),
-                    ),
-                )
-                _, room_id = conn_manager.find_connection(player.id_)
-                await conn_manager.broadcast_game_state(room_id, game_state)
+                if isinstance(websocket_message.payload, s.WordInput):
+                    game_input = cast(s.WordInput, websocket_message.payload)
+                    game = game_manager.get(game_input.game_id)
+
+                    # TODO: Unsafe, players id should be validated
+                    if game is None or game.players.current.name != player.name:
+                        return
+
+                    events = game.process_turn(game_input.word)  # noqa: F841
+                    # TODO: Handle the events
+                    game_state = s.EndTurnState(
+                        type_='end_turn',
+                        players=game.players,
+                        lost_players=game.lost_players,
+                        current_turn=s.TurnOut(
+                            player_idx=game.players.current_idx,
+                            **game.current_turn.model_dump(),
+                        ),
+                    )
+                    _, room_id = conn_manager.find_connection(player.id_)
+                    await conn_manager.broadcast_game_state(room_id, game_state)
 
         # Commit all flushed resources to DB every time a message is received
         await db.commit()

@@ -362,8 +362,8 @@ async def start_game(
     await asyncio.sleep(3)
     game.start_turn()
     turn_state = s.StartTurnState(
-        current_turn=s.Turn(
-            player_idx=game.players.current_idx, **game.current_turn.to_dict()
+        current_turn=s.TurnOut(
+            player_idx=game.players.current_idx, **game.current_turn.model_dump()
         ),
         status=d.GameStatusEnum.IN_PROGRESS,
     )  # type: ignore
