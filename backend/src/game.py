@@ -1,6 +1,6 @@
 import random
 from datetime import datetime
-from typing import cast
+from typing import Any, cast
 
 import httpx
 
@@ -9,21 +9,18 @@ import src.schemas as s
 from config import get_config
 
 
-class IncorrectWordError(Exception):
-    pass
-
-
-def validate_word(word: str) -> dict:
+def validate_word(word: str) -> dict | bool:
     client = httpx.Client()
     response = client.get(f'{get_config().DICTIONARY_API_URL}{word}')
 
     # TODO: Handle connection errors and other exceptions
     if response.status_code == 404:
-        raise IncorrectWordError()
+        # TODO: Function does 2  things - unpacks response and returns False on failed validation
+        return False
 
     definitions = {
         meaning['partOfSpeech']: meaning['definitions'][0]['definition']
-        for meaning in response.json()['meanings']
+        for meaning in response.json()[0]['meanings']
     }
     return definitions
 
@@ -56,7 +53,7 @@ class OrderedPlayers(list):
 # class Game(Protocol):
 #     id_: int
 #     status: d.GameStatusEnum
-#     turns: list[d.Turn]
+#     turns: list[s.Turn]
 
 #     def __init__(self, rules: s.Rules):
 #         ...
@@ -83,52 +80,60 @@ class Deathmatch:
         self.players = OrderedPlayers(game_players)
         self.lost_players: list[s.GamePlayer] = []
 
-        self.turns: list[d.Turn] = []
-        self.current_turn: d.Turn | None = None
+        self._turns: list[s.Turn] = []
+        self._current_turn: s.Turn | None = None
+
+    @property
+    def turns(self) -> list[s.Turn]:
+        return self._turns
+
+    @turns.setter
+    def turns(self, value: Any) -> None:
+        raise AttributeError('`turns` attr can only be read')
+
+    @property
+    def current_turn(self) -> s.Turn | None:
+        return self._current_turn
+
+    @current_turn.setter
+    def current_turn(self, value: Any) -> None:
+        raise AttributeError('`current_turn` attr can only be read')
 
     def start_turn(self) -> None:
         if self.status == d.GameStatusEnum.FINISHED:
             raise ValueError('Game is already finished')
 
-        if self.turns:  # Don't iterate on the first turn
+        if self._turns:  # Don't iterate on the first turn
             self.players.next()
-        self.current_turn = d.Turn(
-            started_on=datetime.utcnow(), player_id=self.players.current
+        self._current_turn = s.Turn(
+            started_on=datetime.utcnow(), player_id=self.players.current.id_
         )
 
     def process_turn(self, word: str) -> list[s.PlayerLostEvent | s.GameFinishedEvent]:
-        current_turn = cast(d.Turn, self.current_turn)
+        current_turn = cast(s.Turn, self._current_turn)
         current_turn.ended_on = datetime.utcnow()
         time_elapsed = current_turn.ended_on - current_turn.started_on
 
         if time_elapsed.total_seconds() > self.rules.round_time:
-            current_turn.word = None
-            current_turn.is_correct = False
-        elif validate_word(word):
-            current_turn.word = word
-            current_turn.is_correct = True
+            word_obj = s.Word(content=None, is_correct=False)
+        elif description := validate_word(word):
+            word_obj = s.Word(content=word, is_correct=True, description=description)
         else:
-            current_turn.word = word
-            current_turn.is_correct = False
+            word_obj = s.Word(content=word, is_correct=False)
+
+        current_turn.word = word_obj
 
         turn_event = self._evaluate_turn()
         game_event = self._evaluate_game()
 
-        self.turns.append(current_turn)
-        self.current_turn = None
+        self._turns.append(current_turn)
         return [*turn_event, *game_event]
 
-    # def _finalize_turn(self) -> s.TurnResults:
-    #     current_turn = cast(d.Turn, self.current_turn)
-    #     self.turns.append(current_turn)
-    #     self.current_turn = None
-    #     return s.TurnResults(turn=current_turn)
-
     def _evaluate_turn(self) -> list[s.PlayerLostEvent]:
-        current_turn = cast(d.Turn, self.current_turn)
+        current_turn = cast(s.Turn, self._current_turn)
 
         # TODO: Deal with edge cases like penalty == 0 . Maybe figure out a better way to handle this
-        if not current_turn.word or not current_turn.is_correct:
+        if not current_turn.word.content or not current_turn.word.is_correct:
             self.players.current.mistakes += 1
             self.players.current.score -= self.rules.penalty
         else:
@@ -142,9 +147,16 @@ class Deathmatch:
         return []
 
     def _evaluate_game(self) -> list[s.GameFinishedEvent]:
-        if len(self.players) == 1:
+        # Handle case with more than 1 player playing
+        if len(self.players) == 1 and len(self.lost_players) > 0:
             self.status = d.GameStatusEnum.FINISHED
             return [s.GameFinishedEvent()]
+
+        # Handle case with only 1 player playing
+        if len(self.players) == 0 and len(self.lost_players) > 0:
+            self.status = d.GameStatusEnum.FINISHED
+            return [s.GameFinishedEvent()]
+
         return []
 
 

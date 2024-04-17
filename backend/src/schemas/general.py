@@ -82,14 +82,20 @@ class AllTimeStatistics(GeneralBaseModel):
 
 
 class Word(GeneralBaseModel):
-    content: str
+    content: str | None = None
     description: dict[str, str] | None = None
     is_correct: bool | None = None  # Necessary?
 
 
 class Turn(GeneralBaseModel):
     word: Word | None = None
-    is_correct: bool | None = None  # Necessary?
+    started_on: UTCDatetime
+    ended_on: UTCDatetime | None = None
+    player_id: UUID
+
+
+class TurnOut(GeneralBaseModel):
+    word: Word | None = None
     started_on: UTCDatetime
     ended_on: UTCDatetime | None = None
     player_idx: int
@@ -125,6 +131,7 @@ class RoomPlayerOut(LobbyPlayerOut):
 
 
 class GamePlayer(GeneralBaseModel):
+    id_: UUID
     name: str
     score: int
     mistakes: int
