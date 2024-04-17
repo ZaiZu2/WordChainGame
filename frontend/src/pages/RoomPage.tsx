@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import { Button, Spinner, Stack } from "react-bootstrap";
 import Form from "react-bootstrap/Form";
 import Table from "react-bootstrap/Table";
@@ -9,6 +9,7 @@ import Bubble from "../components/Bubble";
 import CountdownTimer from "../components/CountdownTimer";
 import Icon from "../components/Icon";
 import { useStore } from "../contexts/storeContext";
+import { useWebSocketContext } from "../contexts/WebsocketProvider";
 import { DeathmatchRules, GamePlayer, LobbyState, Player, RoomState, Turn, Word } from "../types";
 
 export default function RoomPage() {
@@ -453,7 +454,19 @@ function WordList() {
     const gameTurns = _gameTurns as Turn[];
     const gameStatus = _gameStatus as string;
 
+    const { sendWordInput } = useWebSocketContext();
+
     const turns = gameTurns.length > 5 ? gameTurns.slice(-5) : gameTurns;
+    const wordRef = useRef<HTMLInputElement>(null);
+
+    function submitNewWord(event: React.FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+        const word = wordRef.current?.value;
+        if (!word) {
+            return;
+        }
+        sendWordInput(word);
+    }
 
     const positionToSize: Record<number, string> = {
         0: "fs-6",
@@ -536,12 +549,15 @@ function WordList() {
                                 style={{ flexBasis: "60%" }}
                                 className={`d-flex p-0 border-0 ${positionToSize[5]} justify-content-center`}
                             >
-                                <Form.Control
-                                    type="text"
-                                    placeholder="Write here..."
-                                    className="py-1 mt-1 w-50"
-                                    disabled={gameStatus !== "In progress"}
-                                />
+                                <Form onSubmit={submitNewWord}>
+                                    <Form.Control
+                                        type="text"
+                                        placeholder="Write here..."
+                                        className="py-1 mt-1 w-50"
+                                        disabled={gameStatus !== "In progress"}
+                                        ref={wordRef}
+                                    />
+                                </Form>
                             </td>
                         ) : (
                             <td

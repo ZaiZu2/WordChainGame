@@ -8,6 +8,7 @@ import {
     LobbyState,
     RoomState,
     WebSocketMessage,
+    WordInput,
 } from "@/types";
 
 import { WEBSOCKET_URL } from "../config";
@@ -15,10 +16,12 @@ import { useStore } from "./storeContext";
 
 export type WebSocketContext = {
     sendChatMessage: (message: string) => void;
+    sendWordInput: (word: string) => void;
 };
 
 export const WebSocketContextObject = createContext<WebSocketContext>({
     sendChatMessage: (message: string) => {},
+    sendWordInput: (word: string) => {},
 });
 
 export function useWebSocketContext(): WebSocketContext {
@@ -35,7 +38,9 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
         updateRoomState,
         updateGameState,
         mode,
+        gameId: _gameId,
     } = useStore();
+    const gameId = _gameId as number;
     const { sendJsonMessage, lastJsonMessage } = useWebSocket(WEBSOCKET_URL, {});
 
     useEffect(
@@ -85,8 +90,20 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
         sendJsonMessage(websocketMessage);
     }
 
+    function sendWordInput(word: string) {
+        const websocketMessage = {
+            type: "game_input",
+            payload: {
+                type: "word_input",
+                game_id: gameId,
+                word: word,
+            } as WordInput,
+        } as WebSocketMessage;
+        sendJsonMessage(websocketMessage);
+    }
+
     return (
-        <WebSocketContextObject.Provider value={{ sendChatMessage }}>
+        <WebSocketContextObject.Provider value={{ sendChatMessage, sendWordInput }}>
             {children}
         </WebSocketContextObject.Provider>
     );

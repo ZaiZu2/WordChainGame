@@ -60,12 +60,6 @@ export type GamePlayer = {
     mistakes: number;
 };
 
-export type GameInput = {
-    game_id: number;
-    type: "word_input";
-    word: string;
-};
-
 export type Word = {
     content: string;
     is_correct?: boolean;
@@ -109,6 +103,14 @@ type EndTurnState = {
 
 export type GameState = StartGameState | EndGameState | StartTurnState | EndTurnState;
 
+export type WordInput = {
+    type: "word_input";
+    game_id: number;
+    word: string;
+};
+
+export type GameInput = WordInput;
+
 export type RoomState = Omit<RoomOut, "players_no"> & {
     players: Record<string, RoomPlayer>;
 };
@@ -143,10 +145,13 @@ export type ConnectionState = {
     reason: string;
 };
 
-export type WebSocketMessage = {
-    type: "chat" | "game_state" | "lobby_state" | "room_state" | "connection_state";
-    payload: ChatMessage | GameState | LobbyState | RoomState | ConnectionState;
-};
+export type WebSocketMessage =
+    | { type: "chat"; payload: ChatMessage }
+    | { type: "game_state"; payload: GameState }
+    | { type: "game_input"; payload: GameInput }
+    | { type: "lobby_state"; payload: LobbyState }
+    | { type: "room_state"; payload: RoomState }
+    | { type: "connection_state"; payload: ConnectionState };
 
 export type ModalConfigs = {
     roomRules?: RoomRulesConfig;
