@@ -5,6 +5,10 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 
+class PlayerAlreadyConnectedError(Exception):
+    pass
+
+
 async def request_validation_handler(
     response: Response, exc: RequestValidationError
 ) -> Response:

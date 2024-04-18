@@ -9,6 +9,7 @@ from sqlalchemy.orm import joinedload
 import src.models as d  # d - database
 import src.schemas as s  # s - schema
 from src.connection_manager import ConnectionManager
+from src.error_handlers import PlayerAlreadyConnectedError
 from src.game import GameManager
 
 
@@ -101,8 +102,10 @@ async def accept_websocket_connection(
     conn_manager: ConnectionManager,
 ) -> None:
     await websocket.accept()
-    did_connect = conn_manager.connect(player.id_, d.LOBBY.id_, websocket)
-    if not did_connect:
+
+    try:
+        conn_manager.connect(player.id_, d.LOBBY.id_, websocket)
+    except PlayerAlreadyConnectedError:
         exc_args = (
             s.CustomWebsocketCodeEnum.MULTIPLE_CLIENTS,
             'Player is already connected with another client.',
@@ -111,14 +114,14 @@ async def accept_websocket_connection(
         await conn_manager.send_connection_state(*exc_args, websocket)
 
         # Inform the original client about the connection attempt
-        _, room_id_with_already_logged_player = conn_manager.find_connection(player.id_)
+        room_id_with_logged_player = conn_manager.pool.get_room_id(player.id_)
         message = d.Message(
             content='Someone tried to log into your account from another device',
-            room_id=room_id_with_already_logged_player,
+            room_id=room_id_with_logged_player,
             player_id=d.ROOT.id_,
         )
         await save_and_send_message(message, player, db, conn_manager)
-        raise WebSocketException(*exc_args)
+        raise WebSocketException(*exc_args) from None
 
     message = d.Message(
         content=f'{player.name} joined the room',
@@ -130,13 +133,12 @@ async def accept_websocket_connection(
 
 async def handle_player_disconnect(
     player: d.Player,
-    websocket: WebSocket,
     db: AsyncSession,
     conn_manager: ConnectionManager,
 ) -> None:
     await db.refresh(player)
-    _, room_id = conn_manager.find_connection(player.id_)
-    conn_manager.disconnect(player.id_, room_id, websocket)
+    room_id = conn_manager.pool.get_room_id(player.id_)
+    conn_manager.disconnect(player.id_)
 
     is_player_in_lobby = room_id == d.LOBBY.id_
     if not is_player_in_lobby:
@@ -232,7 +234,7 @@ async def listen_for_messages(
                             **game.current_turn.model_dump(),
                         ),
                     )
-                    _, room_id = conn_manager.find_connection(player.id_)
+                    room_id = conn_manager.pool.get_room_id(player.id_)
                     await conn_manager.broadcast_game_state(room_id, game_state)
 
         # Commit all flushed resources to DB every time a message is received
@@ -242,11 +244,12 @@ async def listen_for_messages(
 async def broadcast_full_lobby_state(
     db: AsyncSession, conn_manager: ConnectionManager
 ) -> None:
-    player_ids = [conn.player_id for conn in conn_manager.connections[d.LOBBY.id_]]
+    lobby_conns = conn_manager.pool.get_room_conns(d.LOBBY.id_)
+    player_ids = [conn.player_id for conn in lobby_conns]
     room_players = await db.scalars(
         select(d.Player).where(d.Player.id_.in_(player_ids))
     )
-    players_out_map = {
+    players_out = {
         room_player.name: s.LobbyPlayerOut(**room_player.to_dict())
         for room_player in room_players
     }
@@ -256,9 +259,9 @@ async def broadcast_full_lobby_state(
         .where(d.Room.status != d.RoomStatusEnum.EXPIRED)
         .options(joinedload(d.Room.owner))
     )
-    rooms_out_map = {
+    rooms_out = {
         room.id_: s.RoomOut(
-            players_no=len(conn_manager.connections[room.id_]),
+            players_no=len(lobby_conns),
             owner_name=room.owner.name,
             **room.to_dict(),
         )
@@ -266,11 +269,9 @@ async def broadcast_full_lobby_state(
     }
 
     stats = s.CurrentStatistics(
-        active_players=sum(len(conn) for conn in conn_manager.connections.values()),
-        active_rooms=len(conn_manager.connections) - 1,  # exclude the Lobby
+        active_players=conn_manager.pool.active_players,
+        active_rooms=conn_manager.pool.active_rooms,
     )
 
-    lobby_state = s.LobbyState(
-        rooms=rooms_out_map, players=players_out_map, stats=stats
-    )
+    lobby_state = s.LobbyState(rooms=rooms_out, players=players_out, stats=stats)
     await conn_manager.broadcast_lobby_state(lobby_state)
