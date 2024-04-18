@@ -1,75 +1,123 @@
 import asyncio
+from collections import namedtuple
+from typing import Any
 from uuid import UUID
 
 from fastapi import WebSocket
 
 import src.models as d  # d - database
 import src.schemas as s  # s - schema
+from src.error_handlers import PlayerAlreadyConnectedError
 
 
 class Connection:
     def __init__(self, player_id: UUID, websocket: WebSocket):
-        self.player_id = player_id
-        self.ready: bool = False  # Player's ready state in a room
         self.websocket = websocket
+        self.player_id = player_id
+
+        # Here is also stored transient room data e.g. ready state, mute state, etc.
+        self.ready: bool = False  # Player's ready state in a room
 
     def __hash__(self) -> int:
         return self.player_id.int
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: Any) -> bool:
+        """Compare a Connection object with another Connection or `player_id` UUID."""
         if isinstance(other, Connection):
             return self.player_id == other.player_id
         return False
 
 
+class ConnectionPool:
+    PlayerInfo = namedtuple('PlayerInfo', ['conn', 'room_id'])
+
+    def __init__(self) -> None:
+        # {
+        #     room_id: {
+        #         player_id: Connection,
+        #         ...
+        #     },
+        #     ...
+        # }
+        self._room_map: dict[int, dict[UUID, Connection]] = {d.LOBBY.id_: {}}
+        # {
+        #     player_id: (Connection, room_id),
+        #     ...
+        # }
+        self._player_map: dict[UUID, ConnectionPool.PlayerInfo] = {}
+
+    @property
+    def active_players(self) -> int:
+        return len(self._player_map)
+
+    @property
+    def active_rooms(self) -> int:
+        return len(self._room_map) - 1
+
+    def get_conn(self, player_id: UUID) -> Connection | None:
+        if not (player_info := self._player_map.get(player_id, None)):
+            return None
+        return player_info.conn
+
+    def get_room_id(self, player_id: UUID) -> int | None:
+        if not (player_info := self._player_map.get(player_id, None)):
+            return None
+        return player_info.room_id
+
+    def get_room_conns(self, room_id: int) -> set[Connection]:
+        room_conns = self._room_map[room_id]
+        return set(room_conns.values())
+
+    def add(self, conn: Connection, room_id: int) -> None:
+        # TODO: Should the room be implicitly created if it doesn't exist?
+        if room_id in self._room_map:
+            self._room_map[room_id][conn.player_id] = conn
+        else:
+            self._room_map[room_id] = {conn.player_id: conn}
+
+        self._player_map[conn.player_id] = ConnectionPool.PlayerInfo(conn, room_id)
+
+    def remove(self, player_id: UUID) -> None:
+        player_info = self._player_map.pop(player_id)
+        room_id = player_info.room_id
+        self._room_map[room_id].pop(player_id)
+
+    def exists(self, room_id: int) -> bool:
+        return room_id in self._room_map
+
+    def create_room(self, room_id: int) -> None:
+        if self.exists(room_id):
+            raise ValueError('Room already exists')
+        self._room_map[room_id] = {}
+
+
 class ConnectionManager:
     def __init__(self) -> None:
-        # TODO: Rework into a different data structure. Idea to store connections in
-        # rooms as sets proves to be awkward when individual connections need to be
-        # accessed.
-        self.connections: dict[int, set[Connection]] = {}
+        self.pool = ConnectionPool()
 
-    def connect(self, player_id: UUID, room_id: int, websocket: WebSocket) -> bool:
-        """Return True if the connection was successful, False otherwise."""
-        room_conns = self.connections.get(room_id, None)
-        connection = Connection(player_id, websocket)
+    def connect(self, player_id: UUID, room_id: int, websocket: WebSocket):
+        if self.pool.get_conn(player_id):
+            raise PlayerAlreadyConnectedError(
+                'Player is already connected with another client.'
+            )
 
-        if self.find_connection(player_id) != (None, None):
-            return False
-        elif room_conns is not None:
-            self.connections[room_id].add(connection)
-        else:
-            self.connections[room_id] = {connection}
-        return True
-
-    def disconnect(self, player_id: UUID, room_id: int, websocket: WebSocket):
-        room_conns = self.connections.get(room_id, None)
         conn = Connection(player_id, websocket)
+        self.pool.add(conn, room_id)
 
-        if room_conns is None:
-            raise ValueError(
-                'The room for which a player is trying to disconnect does not exist'
-            )
-        if conn not in room_conns:
-            raise ValueError(
-                'The player is trying to disconnect from a room they are not in'
-            )
-
-        self.connections[room_id].remove(conn)
+    def disconnect(self, player_id: UUID):
+        if not self.pool.get_conn(player_id):
+            raise ValueError('Player is not connected')
+        self.pool.remove(player_id)
 
     async def broadcast_chat_message(self, message: s.ChatMessage) -> None:
-        room_conns = self.connections.get(message.room_id, None)
-
+        room_conns = self.pool.get_room_conns(message.room_id)
         if room_conns is None:
-            raise ValueError(
-                'The room for which a message is to be broadcasted does not exist'
-            )
+            raise ValueError('Room does not exist')
 
         websocket_message = s.WebSocketMessage(
             type=s.WebSocketMessageTypeEnum.CHAT,
             payload=message,
         )
-
         message_json = websocket_message.model_dump_json(by_alias=True)
         send_messages = [conn.websocket.send_json(message_json) for conn in room_conns]
         await asyncio.gather(*send_messages)
@@ -79,9 +127,9 @@ class ConnectionManager:
         message: s.ChatMessage,
         player_id: UUID,
     ) -> None:
-        conn, _ = self.find_connection(player_id)
-        if not conn:
-            raise ValueError('Player is not in a room')
+        conn = self.pool.get_conn(player_id)
+        if conn is None:
+            raise ValueError('Player is not connected')
 
         websocket_message = s.WebSocketMessage(
             type=s.WebSocketMessageTypeEnum.CHAT,
@@ -95,13 +143,12 @@ class ConnectionManager:
         that is due to be updated/removed (if set to None) - data which is not included
         in the message MUST stay the same on the client side.
         """
-        lobby_conns = self.connections.get(d.LOBBY.id_, [])
+        lobby_conns = self.pool.get_room_conns(d.LOBBY.id_)
 
         websocket_message = s.WebSocketMessage(
             type=s.WebSocketMessageTypeEnum.LOBBY_STATE,
             payload=lobby_state,
         )
-
         message_json = websocket_message.model_dump_json(by_alias=True)
         send_messages = [conn.websocket.send_json(message_json) for conn in lobby_conns]
         await asyncio.gather(*send_messages)
@@ -114,9 +161,9 @@ class ConnectionManager:
         data that is due to be updated - data which is not included in the message MUST
         stay the same on the client side.
         """
-        conn, _ = self.find_connection(player_id, room_id=d.LOBBY.id_)
-        if not conn:
-            raise ValueError('Player is not in the lobby')
+        conn = self.pool.get_conn(player_id)
+        if conn is None:
+            raise ValueError('Player is not connected')
 
         websocket_message = s.WebSocketMessage(
             type=s.WebSocketMessageTypeEnum.LOBBY_STATE,
@@ -130,7 +177,9 @@ class ConnectionManager:
         that is due to be updated/removed (if set to None) - data which is not included
         in the message MUST stay the same on the client side.
         """
-        room_conns = self.connections[room_id]
+        room_conns = self.pool.get_room_conns(room_id)
+        if room_conns is None:
+            raise ValueError('Room does not exist')
 
         websocket_message = s.WebSocketMessage(
             type=s.WebSocketMessageTypeEnum.ROOM_STATE,
@@ -142,7 +191,9 @@ class ConnectionManager:
 
     async def broadcast_game_state(self, room_id: int, game_state: s.GameState) -> None:
         """Send the game state to all players in the room."""
-        room_conns = self.connections[room_id]
+        room_conns = self.pool.get_room_conns(room_id)
+        if room_conns is None:
+            raise ValueError('Room does not exist')
 
         websocket_message = s.WebSocketMessage(
             type=s.WebSocketMessageTypeEnum.GAME_STATE,
@@ -169,36 +220,14 @@ class ConnectionManager:
 
     def move_player(self, player_id: UUID, from_room_id: int, to_room_id: int) -> None:
         """Move a player's websocket connection from one room to another."""
-        player_conn, _ = self.find_connection(player_id, room_id=from_room_id)
+        if not (self.pool.get_room_id(player_id) == from_room_id):
+            raise ValueError('Player is not in the specified room')
+        conn = self.pool.get_conn(player_id)
+        if conn is None:
+            raise ValueError('Player is not in a room')
+        if not self.pool.exists(to_room_id):
+            raise ValueError('Room to move the player to does not exist')
 
-        self.connections[from_room_id].remove(player_conn)
-        if from_room_id != d.LOBBY.id_:
-            player_conn.ready = False
-
-        self.connections[to_room_id].add(player_conn)
-
-    def find_connection(
-        self,
-        player_id: UUID,
-        *,
-        room_id: int | None = None,
-    ) -> tuple[Connection, int] | tuple[None, None]:
-        """
-        Find a connection by player_id. If `room_id` is provided, check for existence in
-        a specific room. Return a tuple of the connection and the room_id, or Nones if
-        not found.
-        """
-        if room_id is not None:
-            room_conns = self.connections.get(room_id, None)
-            if room_conns is None:
-                return None, None
-
-            for conn in room_conns:
-                if conn.player_id == player_id:
-                    return conn, room_id
-        else:
-            for room_id, room_conns in self.connections.items():
-                for conn in room_conns:
-                    if conn.player_id == player_id:
-                        return conn, room_id
-        return None, None
+        conn.ready = False
+        self.pool.remove(player_id)
+        self.pool.add(conn, to_room_id)

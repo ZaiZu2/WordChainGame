@@ -48,7 +48,7 @@ async def create_room(
     room.owner = player
     db.add(room)
     await db.flush([room])
-    conn_manager.connections[room.id_] = set()
+    conn_manager.pool.create_room(room.id_)
 
     room_out = s.RoomOut(players_no=0, owner_name=player.name, **room.to_dict())
     lobby_state = s.LobbyState(rooms={room.id_: room_out})
@@ -70,8 +70,9 @@ async def modify_room(
     room_state = s.RoomState(owner_name=room.owner.name, **room.to_dict())
     await conn_manager.broadcast_room_state(room_state.id_, room_state)
 
+    room_conns = conn_manager.pool.get_room_conns(room.id_)
     room_out = s.RoomOut(
-        players_no=len(conn_manager.connections[room.id_]),
+        players_no=len(room_conns),
         owner_name=room.owner.name,
         **room.to_dict(),
     )
@@ -88,14 +89,16 @@ async def join_room(
     db: Annotated[AsyncSession, Depends(get_db)],
     conn_manager: Annotated[ConnectionManager, Depends(get_connection_manager)],
 ) -> s.RoomState:
-    conn, old_room_id = conn_manager.find_connection(player.id_)
+    conn = conn_manager.pool.get_conn(player.id_)
+    old_room_id = conn_manager.pool.get_room_id(player.id_)
+
     if room.id_ == old_room_id:
         return s.RoomState(owner_name=room.owner.name, **room.to_dict())
     if room.status != d.RoomStatusEnum.OPEN:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail='Room is not open'
         )
-    if len(conn_manager.connections[room.id_]) >= room.capacity:
+    if len(conn_manager.pool.get_room_conns(room.id_)) >= room.capacity:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail='Room is full'
         )
@@ -108,7 +111,7 @@ async def join_room(
 
     # Broadcast the info about all the players in the room, as the joining player
     # needs that context
-    conns = list(conn_manager.connections[room.id_])
+    conns = list(conn_manager.pool.get_room_conns(room.id_))
     room_players = await db.scalars(
         select(d.Player).where(d.Player.id_.in_([conn.player_id for conn in conns]))
     )
@@ -142,7 +145,7 @@ async def leave_room(
 ) -> s.LobbyState:
     # TODO: Ensure that the player terminated any active game before leaving the room
     # TODO: Ensure that the player is not the owner of the room
-    _, old_room_id = conn_manager.find_connection(player.id_, room_id=room.id_)
+    old_room_id = conn_manager.pool.get_room_id(player.id_)
     if old_room_id is None or room.id_ != old_room_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail='Player is not in the room'
@@ -171,7 +174,7 @@ async def leave_room(
     # Broadcast the info about all the players in the room, as the joining player
     # needs that context
     room_out = s.RoomOut(
-        players_no=len(conn_manager.connections[room.id_]),
+        players_no=len(conn_manager.pool.get_room_conns(room.id_)),
         owner_name=room.owner.name,
         **room.to_dict(),
     )
@@ -218,7 +221,7 @@ async def toggle_room_status(
     await conn_manager.broadcast_room_state(room.id_, room_state)
 
     room_out = s.RoomOut(
-        players_no=len(conn_manager.connections[room.id_]),
+        players_no=len(conn_manager.pool.get_room_conns(room.id_)),
         owner_name=room.owner.name,
         **room.to_dict(),
     )
@@ -236,7 +239,8 @@ async def toggle_player_readiness(
     db: Annotated[AsyncSession, Depends(get_db)],
     conn_manager: Annotated[ConnectionManager, Depends(get_connection_manager)],
 ):
-    conn, found_room_id = conn_manager.find_connection(player.id_, room_id=room.id_)
+    conn = conn_manager.pool.get_conn(player.id_)
+    found_room_id = conn_manager.pool.get_room_id(player.id_)
     if found_room_id is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail='Player is not in the room'
@@ -266,12 +270,12 @@ async def start_game(
             status_code=status.HTTP_400_BAD_REQUEST, detail='Player is not the owner'
         )
 
-    conn, found_room_id = conn_manager.find_connection(player.id_, room_id=room.id_)
+    found_room_id = conn_manager.pool.get_room_id(player.id_)
     if found_room_id is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail='Player is not in the room'
         )
-    if not all(conn.ready for conn in conn_manager.connections[room.id_]):
+    if not all(conn.ready for conn in conn_manager.pool.get_room_conns(room.id_)):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail='Not all players are ready'
         )
@@ -282,7 +286,10 @@ async def start_game(
         await db.scalars(
             select(d.Player).where(
                 d.Player.id_.in_(
-                    [conn.player_id for conn in conn_manager.connections[room.id_]]
+                    [
+                        conn.player_id
+                        for conn in conn_manager.pool.get_room_conns(room.id_)
+                    ]
                 )
             )
         )
