@@ -32,20 +32,28 @@ class OrderedPlayers(list):
         super().__init__(players)
         random.shuffle(self)
 
-        self.current_idx = 0
+        self._current_idx = 0
+
+    @property
+    def current_idx(self) -> int:
+        return self._current_idx
+
+    @current_idx.setter
+    def current_idx(self, value: Any) -> None:
+        raise AttributeError('`current` attr can only be read')
 
     @property
     def current(self) -> s.GamePlayer:
-        return self[self.current_idx]
+        return self[self._current_idx]
 
     def next(self) -> None:
         """Iterate to the next player in the circular manner."""
-        self.current_idx = (self.current_idx + 1) % len(self)
+        self._current_idx = (self._current_idx + 1) % len(self)
 
     def remove_current(self) -> s.GamePlayer:
         """Remove current player from the list."""
-        player = self.pop(self.current_idx)
-        self.current_idx = (self.current_idx - 1) % len(self)
+        player = self.pop(self._current_idx)
+        self._current_idx = (self._current_idx - 1) % len(self)
         return player
 
 
