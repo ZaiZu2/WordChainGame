@@ -79,9 +79,7 @@ class Room(Base):
     __tablename__ = 'rooms'
 
     id_: so.Mapped[int] = so.mapped_column('id', primary_key=True)
-    name: so.Mapped[str] = so.mapped_column(
-        sa.String(10), unique=True
-    )  # NOTE: Should this be unique?
+    name: so.Mapped[str] = so.mapped_column(sa.String(10), unique=True)
     status: so.Mapped[RoomStatusEnum] = so.mapped_column(
         default=RoomStatusEnum.OPEN, nullable=False
     )

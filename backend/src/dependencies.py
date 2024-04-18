@@ -2,11 +2,18 @@ from functools import lru_cache
 from typing import Annotated, AsyncGenerator, Literal
 from uuid import UUID
 
-from fastapi import Cookie, Depends, HTTPException, Response, status
+from fastapi import (
+    Cookie,
+    Depends,
+    HTTPException,
+    Response,
+    status,
+)
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
-import src.models as d
+import src.models as d  # d - database
 from config import Config, get_config
 from src.connection_manager import ConnectionManager
 from src.game import GameManager
@@ -57,6 +64,21 @@ async def get_player(
 
     await set_auth_cookie(player_id, response)
     return player
+
+
+async def get_room(
+    room_id: int,
+    player: Annotated[d.Player, Depends(get_player)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> d.Room:
+    room = await db.scalar(
+        select(d.Room).where(d.Room.id_ == room_id).options(joinedload(d.Room.owner))
+    )
+    if room is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail='Room not found'
+        )
+    return room
 
 
 async def set_auth_cookie(
