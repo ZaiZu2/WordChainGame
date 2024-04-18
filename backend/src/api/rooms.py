@@ -329,7 +329,7 @@ async def start_game(
     game.start_turn()
     turn_state = s.StartTurnState(
         current_turn=s.TurnOut(
-            player_idx=game.players._current_idx, **game.current_turn.model_dump()
+            player_idx=game.players.current_idx, **game.current_turn.model_dump()
         ),
         status=d.GameStatusEnum.IN_PROGRESS,
     )  # type: ignore
