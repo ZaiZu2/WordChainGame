@@ -9,20 +9,20 @@ import src.schemas as s
 from config import get_config
 
 
-def validate_word(word: str) -> dict | bool:
+def check_word(word: str) -> s.Word:
     client = httpx.Client()
     response = client.get(f'{get_config().DICTIONARY_API_URL}{word}')
 
     # TODO: Handle connection errors and other exceptions
     if response.status_code == 404:
         # TODO: Function does 2  things - unpacks response and returns False on failed validation
-        return False
+        return s.Word(content=word, is_correct=False)
 
     definitions = {
         meaning['partOfSpeech']: meaning['definitions'][0]['definition']
         for meaning in response.json()[0]['meanings']
     }
-    return definitions
+    return s.Word(content=word, is_correct=True, description=definitions)
 
 
 class OrderedPlayers(list):
@@ -51,7 +51,7 @@ class OrderedPlayers(list):
         self._current_idx = (self._current_idx + 1) % len(self)
 
     def remove_current(self) -> s.GamePlayer:
-        """Remove current player from the list."""
+        """Remove current player from the list, and move to the previous player."""
         player = self.pop(self._current_idx)
         self._current_idx = (self._current_idx - 1) % len(self)
         return player
@@ -78,7 +78,7 @@ class Deathmatch:
         self, id_: int, players: list[d.Player], rules: s.DeathmatchRules
     ) -> None:
         self.id_ = id_
-        self.status = d.GameStatusEnum.IN_PROGRESS
+        self.status = d.GameStatusEnum.STARTING
         self.rules = rules
 
         game_players = [
@@ -90,6 +90,9 @@ class Deathmatch:
 
         self._turns: list[s.Turn] = []
         self._current_turn: s.Turn | None = None
+
+        self.words: set[s.Word] = set()
+        self.events: list[s.GameEvent] = []  # Must be emptied after each turn
 
     @property
     def turns(self) -> list[s.Turn]:
@@ -110,6 +113,8 @@ class Deathmatch:
     def start_turn(self) -> None:
         if self.status == d.GameStatusEnum.FINISHED:
             raise ValueError('Game is already finished')
+        self.status = d.GameStatusEnum.IN_PROGRESS
+        self.events = []
 
         if self._turns:  # Don't iterate on the first turn
             self.players.next()
@@ -117,31 +122,50 @@ class Deathmatch:
             started_on=datetime.utcnow(), player_id=self.players.current.id_
         )
 
-    def process_turn(self, word: str) -> list[s.PlayerLostEvent | s.GameFinishedEvent]:
+    def process_turn(self, word: str) -> list[s.GameEvent]:
         current_turn = cast(s.Turn, self._current_turn)
         current_turn.ended_on = datetime.utcnow()
         time_elapsed = current_turn.ended_on - current_turn.started_on
 
         if time_elapsed.total_seconds() > self.rules.round_time:
-            word_obj = s.Word(content=None, is_correct=False)
-        elif description := validate_word(word):
-            word_obj = s.Word(content=word, is_correct=True, description=description)
+            current_turn.word = None
+            current_turn.info = 'Turn time exceeded'
         else:
-            word_obj = s.Word(content=word, is_correct=False)
+            current_turn.word, current_turn.info = self._validate_word(word)
 
-        current_turn.word = word_obj
-
-        turn_event = self._evaluate_turn()
-        game_event = self._evaluate_game()
-
+        self._evaluate_turn()
+        self._evaluate_game()
         self._turns.append(current_turn)
-        return [*turn_event, *game_event]
+        return self.events
+
+    def _validate_word(self, word: str) -> tuple[s.Word, str]:
+        word = word.lower()
+        last_word = (
+            self._turns[-1].word.content if self.turns else None
+        )  # Ignore on the first turn
+        if last_word and not word.startswith(last_word[-1]):
+            return (
+                s.Word(content=word, is_correct=False),
+                'Word does not start with the last letter of the previous word',
+            )
+
+        if word in self.words:
+            return s.Word(content=word, is_correct=False), 'Word has already been used'
+
+        word_obj = check_word(word)
+        if not word_obj.is_correct:
+            return word_obj, 'Word does not exist'
+
+        self.words.add(word_obj)
+        return word_obj, 'Word is correct'
 
     def _evaluate_turn(self) -> list[s.PlayerLostEvent]:
         current_turn = cast(s.Turn, self._current_turn)
 
         # TODO: Deal with edge cases like penalty == 0 . Maybe figure out a better way to handle this
-        if not current_turn.word.content or not current_turn.word.is_correct:
+        did_turn_time_out = not current_turn.word
+        is_word_incorrect = not current_turn.word.is_correct
+        if not did_turn_time_out or is_word_incorrect:
             self.players.current.mistakes += 1
             self.players.current.score -= self.rules.penalty
         else:
