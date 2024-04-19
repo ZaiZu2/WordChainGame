@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Annotated, Literal, Protocol
+from typing import Annotated, Any, Literal, Protocol
 from uuid import UUID
 
 from pydantic import (
@@ -84,13 +84,22 @@ class AllTimeStatistics(GeneralBaseModel):
 class Word(GeneralBaseModel):
     content: str | None = None
     description: dict[str, str] | None = None
-    is_correct: bool | None = None  # Necessary?
+    is_correct: bool | None = None
+
+    def __hash__(self) -> int:
+        return hash(self.content)
+
+    def __eq__(self, other: Any) -> bool:
+        if isinstance(other, Word):
+            return self.content == other.content
+        return False
 
 
 class Turn(GeneralBaseModel):
     word: Word | None = None
     started_on: UTCDatetime
     ended_on: UTCDatetime | None = None
+    info: str | None = None
     player_id: UUID
 
 
@@ -98,11 +107,12 @@ class TurnOut(GeneralBaseModel):
     word: Word | None = None
     started_on: UTCDatetime
     ended_on: UTCDatetime | None = None
+    info: str | None = None
     player_idx: int
 
 
 class GameEvent(Protocol):
-    type_: Literal['GameFinished', 'PlayerLost']
+    type_: Literal['GameFinished', 'PlayerLost', 'IncorrectWord', 'CorrectWord']
 
 
 class PlayerLostEvent(GeneralBaseModel):

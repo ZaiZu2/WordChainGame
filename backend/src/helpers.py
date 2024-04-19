@@ -1,3 +1,4 @@
+import asyncio
 from enum import Enum
 from typing import cast
 
@@ -8,6 +9,7 @@ from sqlalchemy.orm import joinedload
 
 import src.models as d  # d - database
 import src.schemas as s  # s - schema
+from config import Config
 from src.connection_manager import ConnectionManager
 from src.error_handlers import PlayerAlreadyConnectedError
 from src.game import GameManager
@@ -197,6 +199,7 @@ async def listen_for_messages(
     db: AsyncSession,
     conn_manager: ConnectionManager,
     game_manager: GameManager,
+    config: Config,
 ):
     while True:
         # TODO: Make a wrapper which deserializes the websocket message when it arrives
@@ -236,6 +239,18 @@ async def listen_for_messages(
                     )
                     room_id = conn_manager.pool.get_room_id(player.id_)
                     await conn_manager.broadcast_game_state(room_id, game_state)
+
+                    # Delay the start of the next turn ti prime the players
+                    await asyncio.sleep(config.GAME_START_TIME)
+                    game.start_turn()
+                    turn_state = s.StartTurnState(
+                        current_turn=s.TurnOut(
+                            player_idx=game.players.current_idx,
+                            **game.current_turn.model_dump(),
+                        ),
+                        status=game.status,
+                    )  # type: ignore
+                    await conn_manager.broadcast_game_state(room_id, turn_state)
 
         # Commit all flushed resources to DB every time a message is received
         await db.commit()

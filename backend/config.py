@@ -15,7 +15,7 @@ class Config(BaseSettings):
     AUTH_COOKIE_EXPIRATION: int = 1200  # seconds
 
     DICTIONARY_API_URL: str = 'https://api.dictionaryapi.dev/api/v2/entries/en/'
-    GAME_START_TIME: int = 30  # seconds
+    GAME_START_TIME: int = 3  # seconds
 
 
 @lru_cache

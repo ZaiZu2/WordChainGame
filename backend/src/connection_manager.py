@@ -22,7 +22,6 @@ class Connection:
         return self.player_id.int
 
     def __eq__(self, other: Any) -> bool:
-        """Compare a Connection object with another Connection or `player_id` UUID."""
         if isinstance(other, Connection):
             return self.player_id == other.player_id
         return False

@@ -324,7 +324,7 @@ async def start_game(
 
     game_state = s.StartGameState(
         id_=game.id_,
-        status=d.GameStatusEnum.STARTING,
+        status=game.status,
         players=game.players,
         lost_players=game.lost_players,
         rules=game.rules,
@@ -338,6 +338,6 @@ async def start_game(
         current_turn=s.TurnOut(
             player_idx=game.players.current_idx, **game.current_turn.model_dump()
         ),
-        status=d.GameStatusEnum.IN_PROGRESS,
+        status=game.status,
     )  # type: ignore
     await conn_manager.broadcast_game_state(room.id_, turn_state)

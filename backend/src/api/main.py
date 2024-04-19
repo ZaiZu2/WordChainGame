@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 import src.models as d  # d - database
 import src.schemas as s  # s - schema
+from config import Config, get_config
 from src.connection_manager import ConnectionManager
 from src.dependencies import (
     get_connection_manager,
@@ -122,16 +123,21 @@ async def connect(
     db: Annotated[AsyncSession, Depends(get_db)],
     conn_manager: Annotated[ConnectionManager, Depends(get_connection_manager)],
     game_manager: Annotated[GameManager, Depends(get_game_manager)],
+    config: Annotated[Config, Depends(get_config)],
 ) -> None:
     await accept_websocket_connection(player, websocket, db, conn_manager)
-    await broadcast_full_lobby_state(db, conn_manager)
+    await broadcast_full_lobby_state(
+        db, conn_manager
+    )  # TODO: Send instead of broadcast
     await db.commit()
 
     try:
         # Run as a separate task so blocking operations can coexist with polling
         # operations inside this endpoint.
         listening_task = asyncio.create_task(
-            listen_for_messages(player, websocket, db, conn_manager, game_manager)
+            listen_for_messages(
+                player, websocket, db, conn_manager, game_manager, config
+            )
         )
 
         await asyncio.gather(listening_task)
