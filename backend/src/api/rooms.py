@@ -317,4 +317,15 @@ async def start_game(
 
     # Store the game in memory during it's progress
     game = game_manager.create(game_db)
-    await loop_turns(game, room, conn_manager, config)
+
+    # Broadcast the initial game state to all players
+    game_state = s.StartGameState(
+        id_=game.id_,
+        status=game.status,
+        players=game.players,
+        lost_players=game.lost_players,
+        rules=game.rules,
+    )  # type: ignore
+    await conn_manager.broadcast_game_state(room.id_, game_state)
+
+    await loop_turns(game, room.id_, conn_manager, config)

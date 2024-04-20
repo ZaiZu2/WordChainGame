@@ -142,18 +142,33 @@ class Deathmatch:
             status=self.status,
         )  # type: ignore
 
-    def process_turn(self, word: str | None = None) -> s.EndTurnState:
+    def process_in_time_turn(self, word: str) -> s.EndTurnState:
         current_turn = cast(s.Turn, self.current_turn)
         current_turn.ended_on = datetime.utcnow()
-        time_elapsed = current_turn.ended_on - current_turn.started_on
+        current_turn.word, current_turn.info = self._validate_word(word)
 
-        # `word` arg should not be passed when the turn has timed out
-        assert not word and time_elapsed.total_seconds() > self.rules.round_time  # noqa: PT018
-        if not word:
-            current_turn.word = None
-            current_turn.info = 'Turn time exceeded'
-        else:
-            current_turn.word, current_turn.info = self._validate_word(word)
+        self._evaluate_turn()
+        self._evaluate_game()
+        self._turns.append(current_turn)
+
+        return s.EndTurnState(
+            type_='end_turn',
+            players=self.players,
+            lost_players=self.lost_players,
+            current_turn=s.TurnOut(
+                player_idx=self.players.current_idx,
+                **self.current_turn.model_dump(),
+            ),
+        )
+
+    def process_timed_out_turn(self) -> s.EndTurnState:
+        current_turn = cast(s.Turn, self.current_turn)
+        current_turn.ended_on = datetime.utcnow()
+        current_turn.word = None
+        current_turn.info = 'Turn time exceeded'
+
+        time_elapsed = current_turn.ended_on - current_turn.started_on
+        assert time_elapsed.total_seconds() > self.rules.round_time
 
         self._evaluate_turn()
         self._evaluate_game()
