@@ -32,7 +32,7 @@ class OrderedPlayers(list):
         super().__init__(players)
         random.shuffle(self)
 
-        self._current_idx = 0
+        self._current_idx = -1 if len(self) == 0 else 0
 
     @property
     def current_idx(self) -> int:
@@ -48,12 +48,19 @@ class OrderedPlayers(list):
 
     def next(self) -> None:
         """Iterate to the next player in the circular manner."""
+        if len(self) == 0:
+            raise ValueError('Next player cannot be iterated to in an empty list')
         self._current_idx = (self._current_idx + 1) % len(self)
 
     def remove_current(self) -> s.GamePlayer:
         """Remove current player from the list, and move to the previous player."""
         player = self.pop(self._current_idx)
-        self._current_idx = (self._current_idx - 1) % len(self)
+
+        if len(self) != 0:
+            self._current_idx = (self._current_idx - 1) % len(self)
+        else:
+            self._current_idx = -1
+
         return player
 
 
@@ -110,7 +117,13 @@ class Deathmatch:
     def current_turn(self, value: Any) -> None:
         raise AttributeError('`current_turn` attr can only be read')
 
-    def start_turn(self) -> None:
+    @property
+    def time_left_in_turn(self) -> float:
+        current_turn = cast(s.Turn, self.current_turn)
+        time_elapsed = datetime.utcnow() - current_turn.started_on
+        return self.rules.round_time - time_elapsed.total_seconds()
+
+    def start_turn(self) -> s.StartTurnState:
         if self.status == d.GameStatusEnum.FINISHED:
             raise ValueError('Game is already finished')
         self.status = d.GameStatusEnum.IN_PROGRESS
@@ -122,12 +135,21 @@ class Deathmatch:
             started_on=datetime.utcnow(), player_id=self.players.current.id_
         )
 
-    def process_turn(self, word: str) -> list[s.GameEvent]:
-        current_turn = cast(s.Turn, self._current_turn)
+        return s.StartTurnState(
+            current_turn=s.TurnOut(
+                player_idx=self.players.current_idx, **self.current_turn.model_dump()
+            ),
+            status=self.status,
+        )  # type: ignore
+
+    def process_turn(self, word: str | None = None) -> s.EndTurnState:
+        current_turn = cast(s.Turn, self.current_turn)
         current_turn.ended_on = datetime.utcnow()
         time_elapsed = current_turn.ended_on - current_turn.started_on
 
-        if time_elapsed.total_seconds() > self.rules.round_time:
+        # `word` arg should not be passed when the turn has timed out
+        assert not word and time_elapsed.total_seconds() > self.rules.round_time  # noqa: PT018
+        if not word:
             current_turn.word = None
             current_turn.info = 'Turn time exceeded'
         else:
@@ -136,7 +158,22 @@ class Deathmatch:
         self._evaluate_turn()
         self._evaluate_game()
         self._turns.append(current_turn)
-        return self.events
+
+        return s.EndTurnState(
+            type_='end_turn',
+            players=self.players,
+            lost_players=self.lost_players,
+            current_turn=s.TurnOut(
+                player_idx=self.players.current_idx,
+                **self.current_turn.model_dump(),
+            ),
+        )
+
+    def did_turn_timed_out(self, turn_no: int) -> bool:
+        """Check if the turn in the game has timed out."""
+        if turn_no <= len(self.turns):
+            return False
+        return True
 
     def _validate_word(self, word: str) -> tuple[s.Word, str]:
         word = word.lower()
@@ -159,15 +196,14 @@ class Deathmatch:
         self.words.add(word_obj)
         return word_obj, 'Word is correct'
 
-    def _evaluate_turn(self) -> list[s.PlayerLostEvent]:
+    def _evaluate_turn(self) -> None:
         current_turn = cast(s.Turn, self._current_turn)
 
         # TODO: Deal with edge cases like penalty == 0 . Maybe figure out a better way to handle this
-        did_turn_time_out = not current_turn.word
-        is_word_incorrect = not current_turn.word.is_correct
-        if not did_turn_time_out or is_word_incorrect:
+        did_turn_timed_out = not current_turn.word
+        if did_turn_timed_out or not current_turn.word.is_correct:
             self.players.current.mistakes += 1
-            self.players.current.score -= self.rules.penalty
+            self.players.current.score += self.rules.penalty
         else:
             self.players.current.score += self.rules.reward
 
@@ -175,21 +211,18 @@ class Deathmatch:
         if self.players.current.score <= 0:
             lost_player = self.players.remove_current()
             self.lost_players.append(lost_player)
-            return [s.PlayerLostEvent(player_name=lost_player.name)]
-        return []
+            self.events.append(s.PlayerLostEvent(player_name=lost_player.name))
 
-    def _evaluate_game(self) -> list[s.GameFinishedEvent]:
+    def _evaluate_game(self) -> None:
         # Handle case with more than 1 player playing
         if len(self.players) == 1 and len(self.lost_players) > 0:
             self.status = d.GameStatusEnum.FINISHED
-            return [s.GameFinishedEvent()]
+            self.events.append(s.GameFinishedEvent())
 
         # Handle case with only 1 player playing
         if len(self.players) == 0 and len(self.lost_players) > 0:
             self.status = d.GameStatusEnum.FINISHED
-            return [s.GameFinishedEvent()]
-
-        return []
+            self.events.append(s.GameFinishedEvent())
 
 
 class GameManager:

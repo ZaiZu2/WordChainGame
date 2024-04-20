@@ -12,7 +12,7 @@ import src.schemas as s  # s - schema
 from config import Config
 from src.connection_manager import ConnectionManager
 from src.error_handlers import PlayerAlreadyConnectedError
-from src.game import GameManager
+from src.game import Deathmatch, GameManager
 
 
 class TagsEnum(str, Enum):
@@ -222,38 +222,33 @@ async def listen_for_messages(
                     game_input = cast(s.WordInput, websocket_message.payload)
                     game = game_manager.get(game_input.game_id)
 
-                    # TODO: Unsafe, players id should be validated
-                    if game is None or game.players.current.name != player.name:
-                        return
+                    if game is None or game.players.current.id_ != player.id_:
+                        return  # TODO: Handle malicious attempts to send game input
 
-                    events = game.process_turn(game_input.word)  # noqa: F841
-                    # TODO: Handle the events
-                    game_state = s.EndTurnState(
-                        type_='end_turn',
-                        players=game.players,
-                        lost_players=game.lost_players,
-                        current_turn=s.TurnOut(
-                            player_idx=game.players.current_idx,
-                            **game.current_turn.model_dump(),
-                        ),
-                    )
+                    start_turn_state = game.process_turn(game_input.word)
                     room_id = conn_manager.pool.get_room_id(player.id_)
-                    await conn_manager.broadcast_game_state(room_id, game_state)
+                    await conn_manager.broadcast_game_state(room_id, start_turn_state)
 
-                    # Delay the start of the next turn ti prime the players
-                    await asyncio.sleep(config.GAME_START_TIME)
-                    game.start_turn()
-                    turn_state = s.StartTurnState(
-                        current_turn=s.TurnOut(
-                            player_idx=game.players.current_idx,
-                            **game.current_turn.model_dump(),
-                        ),
-                        status=game.status,
-                    )  # type: ignore
-                    await conn_manager.broadcast_game_state(room_id, turn_state)
+                    await loop_turns(game, room_id, conn_manager, config)
 
         # Commit all flushed resources to DB every time a message is received
         await db.commit()
+
+
+async def loop_turns(
+    game: Deathmatch, room: d.Room, conn_manager: ConnectionManager, config: Config
+):
+    # Delay the game start to prime the players
+    await asyncio.sleep(config.GAME_START_TIME)
+    turn_state = game.start_turn()
+    await conn_manager.broadcast_game_state(room.id_, turn_state)
+
+    turn_no = len(game.turns) + 1
+    await asyncio.sleep(game.time_left_in_turn)
+    if game.did_turn_timed_out(turn_no):
+        end_turn_state = game.process_turn()
+        await conn_manager.broadcast_game_state(room.id_, end_turn_state)
+        await loop_turns(game, room, conn_manager, config)
 
 
 async def broadcast_full_lobby_state(

@@ -1,4 +1,3 @@
-import asyncio
 from typing import Annotated
 
 from fastapi import (
@@ -25,6 +24,7 @@ from src.dependencies import (
 from src.game import GameManager
 from src.helpers import (
     TagsEnum,
+    loop_turns,
     move_player_and_broadcast_message,
 )
 
@@ -317,27 +317,4 @@ async def start_game(
 
     # Store the game in memory during it's progress
     game = game_manager.create(game_db)
-
-    # Broadcast the initial game state to all players
-    room_state = s.RoomState(**room.to_dict(), owner_name=room.owner.name)
-    await conn_manager.broadcast_room_state(room.id_, room_state)
-
-    game_state = s.StartGameState(
-        id_=game.id_,
-        status=game.status,
-        players=game.players,
-        lost_players=game.lost_players,
-        rules=game.rules,
-    )  # type: ignore
-    await conn_manager.broadcast_game_state(room.id_, game_state)
-
-    # Delay the game start to prime the players
-    await asyncio.sleep(config.GAME_START_TIME)
-    game.start_turn()
-    turn_state = s.StartTurnState(
-        current_turn=s.TurnOut(
-            player_idx=game.players.current_idx, **game.current_turn.model_dump()
-        ),
-        status=game.status,
-    )  # type: ignore
-    await conn_manager.broadcast_game_state(room.id_, turn_state)
+    await loop_turns(game, room, conn_manager, config)
