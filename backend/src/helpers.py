@@ -225,7 +225,7 @@ async def listen_for_messages(
                     if game is None or game.players.current.id_ != player.id_:
                         return  # TODO: Handle malicious attempts to send game input
 
-                    start_turn_state = game.process_turn(game_input.word)
+                    start_turn_state = game.process_in_time_turn(game_input.word)
                     room_id = conn_manager.pool.get_room_id(player.id_)
                     await conn_manager.broadcast_game_state(room_id, start_turn_state)
 
@@ -236,19 +236,19 @@ async def listen_for_messages(
 
 
 async def loop_turns(
-    game: Deathmatch, room: d.Room, conn_manager: ConnectionManager, config: Config
+    game: Deathmatch, room_id: int, conn_manager: ConnectionManager, config: Config
 ):
     # Delay the game start to prime the players
     await asyncio.sleep(config.GAME_START_TIME)
     turn_state = game.start_turn()
-    await conn_manager.broadcast_game_state(room.id_, turn_state)
+    await conn_manager.broadcast_game_state(room_id, turn_state)
 
     turn_no = len(game.turns) + 1
     await asyncio.sleep(game.time_left_in_turn)
     if game.did_turn_timed_out(turn_no):
-        end_turn_state = game.process_turn()
-        await conn_manager.broadcast_game_state(room.id_, end_turn_state)
-        await loop_turns(game, room, conn_manager, config)
+        end_turn_state = game.process_timed_out_turn()
+        await conn_manager.broadcast_game_state(room_id, end_turn_state)
+        await loop_turns(game, room_id, conn_manager, config)
 
 
 async def broadcast_full_lobby_state(
