@@ -60,7 +60,6 @@ export default function GameStoreSlice(switchMode: (mode: "lobby" | "room" | "ga
             case "end_turn":
                 setGamePlayers(newGameState.players);
                 setGameLostPlayers(newGameState.lost_players);
-                setGameCurrentTurn(null);
                 setGameTurns((prevGameTurns) => [
                     ...(prevGameTurns || []),
                     newGameState.current_turn,

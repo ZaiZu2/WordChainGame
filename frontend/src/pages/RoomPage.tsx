@@ -445,12 +445,14 @@ function WordList() {
     const {
         roomState,
         gamePlayers: _gamePlayers,
+        gameLostPlayers: _gameLostPlayers,
         gameTurns: _gameTurns,
         isLocalPlayersTurn,
         currentTurn,
         gameStatus: _gameStatus,
     } = useStore();
     const gamePlayers = _gamePlayers as GamePlayer[];
+    const gameLostPlayers = _gameLostPlayers as GamePlayer[];
     const gameTurns = _gameTurns as Turn[];
     const gameStatus = _gameStatus as string;
 
@@ -477,9 +479,9 @@ function WordList() {
         5: "fs-1",
     };
     const symbol = (word: Word) => (word.is_correct ? "check" : "close");
-    const points = (word: Word) =>
-        word.is_correct ? "+" + roomState?.rules.reward : roomState?.rules.penalty;
-    const color = (word: Word) => (word.is_correct ? "text-success" : "text-danger"); // GREEN or RED
+    const points = (word: Word | null) =>
+        word?.is_correct ? "+" + roomState?.rules.reward : roomState?.rules.penalty;
+    const color = (word: Word | null) => (word?.is_correct ? "text-success" : "text-danger"); // GREEN or RED
 
     const style = {
         flexGrow: 1,
@@ -494,19 +496,21 @@ function WordList() {
                 <tbody>
                     {Array.from({ length: 5 }).map((_, index) => {
                         const turnOffset = 5 - turns.length;
-                        const turnIndex = index - turnOffset;
+                        const turnIndex: number = index - turnOffset;
                         if (turnIndex < 0) {
                             return;
                         }
 
-                        const word = turns[turnIndex].word as Word;
-                        const player_name = gamePlayers[turns[turnIndex].player_idx].name;
+                        const word = turns[turnIndex].word;
+                        const player_name = [...gamePlayers, ...gameLostPlayers][
+                            turns[turnIndex].player_idx
+                        ].name;
 
                         return (
                             <tr
                                 style={style}
                                 className="d-flex justify-content-between"
-                                key={word.content}
+                                key={word ? word.content : index}
                             >
                                 <td style={{ flexBasis: "20%" }} className="p-0 border-0">
                                     {player_name}
@@ -517,7 +521,7 @@ function WordList() {
                                             style={{ flexBasis: "60%" }}
                                             className={`p-0 border-0 ${positionToSize[index]}`}
                                         >
-                                            {word.content}
+                                            {word ? word.content : "-"}
                                         </div>
                                         <div
                                             style={{ flexBasis: "10%" }}
@@ -525,7 +529,7 @@ function WordList() {
                                                 word
                                             )}`}
                                         >
-                                            {symbol(word)}
+                                            {word ? symbol(word) : ""}
                                         </div>
                                     </Stack>
                                 </td>
