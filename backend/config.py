@@ -16,6 +16,7 @@ class Config(BaseSettings):
 
     DICTIONARY_API_URL: str = 'https://api.dictionaryapi.dev/api/v2/entries/en/'
     GAME_START_TIME: int = 3  # seconds
+    MAX_TURN_TIME_DEVIATION: float = 0.01  # seconds
 
 
 @lru_cache

@@ -168,7 +168,10 @@ class Deathmatch:
         current_turn.info = 'Turn time exceeded'
 
         time_elapsed = current_turn.ended_on - current_turn.started_on
-        assert time_elapsed.total_seconds() > self.rules.round_time
+        assert (
+            time_elapsed.total_seconds()
+            < self.rules.round_time + get_config().MAX_TURN_TIME_DEVIATION
+        )
 
         self._evaluate_turn()
         self._evaluate_game()
