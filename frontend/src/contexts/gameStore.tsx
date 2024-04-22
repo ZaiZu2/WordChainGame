@@ -11,8 +11,6 @@ export const initialGameStoreSlice = {
     setGameRules: () => {},
     gamePlayers: undefined,
     setGamePlayers: () => {},
-    gameLostPlayers: undefined,
-    setGameLostPlayers: () => {},
     currentTurn: undefined,
     setGameCurrentTurn: () => {},
     gameTurns: undefined,
@@ -29,7 +27,6 @@ export default function GameStoreSlice(switchMode: (mode: "lobby" | "room" | "ga
     const [gameRules, setGameRules] = useState<DeathmatchRules | undefined>(undefined);
 
     const [gamePlayers, setGamePlayers] = useState<GamePlayer[] | undefined>(undefined);
-    const [gameLostPlayers, setGameLostPlayers] = useState<GamePlayer[] | undefined>(undefined);
 
     const [currentTurn, setGameCurrentTurn] = useState<Turn | null | undefined>(undefined);
     const [gameTurns, setGameTurns] = useState<Turn[] | undefined>(undefined);
@@ -43,7 +40,6 @@ export default function GameStoreSlice(switchMode: (mode: "lobby" | "room" | "ga
                 setGameStatus(newGameState.status);
                 setGameRules(newGameState.rules);
                 setGamePlayers(newGameState.players);
-                setGameLostPlayers(newGameState.lost_players);
 
                 // Also initialize FE-only state
                 setGameTurns([]);
@@ -59,7 +55,6 @@ export default function GameStoreSlice(switchMode: (mode: "lobby" | "room" | "ga
                 break;
             case "end_turn":
                 setGamePlayers(newGameState.players);
-                setGameLostPlayers(newGameState.lost_players);
                 setGameTurns((prevGameTurns) => [
                     ...(prevGameTurns || []),
                     newGameState.current_turn,
@@ -73,7 +68,6 @@ export default function GameStoreSlice(switchMode: (mode: "lobby" | "room" | "ga
         setGameStatus(undefined);
         setGameRules(undefined);
         setGamePlayers(undefined);
-        setGameLostPlayers(undefined);
         setGameCurrentTurn(undefined);
         setGameTurns(undefined);
     }
@@ -85,8 +79,6 @@ export default function GameStoreSlice(switchMode: (mode: "lobby" | "room" | "ga
         setGameStatus,
         gamePlayers,
         setGamePlayers,
-        gameLostPlayers,
-        setGameLostPlayers,
         gameRules,
         setGameRules,
         currentTurn,
