@@ -327,4 +327,16 @@ async def start_game(
     )  # type: ignore
     await conn_manager.broadcast_game_state(room.id_, game_state)
 
+    # Update everyone with the status change of the room
+    room_state = s.RoomState(**room.to_dict(), owner_name=room.owner.name)
+    await conn_manager.broadcast_room_state(room.id_, room_state)
+
+    room_out = s.RoomOut(
+        players_no=len(conn_manager.pool.get_room_conns(room.id_)),
+        owner_name=room.owner.name,
+        **room.to_dict(),
+    )
+    lobby_state = s.LobbyState(rooms={room.id_: room_out})
+    await conn_manager.broadcast_lobby_state(lobby_state)
+
     await loop_turns(game, room.id_, conn_manager, config)
