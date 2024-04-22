@@ -9,6 +9,7 @@ from pydantic import (
     ConfigDict,
     Field,
     PlainSerializer,
+    validator,
 )
 
 import src.models as d
@@ -143,8 +144,17 @@ class RoomPlayerOut(LobbyPlayerOut):
 class GamePlayer(GeneralBaseModel):
     id_: UUID
     name: str
+    in_game: bool = True
+    place: int | None = None
     score: int
-    mistakes: int
+    mistakes: int = 0
+
+    @validator('in_game')
+    @classmethod
+    def validate_in_game(cls, in_game, values):
+        if not in_game and values.get('place') is None:
+            raise ValueError('`place` must be set if `in_game` is changed to False')
+        return in_game
 
 
 class RoomOut(GeneralBaseModel):

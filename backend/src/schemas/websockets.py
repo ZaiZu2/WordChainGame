@@ -25,7 +25,6 @@ class StartGameState(s.GeneralBaseModel):
     id_: int = Field(serialization_alias='id')
     status: d.GameStatusEnum
     players: list[s.GamePlayer]
-    lost_players: list[s.GamePlayer]
     rules: s.DeathmatchRules
 
 
@@ -43,7 +42,6 @@ class StartTurnState(s.GeneralBaseModel):
 class EndTurnState(s.GeneralBaseModel):
     type_: Literal['end_turn'] = Field('end_turn', serialization_alias='type')
     players: list[s.GamePlayer]
-    lost_players: list[s.GamePlayer]
     current_turn: s.TurnOut
 
 
