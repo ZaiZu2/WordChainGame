@@ -2,7 +2,7 @@ import asyncio
 from enum import Enum
 from typing import cast
 
-from fastapi import WebSocket, WebSocketException
+from fastapi import WebSocket, WebSocketDisconnect, WebSocketException
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
@@ -202,37 +202,46 @@ async def listen_for_messages(
     config: Config,
 ):
     while True:
-        # TODO: Make a wrapper which deserializes the websocket message when it arrives
-        websocket_message_dict = await websocket.receive_json()
-        websocket_message = s.WebSocketMessage(**websocket_message_dict)
+        try:
+            # TODO: Make a wrapper which deserializes the websocket message when it arrives
+            websocket_message_dict = await websocket.receive_json()
+            websocket_message = s.WebSocketMessage(**websocket_message_dict)
 
-        await db.refresh(player)
-        match websocket_message.type:
-            case s.WebSocketMessageTypeEnum.CHAT:
-                chat_message = cast(s.ChatMessage, websocket_message.payload)
-                message = d.Message(
-                    content=chat_message.content,
-                    room_id=chat_message.room_id,
-                    player=player,
-                )
-                await save_and_broadcast_message(message, db, conn_manager)
+            await db.refresh(player)
+            match websocket_message.type:
+                case s.WebSocketMessageTypeEnum.CHAT:
+                    chat_message = cast(s.ChatMessage, websocket_message.payload)
+                    message = d.Message(
+                        content=chat_message.content,
+                        room_id=chat_message.room_id,
+                        player=player,
+                    )
+                    await save_and_broadcast_message(message, db, conn_manager)
 
-            case s.WebSocketMessageTypeEnum.GAME_INPUT:
-                if isinstance(websocket_message.payload, s.WordInput):
-                    game_input = cast(s.WordInput, websocket_message.payload)
-                    game = game_manager.get(game_input.game_id)
+                case s.WebSocketMessageTypeEnum.GAME_INPUT:
+                    if isinstance(websocket_message.payload, s.WordInput):
+                        game_input = cast(s.WordInput, websocket_message.payload)
+                        game = game_manager.get(game_input.game_id)
 
-                    if game is None or game.players.current.id_ != player.id_:
-                        return  # TODO: Handle malicious attempts to send game input
+                        if game is None or game.players.current.id_ != player.id_:
+                            return  # TODO: Handle malicious attempts to send game input
 
-                    start_turn_state = game.process_in_time_turn(game_input.word)
-                    room_id = conn_manager.pool.get_room_id(player.id_)
-                    await conn_manager.broadcast_game_state(room_id, start_turn_state)
+                        end_turn_state = game.process_in_time_turn(game_input.word)
+                        room_id = conn_manager.pool.get_room_id(player.id_)
+                        await conn_manager.broadcast_game_state(room_id, end_turn_state)
 
-                    await loop_turns(game, room_id, conn_manager, config)
+                        game_task = loop_turns(game, room_id, conn_manager, config)
+                        asyncio.gather(game_task)
 
-        # Commit all flushed resources to DB every time a message is received
-        await db.commit()
+            # Commit all flushed resources to DB every time a message is received
+            await db.commit()
+        except WebSocketDisconnect:
+            raise
+        except Exception as e:
+            # TODO: Figure out a proper way to handle exceptions to avoid websocket
+            # channel crashes
+            print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+            print(e)
 
 
 async def loop_turns(
@@ -240,14 +249,18 @@ async def loop_turns(
 ):
     # Delay the game start to prime the players
     await asyncio.sleep(config.GAME_START_TIME)
-    turn_state = game.start_turn()
-    await conn_manager.broadcast_game_state(room_id, turn_state)
+    start_turn_state = game.start_turn()
+    await conn_manager.broadcast_game_state(room_id, start_turn_state)
 
     turn_no = len(game.turns) + 1
     await asyncio.sleep(game.time_left_in_turn)
     if game.did_turn_timed_out(turn_no):
         end_turn_state = game.process_timed_out_turn()
         await conn_manager.broadcast_game_state(room_id, end_turn_state)
+
+        if end_game_state := game.is_finished():
+            await conn_manager.broadcast_game_state(room_id, end_game_state)
+            return
         await loop_turns(game, room_id, conn_manager, config)
 
 

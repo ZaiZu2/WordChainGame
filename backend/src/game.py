@@ -33,6 +33,9 @@ class OrderedPlayers(list):
         random.shuffle(self)
 
         self._current_idx = -1 if len(self) == 0 else 0
+        self.current_place = len(
+            self
+        )  # Place for which players are currently competing
 
     @property
     def current_idx(self) -> int:
@@ -49,19 +52,27 @@ class OrderedPlayers(list):
     def next(self) -> None:
         """Iterate to the next player in the circular manner."""
         if len(self) == 0:
-            raise ValueError('Next player cannot be iterated to in an empty list')
-        self._current_idx = (self._current_idx + 1) % len(self)
+            raise ValueError('Next player cannot be iterated to for an empty list')
 
-    def remove_current(self) -> s.GamePlayer:
-        """Remove current player from the list, and move to the previous player."""
-        player = self.pop(self._current_idx)
+        start_idx = self._current_idx
+        while True:
+            # TODO: This is just wrong, figure out a better way
+            # 1. Might fall into infinite loop
+            # Ugly, weird, needs to handle 1 player / multiplayer game separately
+            self._current_idx = (self._current_idx + 1) % len(self)
 
-        if len(self) != 0:
-            self._current_idx = (self._current_idx - 1) % len(self)
-        else:
-            self._current_idx = -1
+            if len(self) != 1 and self._current_idx == start_idx:
+                raise ValueError('All but one player are out of the game')
+            if self.current.in_game:
+                break
+            if all(not player.in_game for player in self):
+                raise ValueError('All players are out of the game')
 
-        return player
+    def remove_current(self) -> None:
+        """Remove current player from the game and set his final ranking."""
+        self.current.in_game = False
+        self.current.place = self.current_place
+        self.current_place -= 1
 
 
 # TODO: Build and use abstract interface when you figure out the interface
@@ -93,7 +104,6 @@ class Deathmatch:
             for player in players
         ]
         self.players = OrderedPlayers(game_players)
-        self.lost_players: list[s.GamePlayer] = []
 
         self._turns: list[s.Turn] = []
         self._current_turn: s.Turn | None = None
@@ -148,13 +158,11 @@ class Deathmatch:
         current_turn.word, current_turn.info = self._validate_word(word)
 
         self._evaluate_turn()
-        self._evaluate_game()
         self._turns.append(current_turn)
 
         return s.EndTurnState(
             type_='end_turn',
             players=self.players,
-            lost_players=self.lost_players,
             current_turn=s.TurnOut(
                 player_idx=self.players.current_idx,
                 **self.current_turn.model_dump(),
@@ -174,18 +182,34 @@ class Deathmatch:
         )
 
         self._evaluate_turn()
-        self._evaluate_game()
+        self.is_finished()
         self._turns.append(current_turn)
 
         return s.EndTurnState(
             type_='end_turn',
             players=self.players,
-            lost_players=self.lost_players,
             current_turn=s.TurnOut(
                 player_idx=self.players.current_idx,
                 **self.current_turn.model_dump(),
             ),
         )
+
+    def is_finished(self) -> s.EndGameState | None:
+        # Handle case with just 1 player playing
+        if len(self.players) == 1 and not self.players.current.in_game:
+            self.status = d.GameStatusEnum.FINISHED
+            self.events.append(s.GameFinishedEvent())
+            return s.EndGameState(type_='end_game', status=self.status)
+
+        # Handle case with more than 1 player playing
+        players_in_game = len([player for player in self.players if player.in_game])
+        if len(self.players) > 1 and players_in_game <= 1:
+            self.status = d.GameStatusEnum.FINISHED
+            self.events.append(s.GameFinishedEvent())
+
+            return s.EndGameState(type_='end_game', status=self.status)
+
+        return None
 
     def did_turn_timed_out(self, turn_no: int) -> bool:
         """Check if the turn in the game has timed out."""
@@ -227,20 +251,8 @@ class Deathmatch:
 
         # Player lost
         if self.players.current.score <= 0:
-            lost_player = self.players.remove_current()
-            self.lost_players.append(lost_player)
-            self.events.append(s.PlayerLostEvent(player_name=lost_player.name))
-
-    def _evaluate_game(self) -> None:
-        # Handle case with more than 1 player playing
-        if len(self.players) == 1 and len(self.lost_players) > 0:
-            self.status = d.GameStatusEnum.FINISHED
-            self.events.append(s.GameFinishedEvent())
-
-        # Handle case with only 1 player playing
-        if len(self.players) == 0 and len(self.lost_players) > 0:
-            self.status = d.GameStatusEnum.FINISHED
-            self.events.append(s.GameFinishedEvent())
+            self.players.remove_current()
+            self.events.append(s.PlayerLostEvent(player_name=self.players.current.name))
 
 
 class GameManager:
