@@ -100,6 +100,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
             } as WordInput,
         } as WebSocketMessage;
         sendJsonMessage(websocketMessage);
+        console.log("word input", websocketMessage);
     }
 
     return (

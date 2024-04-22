@@ -56,8 +56,10 @@ export type ChatMessage = {
 
 export type GamePlayer = {
     name: string;
+    in_game: boolean;
     score: number;
     mistakes: number;
+    place: number;
 };
 
 export type Word = {

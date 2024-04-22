@@ -362,11 +362,25 @@ function ScoreCard() {
                 <tbody>
                     <tr style={{ height: "0.25rem" }} />
                     {[...gamePlayers]
-                        .sort((a, b) => a.score - b.score)
+                        .sort((a, b) => {
+                            if (a.place !== null && b.place !== null) {
+                                // If both places are not null, sort by place
+                                return a.place - b.place;
+                            } else if (a.place !== null) {
+                                // If only a's place is not null, b comes first
+                                return 1;
+                            } else if (b.place !== null) {
+                                // If only b's place is not null, a comes first
+                                return -1;
+                            } else {
+                                // If both places are null, sort by score
+                                return a.score - b.score;
+                            }
+                        })
                         .map((player, index) => {
                             return (
                                 <tr key={player.name}>
-                                    <td>{index + 1}</td>
+                                    <td>{player.place ? player.place : "-"}</td>
                                     <td>{player.name}</td>
 
                                     <td>{player.score}</td>
@@ -445,14 +459,12 @@ function WordList() {
     const {
         roomState,
         gamePlayers: _gamePlayers,
-        gameLostPlayers: _gameLostPlayers,
         gameTurns: _gameTurns,
         isLocalPlayersTurn,
         currentTurn,
         gameStatus: _gameStatus,
     } = useStore();
     const gamePlayers = _gamePlayers as GamePlayer[];
-    const gameLostPlayers = _gameLostPlayers as GamePlayer[];
     const gameTurns = _gameTurns as Turn[];
     const gameStatus = _gameStatus as string;
 
@@ -502,9 +514,7 @@ function WordList() {
                         }
 
                         const word = turns[turnIndex].word;
-                        const player_name = [...gamePlayers, ...gameLostPlayers][
-                            turns[turnIndex].player_idx
-                        ].name;
+                        const player_name = gamePlayers[turns[turnIndex].player_idx].name;
 
                         return (
                             <tr
