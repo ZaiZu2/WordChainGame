@@ -480,6 +480,7 @@ function WordList() {
             return;
         }
         sendWordInput(word);
+        wordRef.current!.value = "";
     }
 
     const positionToSize: Record<number, string> = {
@@ -494,13 +495,6 @@ function WordList() {
     const points = (word: Word | null) =>
         word?.is_correct ? "+" + roomState?.rules.reward : roomState?.rules.penalty;
     const color = (word: Word | null) => (word?.is_correct ? "text-success" : "text-danger"); // GREEN or RED
-
-    const style = {
-        flexGrow: 1,
-        flexShrink: 0,
-        justifyContent: "center",
-        alignItems: "center",
-    };
 
     return (
         <Bubble>
@@ -517,24 +511,16 @@ function WordList() {
                         const player_name = gamePlayers[turns[turnIndex].player_idx].name;
 
                         return (
-                            <tr
-                                style={style}
-                                className="d-flex justify-content-between"
-                                key={word ? word.content : index}
-                            >
-                                <td style={{ flexBasis: "20%" }} className="p-0 border-0">
+                            <tr key={word ? word.content : index}>
+                                <td className="p-0 border-0" style={{ verticalAlign: "middle" }}>
                                     {player_name}
                                 </td>
-                                <td className="p-0 border-0">
+                                <td className="d-flex p-0 border-0 justify-content-center">
                                     <Stack direction="horizontal" gap={2}>
-                                        <div
-                                            style={{ flexBasis: "60%" }}
-                                            className={`p-0 border-0 ${positionToSize[index]}`}
-                                        >
+                                        <div className={`p-0 border-0 ${positionToSize[index]}`}>
                                             {word ? word.content : "-"}
                                         </div>
                                         <div
-                                            style={{ flexBasis: "10%" }}
                                             className={`p-0 border-0 material-symbols-outlined ${color(
                                                 word
                                             )}`}
@@ -544,50 +530,48 @@ function WordList() {
                                     </Stack>
                                 </td>
                                 <td
-                                    style={{ flexBasis: "10%" }}
-                                    className={`p-0 border-0$ ${color(word)}`}
+                                    className={`p-0 border-0 ${color(word)}`}
+                                    style={{ verticalAlign: "middle" }}
                                 >
                                     {points(word)}
                                 </td>
                             </tr>
                         );
                     })}
-                    <tr style={style} className="d-flex justify-content-between">
-                        <td style={{ flexBasis: "20%" }} className="p-0 border-0">
+                    <tr>
+                        <td className="p-0 border-0" style={{ verticalAlign: "middle" }}>
                             {gameStatus === "In progress"
                                 ? gamePlayers[currentTurn?.player_idx as number].name
                                 : gamePlayers[0].name}
                         </td>
                         {isLocalPlayersTurn() ? (
                             <td
-                                style={{ flexBasis: "60%" }}
                                 className={`d-flex p-0 border-0 ${positionToSize[5]} justify-content-center`}
                             >
-                                <Form onSubmit={submitNewWord}>
+                                <Form
+                                    onSubmit={submitNewWord}
+                                    className="d-flex justify-content-center"
+                                >
                                     <Form.Control
                                         type="text"
                                         placeholder="Write here..."
-                                        className="py-1 mt-1 w-50"
+                                        className="py-1 mt-1"
                                         disabled={gameStatus !== "In progress"}
                                         ref={wordRef}
+                                        autoFocus
+                                        style={{ textAlign: "center" }}
                                     />
                                 </Form>
                             </td>
                         ) : (
-                            <td
-                                style={{ flexBasis: "60%" }}
-                                className={`d-flex p-0 border-0 justify-content-center`}
-                            >
+                            <td className={`p-0 border-0 justify-content-center`}>
                                 <Spinner animation="border" size="sm" className="my-2 mx-auto" />
                             </td>
                         )}
                         <td>
                             <Stack direction="horizontal" gap={1}>
-                                <div
-                                    style={{ flexBasis: "10%" }}
-                                    className={`p-0 border-0 material-symbols-outlined`}
-                                ></div>
-                                <div style={{ flexBasis: "10%" }} className={"p-0 border-0"}></div>
+                                <div className={`p-0 border-0 material-symbols-outlined`}></div>
+                                <div className={"p-0 border-0"}></div>
                             </Stack>
                         </td>
                     </tr>
