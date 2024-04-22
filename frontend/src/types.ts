@@ -71,8 +71,9 @@ export type Word = {
 export type Turn = {
     word: Word | null;
     is_correct: boolean | null;
+    info: string;
     started_on: string;
-    ended_on: string | null;
+    ended_on: string;
     player_idx: number;
 };
 

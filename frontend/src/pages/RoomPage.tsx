@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { Button, Spinner, Stack } from "react-bootstrap";
+import { Container } from "react-bootstrap";
 import Form from "react-bootstrap/Form";
 import Table from "react-bootstrap/Table";
 import { useNavigate } from "react-router-dom";
@@ -461,12 +462,13 @@ function WordList() {
         gamePlayers: _gamePlayers,
         gameTurns: _gameTurns,
         isLocalPlayersTurn,
-        currentTurn,
+        currentTurn: _currentTurn,
         gameStatus: _gameStatus,
     } = useStore();
     const gamePlayers = _gamePlayers as GamePlayer[];
     const gameTurns = _gameTurns as Turn[];
     const gameStatus = _gameStatus as string;
+    const currentTurn = _currentTurn as Turn;
 
     const { sendWordInput } = useWebSocketContext();
 
@@ -483,100 +485,121 @@ function WordList() {
         wordRef.current!.value = "";
     }
 
-    const positionToSize: Record<number, string> = {
-        0: "fs-6",
-        1: "fs-5",
-        2: "fs-4",
-        3: "fs-3",
-        4: "fs-2",
-        5: "fs-1",
+    const positionToSize: Record<number, { fontSize: string }> = {
+        0: { fontSize: "0.75rem" },
+        1: { fontSize: "1rem" },
+        2: { fontSize: "1.25rem" },
+        3: { fontSize: "1.5rem" },
+        4: { fontSize: "1.75rem" },
+        5: { fontSize: "2rem" },
     };
     const symbol = (word: Word) => (word.is_correct ? "check" : "close");
     const points = (word: Word | null) =>
         word?.is_correct ? "+" + roomState?.rules.reward : roomState?.rules.penalty;
     const color = (word: Word | null) => (word?.is_correct ? "text-success" : "text-danger"); // GREEN or RED
+    const tooltip = (word: Word | null) =>
+        word?.is_correct ? "Word is correct" : (currentTurn.info as string);
+    // word?.is_correct ? "Word is correct" : "Word does not exist";
 
     return (
         <Bubble>
-            <Table borderless className="m-0 text-center">
-                <tbody>
-                    {Array.from({ length: 5 }).map((_, index) => {
-                        const turnOffset = 5 - turns.length;
-                        const turnIndex: number = index - turnOffset;
-                        if (turnIndex < 0) {
-                            return;
-                        }
+            <Container className="px-2 py-1">
+                <Table borderless className="m-0 text-center">
+                    <tbody>
+                        {Array.from({ length: 5 }).map((_, index) => {
+                            const turnOffset = 5 - turns.length;
+                            const turnIndex: number = index - turnOffset;
+                            if (turnIndex < 0) {
+                                return;
+                            }
 
-                        const word = turns[turnIndex].word;
-                        const player_name = gamePlayers[turns[turnIndex].player_idx].name;
+                            const word = turns[turnIndex].word;
+                            const player_name = gamePlayers[turns[turnIndex].player_idx].name;
 
-                        return (
-                            <tr key={word ? word.content : index}>
-                                <td className="p-0 border-0" style={{ verticalAlign: "middle" }}>
-                                    {player_name}
-                                </td>
-                                <td className="d-flex p-0 border-0 justify-content-center">
-                                    <Stack direction="horizontal" gap={2}>
-                                        <div className={`p-0 border-0 ${positionToSize[index]}`}>
-                                            {word ? word.content : "-"}
-                                        </div>
-                                        <div
-                                            className={`p-0 border-0 material-symbols-outlined ${color(
-                                                word
-                                            )}`}
-                                        >
-                                            {word ? symbol(word) : ""}
-                                        </div>
-                                    </Stack>
-                                </td>
+                            return (
+                                <tr key={word ? word.content : index}>
+                                    <td
+                                        className="p-0 border-0 align-middle"
+                                        style={{ height: "35px" }}
+                                    >
+                                        {player_name}
+                                    </td>
+                                    <td
+                                        className="d-flex p-0 border-0 justify-content-center align-middle"
+                                        style={{ height: "35px" }}
+                                    >
+                                        <Stack direction="horizontal" gap={3}>
+                                            <div
+                                                className={`p-0 border-0`}
+                                                style={positionToSize[index]}
+                                            >
+                                                {word ? word.content : "-"}
+                                            </div>
+                                            <div>
+                                                {word && (
+                                                    <Icon
+                                                        symbol={symbol(word)}
+                                                        color={color(word)}
+                                                        tooltip={tooltip(word)}
+                                                        iconSize={3}
+                                                    />
+                                                )}
+                                            </div>
+                                        </Stack>
+                                    </td>
+                                    <td
+                                        className={`p-0 border-0 align-middle ${color(word)}`}
+                                        style={{ height: "35px" }}
+                                    >
+                                        {points(word)}
+                                    </td>
+                                </tr>
+                            );
+                        })}
+                        <tr>
+                            <td className="p-0 border-0 align-middle">
+                                {gameStatus === "In progress"
+                                    ? gamePlayers[currentTurn?.player_idx as number].name
+                                    : gamePlayers[0].name}
+                            </td>
+                            {isLocalPlayersTurn() ? (
                                 <td
-                                    className={`p-0 border-0 ${color(word)}`}
-                                    style={{ verticalAlign: "middle" }}
+                                    className={`d-flex p-0 border-0 ${positionToSize[5]} justify-content-center`}
                                 >
-                                    {points(word)}
+                                    <Form
+                                        onSubmit={submitNewWord}
+                                        className="d-flex justify-content-center"
+                                    >
+                                        <Form.Control
+                                            type="text"
+                                            placeholder="Write here..."
+                                            className="py-1 mt-2"
+                                            disabled={gameStatus !== "In progress"}
+                                            ref={wordRef}
+                                            autoFocus
+                                            style={{
+                                                textAlign: "center",
+                                                border: "none",
+                                                outline: "none",
+                                                boxShadow: "none",
+                                            }}
+                                        />
+                                    </Form>
                                 </td>
-                            </tr>
-                        );
-                    })}
-                    <tr>
-                        <td className="p-0 border-0" style={{ verticalAlign: "middle" }}>
-                            {gameStatus === "In progress"
-                                ? gamePlayers[currentTurn?.player_idx as number].name
-                                : gamePlayers[0].name}
-                        </td>
-                        {isLocalPlayersTurn() ? (
-                            <td
-                                className={`d-flex p-0 border-0 ${positionToSize[5]} justify-content-center`}
-                            >
-                                <Form
-                                    onSubmit={submitNewWord}
-                                    className="d-flex justify-content-center"
-                                >
-                                    <Form.Control
-                                        type="text"
-                                        placeholder="Write here..."
-                                        className="py-1 mt-1"
-                                        disabled={gameStatus !== "In progress"}
-                                        ref={wordRef}
-                                        autoFocus
-                                        style={{ textAlign: "center" }}
+                            ) : (
+                                <td className={`p-0 border-0 justify-content-center`}>
+                                    <Spinner
+                                        animation="border"
+                                        size="sm"
+                                        className="my-2 mx-auto"
                                     />
-                                </Form>
-                            </td>
-                        ) : (
-                            <td className={`p-0 border-0 justify-content-center`}>
-                                <Spinner animation="border" size="sm" className="my-2 mx-auto" />
-                            </td>
-                        )}
-                        <td>
-                            <Stack direction="horizontal" gap={1}>
-                                <div className={`p-0 border-0 material-symbols-outlined`}></div>
-                                <div className={"p-0 border-0"}></div>
-                            </Stack>
-                        </td>
-                    </tr>
-                </tbody>
-            </Table>
+                                </td>
+                            )}
+                            <td></td>
+                        </tr>
+                    </tbody>
+                </Table>
+            </Container>
         </Bubble>
     );
 }
