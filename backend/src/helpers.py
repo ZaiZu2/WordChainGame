@@ -208,8 +208,8 @@ async def listen_for_messages(
             websocket_message = s.WebSocketMessage(**websocket_message_dict)
 
             await db.refresh(player)
-            match websocket_message.type:
-                case s.WebSocketMessageTypeEnum.CHAT:
+            match type(websocket_message.payload):
+                case s.ChatMessage:
                     chat_message = cast(s.ChatMessage, websocket_message.payload)
                     message = d.Message(
                         content=chat_message.content,
@@ -218,20 +218,19 @@ async def listen_for_messages(
                     )
                     await save_and_broadcast_message(message, db, conn_manager)
 
-                case s.WebSocketMessageTypeEnum.GAME_INPUT:
-                    if isinstance(websocket_message.payload, s.WordInput):
-                        game_input = cast(s.WordInput, websocket_message.payload)
-                        game = game_manager.get(game_input.game_id)
+                case s.WordInput:
+                    game_input = cast(s.WordInput, websocket_message.payload)
+                    game = game_manager.get(game_input.game_id)
 
-                        if game is None or game.players.current.id_ != player.id_:
-                            return  # TODO: Handle malicious attempts to send game input
+                    if game is None or game.players.current.id_ != player.id_:
+                        return  # TODO: Handle malicious attempts to send game input
 
-                        end_turn_state = game.process_in_time_turn(game_input.word)
-                        room_id = conn_manager.pool.get_room_id(player.id_)
-                        await conn_manager.broadcast_game_state(room_id, end_turn_state)
+                    end_turn_state = game.end_turn_in_time(game_input.word)
+                    room_id = conn_manager.pool.get_room_id(player.id_)
+                    await conn_manager.broadcast_game_state(room_id, end_turn_state)
 
-                        game_task = loop_turns(game, room_id, conn_manager, config)
-                        asyncio.gather(game_task)
+                    game_task = loop_turns(game, room_id, conn_manager, config)
+                    asyncio.gather(game_task)
 
             # Commit all flushed resources to DB every time a message is received
             await db.commit()
@@ -247,18 +246,21 @@ async def listen_for_messages(
 async def loop_turns(
     game: Deathmatch, room_id: int, conn_manager: ConnectionManager, config: Config
 ):
-    # Delay the game start to prime the players
-    await asyncio.sleep(config.GAME_START_TIME)
+    wait_state = game.wait()
+    await conn_manager.broadcast_game_state(room_id, wait_state)
+    await asyncio.sleep(config.TURN_START_DELAY)
+
     start_turn_state = game.start_turn()
     await conn_manager.broadcast_game_state(room_id, start_turn_state)
 
     turn_no = len(game.turns) + 1
     await asyncio.sleep(game.time_left_in_turn)
     if game.did_turn_timed_out(turn_no):
-        end_turn_state = game.process_timed_out_turn()
+        end_turn_state = game.end_turn_timed_out()
         await conn_manager.broadcast_game_state(room_id, end_turn_state)
 
-        if end_game_state := game.is_finished():
+        if game.is_finished():
+            end_game_state = game.end()
             await conn_manager.broadcast_game_state(room_id, end_game_state)
             return
         await loop_turns(game, room_id, conn_manager, config)

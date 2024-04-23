@@ -113,10 +113,7 @@ class ConnectionManager:
         if room_conns is None:
             raise ValueError('Room does not exist')
 
-        websocket_message = s.WebSocketMessage(
-            type=s.WebSocketMessageTypeEnum.CHAT,
-            payload=message,
-        )
+        websocket_message = s.WebSocketMessage(payload=message)
         message_json = websocket_message.model_dump_json(by_alias=True)
         send_messages = [conn.websocket.send_json(message_json) for conn in room_conns]
         await asyncio.gather(*send_messages)
@@ -130,10 +127,7 @@ class ConnectionManager:
         if conn is None:
             raise ValueError('Player is not connected')
 
-        websocket_message = s.WebSocketMessage(
-            type=s.WebSocketMessageTypeEnum.CHAT,
-            payload=message,
-        )
+        websocket_message = s.WebSocketMessage(payload=message)
         await conn.websocket.send_json(websocket_message.model_dump_json(by_alias=True))
 
     async def broadcast_lobby_state(self, lobby_state: s.LobbyState) -> None:
@@ -144,10 +138,7 @@ class ConnectionManager:
         """
         lobby_conns = self.pool.get_room_conns(d.LOBBY.id_)
 
-        websocket_message = s.WebSocketMessage(
-            type=s.WebSocketMessageTypeEnum.LOBBY_STATE,
-            payload=lobby_state,
-        )
+        websocket_message = s.WebSocketMessage(payload=lobby_state)
         message_json = websocket_message.model_dump_json(by_alias=True)
         send_messages = [conn.websocket.send_json(message_json) for conn in lobby_conns]
         await asyncio.gather(*send_messages)
@@ -164,10 +155,7 @@ class ConnectionManager:
         if conn is None:
             raise ValueError('Player is not connected')
 
-        websocket_message = s.WebSocketMessage(
-            type=s.WebSocketMessageTypeEnum.LOBBY_STATE,
-            payload=lobby_state,
-        )
+        websocket_message = s.WebSocketMessage(payload=lobby_state)
         await conn.websocket.send_json(websocket_message.model_dump_json(by_alias=True))
 
     async def broadcast_room_state(self, room_id: int, room_state: s.RoomState) -> None:
@@ -180,10 +168,7 @@ class ConnectionManager:
         if room_conns is None:
             raise ValueError('Room does not exist')
 
-        websocket_message = s.WebSocketMessage(
-            type=s.WebSocketMessageTypeEnum.ROOM_STATE,
-            payload=room_state,
-        )
+        websocket_message = s.WebSocketMessage(payload=room_state)
         message_json = websocket_message.model_dump_json(by_alias=True)
         send_messages = [conn.websocket.send_json(message_json) for conn in room_conns]
         await asyncio.gather(*send_messages)
@@ -194,10 +179,7 @@ class ConnectionManager:
         if room_conns is None:
             raise ValueError('Room does not exist')
 
-        websocket_message = s.WebSocketMessage(
-            type=s.WebSocketMessageTypeEnum.GAME_STATE,
-            payload=game_state,
-        )
+        websocket_message = s.WebSocketMessage(payload=game_state)
         message_json = websocket_message.model_dump_json(by_alias=True)
         send_messages = [conn.websocket.send_json(message_json) for conn in room_conns]
         await asyncio.gather(*send_messages)
@@ -211,10 +193,7 @@ class ConnectionManager:
         which has inaccessible `code` and `reason` attributes to the browser.
         """
         connection_state = s.ConnectionState(code=code, reason=reason)
-        websocket_message = s.WebSocketMessage(
-            type=s.WebSocketMessageTypeEnum.CONNECTION_STATE,
-            payload=connection_state,
-        )
+        websocket_message = s.WebSocketMessage(payload=connection_state)
         await websocket.send_json(websocket_message.model_dump_json(by_alias=True))
 
     def move_player(self, player_id: UUID, from_room_id: int, to_room_id: int) -> None:

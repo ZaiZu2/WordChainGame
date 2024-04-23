@@ -318,15 +318,6 @@ async def start_game(
     # Store the game in memory during it's progress
     game = game_manager.create(game_db)
 
-    # Broadcast the initial game state to all players
-    game_state = s.StartGameState(
-        id_=game.id_,
-        status=game.status,
-        players=game.players,
-        rules=game.rules,
-    )  # type: ignore
-    await conn_manager.broadcast_game_state(room.id_, game_state)
-
     # Update everyone with the status change of the room
     room_state = s.RoomState(**room.to_dict(), owner_name=room.owner.name)
     await conn_manager.broadcast_room_state(room.id_, room_state)
@@ -338,5 +329,9 @@ async def start_game(
     )
     lobby_state = s.LobbyState(rooms={room.id_: room_out})
     await conn_manager.broadcast_lobby_state(lobby_state)
+
+    # Broadcast the initial game state to all players
+    start_game_state = game.start()
+    await conn_manager.broadcast_game_state(room.id_, start_game_state)
 
     await loop_turns(game, room.id_, conn_manager, config)
