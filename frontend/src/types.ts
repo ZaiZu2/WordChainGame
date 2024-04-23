@@ -78,7 +78,7 @@ export type Turn = {
 };
 
 type StartGameState = {
-    type: "start_game";
+    state: "STARTING";
     id: number;
     status: "Starting";
     players: GamePlayer[];
@@ -87,27 +87,31 @@ type StartGameState = {
 };
 
 type EndGameState = {
-    type: "end_game";
+    state: "ENDING";
     status: "Finished";
 };
 
+type WaitState = {
+    state: "WAITING";
+};
+
 type StartTurnState = {
-    type: "start_turn";
+    state: "START_TURN";
     current_turn: Turn;
     status?: "In progress";
 };
 
 type EndTurnState = {
-    type: "end_turn";
+    state: "END_TURN";
     players: GamePlayer[];
     lost_players: GamePlayer[];
     current_turn: Turn;
 };
 
-export type GameState = StartGameState | EndGameState | StartTurnState | EndTurnState;
+export type GameState = StartGameState | EndGameState | WaitState | StartTurnState | EndTurnState;
 
 export type WordInput = {
-    type: "word_input";
+    input_type: "word_input";
     game_id: number;
     word: string;
 };
@@ -149,12 +153,12 @@ export type ConnectionState = {
 };
 
 export type WebSocketMessage =
-    | { type: "chat"; payload: ChatMessage }
-    | { type: "game_state"; payload: GameState }
-    | { type: "game_input"; payload: GameInput }
-    | { type: "lobby_state"; payload: LobbyState }
-    | { type: "room_state"; payload: RoomState }
-    | { type: "connection_state"; payload: ConnectionState };
+    | { payload: ChatMessage & { type_: "chat" } }
+    | { payload: GameState & { type_: "game_state" } }
+    | { payload: GameInput & { type_: "game_input" } }
+    | { payload: LobbyState & { type_: "lobby_state" } }
+    | { payload: RoomState & { type_: "room_state" } }
+    | { payload: ConnectionState & { type_: "connection_state" } };
 
 export type ModalConfigs = {
     roomRules?: RoomRulesConfig;

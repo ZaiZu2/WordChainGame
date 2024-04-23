@@ -48,7 +48,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
             if (lastJsonMessage === null) return;
 
             const websocketMessage = JSON.parse(lastJsonMessage as string) as WebSocketMessage;
-            switch (websocketMessage.type) {
+            switch (websocketMessage.payload.type_) {
                 case "chat":
                     updateChatMessages([websocketMessage.payload as ChatMessage]);
                     console.log("chat", websocketMessage.payload);
@@ -80,8 +80,8 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
 
     function sendChatMessage(message: string) {
         const websocketMessage = {
-            type: "chat",
             payload: {
+                type_: "chat",
                 player_name: player?.name,
                 room_id: mode === "lobby" ? 1 : (roomState?.id as number), // TODO: lobby id should be provided by the server
                 content: message,
@@ -92,9 +92,9 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
 
     function sendWordInput(word: string) {
         const websocketMessage = {
-            type: "game_input",
             payload: {
-                type: "word_input",
+                type_: "game_input",
+                input_type: "word_input",
                 game_id: gameId,
                 word: word,
             } as WordInput,
