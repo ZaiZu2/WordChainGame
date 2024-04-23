@@ -49,6 +49,15 @@ class GameTypeEnum(str, Enum):
     DEATHMATCH = 'deathmatch'
 
 
+class GameStateEnum(str, Enum):
+    CREATING = 'CREATING'
+    STARTING = 'STARTING'
+    ENDING = 'ENDING'
+    WAITING = 'WAITING'
+    START_TURN = 'START_TURN'
+    END_TURN = 'END_TURN'
+
+
 class Rules(GeneralBaseModel):
     type_: GameTypeEnum = Field(serialization_alias='type')
 
@@ -61,14 +70,6 @@ class DeathmatchRules(Rules):
     start_score: int = Field(0, ge=0, le=10)
     penalty: int = Field(-5, ge=-10, le=0)  # If 0, player loses after a single mistake
     reward: int = Field(2, ge=0, le=10)
-
-
-class ChatMessage(GeneralBaseModel):
-    id_: int | None = Field(None, serialization_alias='id')
-    created_on: UTCDatetime | None = None
-    content: str
-    player_name: str
-    room_id: int
 
 
 class CurrentStatistics(GeneralBaseModel):
