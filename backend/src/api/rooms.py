@@ -1,3 +1,4 @@
+import asyncio
 from typing import Annotated
 
 from fastapi import (
@@ -334,4 +335,5 @@ async def start_game(
     start_game_state = game.start()
     await conn_manager.broadcast_game_state(room.id_, start_game_state)
 
-    await loop_turns(game, room.id_, conn_manager, config)
+    game_task = loop_turns(game, room.id_, conn_manager, config)
+    asyncio.gather(game_task)
