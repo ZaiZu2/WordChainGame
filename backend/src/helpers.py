@@ -11,6 +11,7 @@ import src.models as d  # d - database
 import src.schemas as s  # s - schema
 from config import Config
 from src.connection_manager import ConnectionManager
+from src.dependencies import start_db
 from src.error_handlers import PlayerAlreadyConnectedError
 from src.game import Deathmatch, GameManager
 
@@ -262,6 +263,33 @@ async def loop_turns(
         if game.is_finished():
             end_game_state = game.end()
             await conn_manager.broadcast_game_state(room_id, end_game_state)
+
+            async with start_db() as db:
+                room_db = cast(
+                    d.Room,
+                    await db.scalar(
+                        select(d.Room)
+                        .where(d.Room.id_ == room_id)
+                        .options(joinedload(d.Room.owner))
+                    ),
+                )
+                room_db.status = d.RoomStatusEnum.OPEN
+
+                # TODO:: Abstract or at least generalize broadcasting updates to room changes
+                # Update everyone with the status change of the room
+                room_state = s.RoomState(
+                    **room_db.to_dict(), owner_name=room_db.owner.name
+                )
+                await conn_manager.broadcast_room_state(room_db.id_, room_state)
+
+                room_out = s.RoomOut(
+                    players_no=len(conn_manager.pool.get_room_conns(room_db.id_)),
+                    owner_name=room_db.owner.name,
+                    **room_db.to_dict(),
+                )
+                lobby_state = s.LobbyState(rooms={room_db.id_: room_out})
+                await conn_manager.broadcast_lobby_state(lobby_state)
+
             return
         await loop_turns(game, room_id, conn_manager, config)
 

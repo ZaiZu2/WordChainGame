@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from functools import lru_cache
 from typing import Annotated, AsyncGenerator, Literal
 from uuid import UUID
@@ -21,6 +22,25 @@ from src.models import async_session
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
+    """
+    FastAPI dependency injection function to pass a db session into endpoints.
+
+    FastAPI internally wraps this function into an async context manager, so it cannot
+    be used as a context manager itself.
+    """
+    async with async_session() as session:
+        try:
+            await session.begin()
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+
+
+@asynccontextmanager
+async def start_db() -> AsyncGenerator[AsyncSession, None]:
+    """A `get_db` clone, but can be used as a stand-alone async context manager."""  # noqa: D401
     async with async_session() as session:
         try:
             await session.begin()
