@@ -319,6 +319,7 @@ async def start_game(
     # Store the game in memory during it's progress
     game = game_manager.create(game_db)
 
+    # TODO:: Abstract or at least generalize broadcasting updates to room changes
     # Update everyone with the status change of the room
     room_state = s.RoomState(**room.to_dict(), owner_name=room.owner.name)
     await conn_manager.broadcast_room_state(room.id_, room_state)
