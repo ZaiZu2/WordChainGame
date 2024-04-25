@@ -11,6 +11,8 @@ from src.error_handlers import PlayerAlreadyConnectedError
 
 
 class Connection:
+    """Class storing transient connection (player) state."""
+
     def __init__(self, player_id: UUID, websocket: WebSocket):
         self.websocket = websocket
         self.player_id = player_id
@@ -27,18 +29,28 @@ class Connection:
         return False
 
 
+class RoomInfo:
+    """Class storing transient room state."""
+
+    def __init__(self, room_id: int) -> None:
+        self.room_id: int = room_id
+        self.conns: dict[UUID, Connection] = {}
+
+        # Queue for client inputs related to the game currently hosted in the room
+        # Game inputs are enqueued here and consumed by the `run_game` coroutine
+        # Must be cleared after the game ends
+        self.game_inputs: asyncio.Queue[s.GameInput] = asyncio.Queue()
+
+
 class ConnectionPool:
     PlayerInfo = namedtuple('PlayerInfo', ['conn', 'room_id'])
 
     def __init__(self) -> None:
         # {
-        #     room_id: {
-        #         player_id: Connection,
-        #         ...
-        #     },
+        #     room_id: RoomInfo,
         #     ...
         # }
-        self._room_map: dict[int, dict[UUID, Connection]] = {d.LOBBY.id_: {}}
+        self._room_map: dict[int, RoomInfo] = {d.LOBBY.id_: RoomInfo(d.LOBBY.id_)}
         # {
         #     player_id: (Connection, room_id),
         #     ...
@@ -58,28 +70,33 @@ class ConnectionPool:
             return None
         return player_info.conn
 
+    def get_room(self, room_id: int) -> RoomInfo | None:
+        if not (room_info := self._room_map.get(room_id, None)):
+            return None
+        return room_info
+
     def get_room_id(self, player_id: UUID) -> int | None:
         if not (player_info := self._player_map.get(player_id, None)):
             return None
         return player_info.room_id
 
     def get_room_conns(self, room_id: int) -> set[Connection]:
-        room_conns = self._room_map[room_id]
+        room_conns = self._room_map[room_id].conns
         return set(room_conns.values())
 
     def add(self, conn: Connection, room_id: int) -> None:
         # TODO: Should the room be implicitly created if it doesn't exist?
         if room_id in self._room_map:
-            self._room_map[room_id][conn.player_id] = conn
+            self._room_map[room_id].conns[conn.player_id] = conn
         else:
-            self._room_map[room_id] = {conn.player_id: conn}
+            self._room_map[room_id].conns = {conn.player_id: conn}
 
         self._player_map[conn.player_id] = ConnectionPool.PlayerInfo(conn, room_id)
 
     def remove(self, player_id: UUID) -> None:
         player_info = self._player_map.pop(player_id)
         room_id = player_info.room_id
-        self._room_map[room_id].pop(player_id)
+        self._room_map[room_id].conns.pop(player_id)
 
     def exists(self, room_id: int) -> bool:
         return room_id in self._room_map
@@ -87,7 +104,7 @@ class ConnectionPool:
     def create_room(self, room_id: int) -> None:
         if self.exists(room_id):
             raise ValueError('Room already exists')
-        self._room_map[room_id] = {}
+        self._room_map[room_id] = RoomInfo(room_id)
 
 
 class ConnectionManager:
