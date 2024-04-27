@@ -15,6 +15,7 @@ class Config(BaseSettings):
     AUTH_COOKIE_EXPIRATION: int = 1200  # seconds
 
     DICTIONARY_API_URL: str = 'https://api.dictionaryapi.dev/api/v2/entries/en/'
+    GAME_START_DELAY: int = 3  # seconds, Delay game start to prime the players
     TURN_START_DELAY: int = 3  # seconds, Delay each turn start to prime the players
     MAX_TURN_TIME_DEVIATION: float = 0.01  # seconds
 

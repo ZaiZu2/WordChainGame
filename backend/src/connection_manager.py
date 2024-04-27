@@ -10,6 +10,28 @@ import src.schemas as s  # s - schema
 from src.error_handlers import PlayerAlreadyConnectedError
 
 
+class WordInputBuffer:
+    """Buffer for propagating WordInput from the message listening coroutine to `run_game` coroutine."""
+
+    def __init__(self):
+        self._lock = asyncio.Lock()
+        self._new_input_event = asyncio.Event()
+        self._input = None
+
+    async def put(self, input_: s.WordInput) -> None:
+        async with self._lock:
+            self._input = input_
+            self._new_input_event.set()
+
+    async def get(self) -> s.WordInput:
+        await self._new_input_event.wait()
+        async with self._lock:
+            input_ = self._input
+            self._input = None
+            self._new_input_event.clear()
+        return input_
+
+
 class Connection:
     """Class storing transient connection (player) state."""
 
@@ -35,11 +57,7 @@ class RoomInfo:
     def __init__(self, room_id: int) -> None:
         self.room_id: int = room_id
         self.conns: dict[UUID, Connection] = {}
-
-        # Queue for client inputs related to the game currently hosted in the room
-        # Game inputs are enqueued here and consumed by the `run_game` coroutine
-        # Must be cleared after the game ends
-        self.game_inputs: asyncio.Queue[s.GameInput] = asyncio.Queue()
+        self.word_input_buffer: WordInputBuffer = WordInputBuffer()
 
 
 class ConnectionPool:
@@ -70,15 +88,21 @@ class ConnectionPool:
             return None
         return player_info.conn
 
-    def get_room(self, room_id: int) -> RoomInfo | None:
-        if not (room_info := self._room_map.get(room_id, None)):
-            return None
-        return room_info
+    def get_room(
+        self, *, room_id: int | None = None, player_id: UUID | None = None
+    ) -> RoomInfo | None:
+        if not (bool(room_id) ^ bool(player_id)):
+            raise ValueError('Either room_id or player_id must be provided')
 
-    def get_room_id(self, player_id: UUID) -> int | None:
-        if not (player_info := self._player_map.get(player_id, None)):
-            return None
-        return player_info.room_id
+        room_info = None
+        if room_id:
+            room_info = self._room_map.get(room_id, None)
+        elif player_id:
+            player_info = self._player_map.get(player_id, None)
+            room_id = player_info.room_id
+            room_info = self._room_map.get(room_id, None)
+
+        return room_info
 
     def get_room_conns(self, room_id: int) -> set[Connection]:
         room_conns = self._room_map[room_id].conns
@@ -215,7 +239,7 @@ class ConnectionManager:
 
     def move_player(self, player_id: UUID, from_room_id: int, to_room_id: int) -> None:
         """Move a player's websocket connection from one room to another."""
-        if not (self.pool.get_room_id(player_id) == from_room_id):
+        if not (self.pool.get_room(player_id=player_id).room_id == from_room_id):
             raise ValueError('Player is not in the specified room')
         conn = self.pool.get_conn(player_id)
         if conn is None:

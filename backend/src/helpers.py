@@ -9,7 +9,7 @@ from sqlalchemy.orm import joinedload
 
 import src.models as d  # d - database
 import src.schemas as s  # s - schema
-from config import Config
+from config import get_config
 from src.connection_manager import ConnectionManager
 from src.dependencies import start_db
 from src.error_handlers import PlayerAlreadyConnectedError
@@ -117,7 +117,9 @@ async def accept_websocket_connection(
         await conn_manager.send_connection_state(*exc_args, websocket)
 
         # Inform the original client about the connection attempt
-        room_id_with_logged_player = conn_manager.pool.get_room_id(player.id_)
+        room_id_with_logged_player = conn_manager.pool.get_room(
+            player_id=player.id_
+        ).room_id
         message = d.Message(
             content='Someone tried to log into your account from another device',
             room_id=room_id_with_logged_player,
@@ -140,7 +142,7 @@ async def handle_player_disconnect(
     conn_manager: ConnectionManager,
 ) -> None:
     await db.refresh(player)
-    room_id = conn_manager.pool.get_room_id(player.id_)
+    room_id = conn_manager.pool.get_room(player_id=player.id_).room_id
     conn_manager.disconnect(player.id_)
 
     is_player_in_lobby = room_id == d.LOBBY.id_
@@ -200,8 +202,8 @@ async def listen_for_messages(
     db: AsyncSession,
     conn_manager: ConnectionManager,
     game_manager: GameManager,
-    config: Config,
 ):
+    """Listen and distribute websocket messages to different handlers."""
     while True:
         try:
             # TODO: Make a wrapper which deserializes the websocket message when it arrives
@@ -224,50 +226,14 @@ async def listen_for_messages(
                     game = game_manager.get(game_input.game_id)
 
                     if game is None or game.players.current.id_ != player.id_:
-                        return  # TODO: Handle malicious attempts to send game input
+                        continue  # TODO: Handle malicious attempts to send game input
 
-                    end_turn_state = game.end_turn_in_time(game_input.word)
-                    room_id = conn_manager.pool.get_room_id(player.id_)
-                    await conn_manager.broadcast_game_state(room_id, end_turn_state)
+                    room_id = conn_manager.pool.get_room(player_id=player.id_).room_id
+                    word_input_buffer = conn_manager.pool.get_room(
+                        room_id=room_id
+                    ).word_input_buffer
+                    await word_input_buffer.put(game_input)
 
-                    if game.is_finished():
-                        end_game_state = game.end()
-                        await conn_manager.broadcast_game_state(room_id, end_game_state)
-
-                        room_db = cast(
-                            d.Room,
-                            await db.scalar(
-                                select(d.Room)
-                                .where(d.Room.id_ == room_id)
-                                .options(joinedload(d.Room.owner))
-                            ),
-                        )
-                        room_db.status = d.RoomStatusEnum.OPEN
-
-                        # TODO:: Abstract or at least generalize broadcasting updates to room changes
-                        # Update everyone with the status change of the room
-                        room_state = s.RoomState(
-                            **room_db.to_dict(), owner_name=room_db.owner.name
-                        )
-                        await conn_manager.broadcast_room_state(room_db.id_, room_state)
-
-                        room_out = s.RoomOut(
-                            players_no=len(
-                                conn_manager.pool.get_room_conns(room_db.id_)
-                            ),
-                            owner_name=room_db.owner.name,
-                            **room_db.to_dict(),
-                        )
-                        lobby_state = s.LobbyState(rooms={room_db.id_: room_out})
-                        await conn_manager.broadcast_lobby_state(lobby_state)
-                    else:
-                        # TODO: Refactor with asyncio.Event and running a single coroutine
-                        # per room
-                        game_task = loop_turns(game, room_id, conn_manager, config)
-                        asyncio.gather(game_task)
-
-            # Commit all flushed resources to DB every time a message is received
-            await db.commit()
         except WebSocketDisconnect:
             raise
         except Exception as e:
@@ -276,55 +242,71 @@ async def listen_for_messages(
             print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
             print(e)
 
+        # Commit all flushed resources to DB every time a message is received
+        await db.commit()
 
-async def loop_turns(
-    game: Deathmatch, room_id: int, conn_manager: ConnectionManager, config: Config
-):
+
+async def run_game(
+    game: Deathmatch, room_id: int, conn_manager: ConnectionManager
+) -> None:
+    word_input_queue = conn_manager.pool.get_room(room_id=room_id).word_input_buffer
+
+    start_game_state = game.start()
+    await conn_manager.broadcast_game_state(room_id, start_game_state)
+
     wait_state = game.wait()
     await conn_manager.broadcast_game_state(room_id, wait_state)
-    await asyncio.sleep(config.TURN_START_DELAY)
+    await asyncio.sleep(get_config().GAME_START_DELAY)
 
-    start_turn_state = game.start_turn()
-    await conn_manager.broadcast_game_state(room_id, start_turn_state)
+    while True:
+        start_turn_state = game.start_turn()
+        await conn_manager.broadcast_game_state(room_id, start_turn_state)
 
-    turn_no = len(game.turns) + 1
-    await asyncio.sleep(game.time_left_in_turn)
-    if game.did_turn_timed_out(turn_no):
-        end_turn_state = game.end_turn_timed_out()
+        try:
+            word_input = await asyncio.wait_for(
+                word_input_queue.get(), game.time_left_in_turn
+            )
+        except asyncio.TimeoutError:
+            end_turn_state = game.end_turn_timed_out()
+        else:
+            end_turn_state = game.end_turn_in_time(word_input.word)
         await conn_manager.broadcast_game_state(room_id, end_turn_state)
 
         if game.is_finished():
-            end_game_state = game.end()
-            await conn_manager.broadcast_game_state(room_id, end_game_state)
+            break
 
-            async with start_db() as db:
-                room_db = cast(
-                    d.Room,
-                    await db.scalar(
-                        select(d.Room)
-                        .where(d.Room.id_ == room_id)
-                        .options(joinedload(d.Room.owner))
-                    ),
-                )
-                room_db.status = d.RoomStatusEnum.OPEN
+        wait_state = game.wait()
+        await conn_manager.broadcast_game_state(room_id, wait_state)
+        await asyncio.sleep(get_config().TURN_START_DELAY)
 
-                # TODO:: Abstract or at least generalize broadcasting updates to room changes
-                # Update everyone with the status change of the room
-                room_state = s.RoomState(
-                    **room_db.to_dict(), owner_name=room_db.owner.name
-                )
-                await conn_manager.broadcast_room_state(room_db.id_, room_state)
+    end_game_state = game.end()
+    await conn_manager.broadcast_game_state(room_id, end_game_state)
 
-                room_out = s.RoomOut(
-                    players_no=len(conn_manager.pool.get_room_conns(room_db.id_)),
-                    owner_name=room_db.owner.name,
-                    **room_db.to_dict(),
-                )
-                lobby_state = s.LobbyState(rooms={room_db.id_: room_out})
-                await conn_manager.broadcast_lobby_state(lobby_state)
+    # TODO: Do i really want to store transient room changes in the DB?
+    async with start_db() as db:
+        room = cast(
+            d.Room,
+            await db.scalar(
+                select(d.Room)
+                .where(d.Room.id_ == room_id)
+                .options(joinedload(d.Room.owner))
+            ),
+        )
+        await db.refresh(room)
+        room.status = d.RoomStatusEnum.OPEN
 
-            return
-        await loop_turns(game, room_id, conn_manager, config)
+        # TODO:: Abstract or at least generalize broadcasting updates to room changes
+        # Update everyone with the status change of the room
+        room_state = s.RoomState(**room.to_dict(), owner_name=room.owner.name)
+        await conn_manager.broadcast_room_state(room.id_, room_state)
+
+        room_out = s.RoomOut(
+            players_no=len(conn_manager.pool.get_room_conns(room.id_)),
+            owner_name=room.owner.name,
+            **room.to_dict(),
+        )
+        lobby_state = s.LobbyState(rooms={room.id_: room_out})
+        await conn_manager.broadcast_lobby_state(lobby_state)
 
 
 async def broadcast_full_lobby_state(
