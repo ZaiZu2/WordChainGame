@@ -17,6 +17,7 @@ export const initialGameStoreSlice = {
     setGameTurns: () => {},
     updateGameState: (newGameState: GameState) => {},
     resetGameState: () => {},
+    gameState: undefined,
 };
 
 export default function GameStoreSlice(switchMode: (mode: "lobby" | "room" | "game") => void) {
@@ -39,6 +40,7 @@ export default function GameStoreSlice(switchMode: (mode: "lobby" | "room" | "ga
 
         switch (newGameState.state) {
             case "STARTING":
+                resetGameState();
                 switchMode("game");
 
                 setGameId(newGameState.id);
@@ -51,7 +53,6 @@ export default function GameStoreSlice(switchMode: (mode: "lobby" | "room" | "ga
                 break;
             case "ENDING":
                 setGameStatus("Finished");
-
                 switchMode("room");
                 break;
             case "WAITING":
@@ -95,5 +96,6 @@ export default function GameStoreSlice(switchMode: (mode: "lobby" | "room" | "ga
         setGameTurns,
         updateGameState,
         resetGameState,
+        gameState,
     };
 }
