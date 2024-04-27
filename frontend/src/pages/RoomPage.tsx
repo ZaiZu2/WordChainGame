@@ -40,9 +40,8 @@ export default function RoomPage() {
                     <ButtonBar />
                 </Stack>
             </Bubble>
-            {mode === "room" ? (
-                <PlayerCard />
-            ) : (
+            {mode === "room" && <PlayerCard />}
+            {mode === "game" && (
                 <>
                     <ScoreCard />
                     <CurrentPlayer />
@@ -396,11 +395,12 @@ function ScoreCard() {
 }
 
 function CurrentPlayer() {
-    const { gamePlayers, currentTurn, gameStatus, gameRules } = useStore() as {
+    const { gamePlayers, currentTurn, gameRules, gameState } = useStore() as {
         gamePlayers: GamePlayer[];
         currentTurn: Turn;
         gameStatus: string;
         gameRules: DeathmatchRules;
+        gameState: "STARTING" | "ENDING" | "WAITING" | "START_TURN" | "END_TURN";
     };
 
     let players;
@@ -442,14 +442,16 @@ function CurrentPlayer() {
             </Stack>
 
             <Stack direction="horizontal" gap={2} className="fs-4 justify-content-evenly">
-                {gameStatus === "In progress" ? (
+                {gameState === "STARTING" ? (
+                    <CountdownTimer time={3} precisionDigit={0} />
+                ) : gameState === "WAITING" ? (
+                    <CountdownTimer time={3} precisionDigit={0} />
+                ) : (
                     <CountdownTimer
                         time={gameRules.round_time}
                         start_date={currentTurn.started_on}
                         precisionDigit={2}
                     />
-                ) : (
-                    <CountdownTimer time={3} precisionDigit={0} />
                 )}
             </Stack>
         </Bubble>
@@ -464,11 +466,13 @@ function WordList() {
         isLocalPlayersTurn,
         currentTurn: _currentTurn,
         gameStatus: _gameStatus,
+        gameState: _gameState,
     } = useStore();
     const gamePlayers = _gamePlayers as GamePlayer[];
     const gameTurns = _gameTurns as Turn[];
     const gameStatus = _gameStatus as string;
     const currentTurn = _currentTurn as Turn;
+    const gameState = _gameState as "STARTING" | "ENDING" | "WAITING" | "START_TURN" | "END_TURN";
 
     const { sendWordInput } = useWebSocketContext();
 
@@ -499,7 +503,6 @@ function WordList() {
     const color = (word: Word | null) => (word?.is_correct ? "text-success" : "text-danger"); // GREEN or RED
     const tooltip = (word: Word | null) =>
         word?.is_correct ? "Word is correct" : (currentTurn.info as string);
-    // word?.is_correct ? "Word is correct" : "Word does not exist";
 
     return (
         <Bubble>
@@ -562,7 +565,7 @@ function WordList() {
                                     ? gamePlayers[currentTurn?.player_idx as number].name
                                     : gamePlayers[0].name}
                             </td>
-                            {isLocalPlayersTurn() ? (
+                            {gameState === "START_TURN" && isLocalPlayersTurn() ? (
                                 <td
                                     className={`d-flex p-0 border-0 ${positionToSize[5]} justify-content-center`}
                                 >
