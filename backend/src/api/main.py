@@ -135,9 +135,7 @@ async def connect(
         # Run as a separate task so blocking operations can coexist with polling
         # operations inside this endpoint.
         listening_task = asyncio.create_task(
-            listen_for_messages(
-                player, websocket, db, conn_manager, game_manager, config
-            )
+            listen_for_messages(player, websocket, db, conn_manager, game_manager)
         )
 
         await asyncio.gather(listening_task)

@@ -25,8 +25,8 @@ from src.dependencies import (
 from src.game import GameManager
 from src.helpers import (
     TagsEnum,
-    loop_turns,
     move_player_and_broadcast_message,
+    run_game,
 )
 
 router = APIRouter(tags=[TagsEnum.ROOMS])
@@ -91,7 +91,7 @@ async def join_room(
     conn_manager: Annotated[ConnectionManager, Depends(get_connection_manager)],
 ) -> s.RoomState:
     conn = conn_manager.pool.get_conn(player.id_)
-    old_room_id = conn_manager.pool.get_room_id(player.id_)
+    old_room_id = conn_manager.pool.get_room(player_id=player.id_).room_id
 
     if room.id_ == old_room_id:
         return s.RoomState(owner_name=room.owner.name, **room.to_dict())
@@ -146,7 +146,7 @@ async def leave_room(
 ) -> s.LobbyState:
     # TODO: Ensure that the player terminated any active game before leaving the room
     # TODO: Ensure that the player is not the owner of the room
-    old_room_id = conn_manager.pool.get_room_id(player.id_)
+    old_room_id = conn_manager.pool.get_room(player_id=player.id_).room_id
     if old_room_id is None or room.id_ != old_room_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail='Player is not in the room'
@@ -241,7 +241,7 @@ async def toggle_player_readiness(
     conn_manager: Annotated[ConnectionManager, Depends(get_connection_manager)],
 ):
     conn = conn_manager.pool.get_conn(player.id_)
-    found_room_id = conn_manager.pool.get_room_id(player.id_)
+    found_room_id = conn_manager.pool.get_room(player_id=player.id_)
     if found_room_id is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail='Player is not in the room'
@@ -271,7 +271,7 @@ async def start_game(
             status_code=status.HTTP_400_BAD_REQUEST, detail='Player is not the owner'
         )
 
-    found_room_id = conn_manager.pool.get_room_id(player.id_)
+    found_room_id = conn_manager.pool.get_room(player_id=player.id_)
     if found_room_id is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail='Player is not in the room'
@@ -318,23 +318,4 @@ async def start_game(
 
     # Store the game in memory during it's progress
     game = game_manager.create(game_db)
-
-    # TODO:: Abstract or at least generalize broadcasting updates to room changes
-    # Update everyone with the status change of the room
-    room_state = s.RoomState(**room.to_dict(), owner_name=room.owner.name)
-    await conn_manager.broadcast_room_state(room.id_, room_state)
-
-    room_out = s.RoomOut(
-        players_no=len(conn_manager.pool.get_room_conns(room.id_)),
-        owner_name=room.owner.name,
-        **room.to_dict(),
-    )
-    lobby_state = s.LobbyState(rooms={room.id_: room_out})
-    await conn_manager.broadcast_lobby_state(lobby_state)
-
-    # Broadcast the initial game state to all players
-    start_game_state = game.start()
-    await conn_manager.broadcast_game_state(room.id_, start_game_state)
-
-    game_task = loop_turns(game, room.id_, conn_manager, config)
-    asyncio.gather(game_task)
+    asyncio.create_task(run_game(game, room.id_, conn_manager))
