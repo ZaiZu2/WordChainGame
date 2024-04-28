@@ -2,27 +2,10 @@ import random
 from datetime import datetime
 from typing import Any, cast
 
-import httpx
-
 import src.models as d
 import src.schemas as s
 from config import get_config
-
-
-def check_word(word: str) -> s.Word:
-    client = httpx.Client()
-    response = client.get(f'{get_config().DICTIONARY_API_URL}{word}')
-
-    # TODO: Handle connection errors and other exceptions
-    if response.status_code == 404:
-        # TODO: Function does 2  things - unpacks response and returns False on failed validation
-        return s.Word(content=word, is_correct=False)
-
-    definitions = {
-        meaning['partOfSpeech']: meaning['definitions'][0]['definition']
-        for meaning in response.json()[0]['meanings']
-    }
-    return s.Word(content=word, is_correct=True, description=definitions)
+from src.game.utils import check_word_correctness
 
 
 class OrderedPlayers(list):
@@ -73,22 +56,6 @@ class OrderedPlayers(list):
         self.current.in_game = False
         self.current.place = self.current_place
         self.current_place -= 1
-
-
-# TODO: Build and use abstract interface when you figure out the interface
-# class Game(Protocol):
-#     id_: int
-#     status: d.GameStatusEnum
-#     turns: list[s.Turn]
-
-#     def __init__(self, rules: s.Rules):
-#         ...
-
-#     def start_turn(self) -> s.TurnResults:
-#         ...
-
-#     def process_turn(self, word: str) -> s.TurnResults:
-#         ...
 
 
 class Deathmatch:
@@ -245,10 +212,7 @@ class Deathmatch:
 
     def _validate_word(self, word: str) -> tuple[s.Word, str]:
         word = word.lower()
-        last_word = (
-            self._turns[-1].word.content if self.turns else None
-        )  # Ignore on the first turn
-        if last_word and not word.startswith(last_word[-1]):
+        if not self._is_compatible_with_previous_word(word):
             return (
                 s.Word(content=word, is_correct=False),
                 'Word does not start with the last letter of the previous word',
@@ -257,12 +221,29 @@ class Deathmatch:
         if word in self.words:
             return s.Word(content=word, is_correct=False), 'Word has already been used'
 
-        word_obj = check_word(word)
+        word_obj = check_word_correctness(word)
         if not word_obj.is_correct:
             return word_obj, 'Word does not exist'
 
         self.words.add(word_obj)
         return word_obj, 'Word is correct'
+
+    def _is_compatible_with_previous_word(self, word: str) -> bool:
+        """Check if the word is valid with the previous word (it starts with the last letter of the previous word)."""
+        if len(self.turns) == 0:
+            return True
+
+        # Find the last turn in which the word was passed
+        for i in range(len(self.turns) - 1, -1, -1):
+            if not self.turns[i].word:
+                continue
+
+            previous_word = self.turns[i].word.content
+            if word.startswith(previous_word[-1]):
+                return True
+            break
+
+        return False
 
     def _evaluate_turn(self) -> None:
         current_turn = cast(s.Turn, self._current_turn)
@@ -279,32 +260,3 @@ class Deathmatch:
         if self.players.current.score <= 0:
             self.players.remove_current()
             self.events.append(s.PlayerLostEvent(player_name=self.players.current.name))
-
-
-class GameManager:
-    """
-    Manages active games, storing them in memory. Upon game finalization, the game is
-    removed from the manager and returned to be persisted in DB.
-    """
-
-    def __init__(self) -> None:
-        self.games: dict[int, Deathmatch] = {}
-
-    def get(self, game_id: int) -> Deathmatch:
-        return self.games[game_id]
-
-    def create(self, game_db: d.Game) -> Deathmatch:
-        if game_db.rules['type_'] == s.GameTypeEnum.DEATHMATCH:
-            rules = s.DeathmatchRules(**game_db.rules)
-            game = self.games[game_db.id_] = Deathmatch(
-                game_db.id_, game_db.players, rules
-            )
-            return game
-        else:
-            raise NotImplementedError('Unsupported game type')
-
-    def end(self, game_id: int) -> Deathmatch:
-        game = self.games[game_id]
-        game.status = d.GameStatusEnum.FINISHED
-        del self.games[game_id]
-        return game

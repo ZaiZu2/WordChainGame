@@ -13,7 +13,8 @@ from config import get_config
 from src.connection_manager import ConnectionManager
 from src.dependencies import start_db
 from src.error_handlers import PlayerAlreadyConnectedError
-from src.game import Deathmatch, GameManager
+from src.game.deathmatch import Deathmatch
+from src.game.game import GameManager
 
 
 class TagsEnum(str, Enum):
