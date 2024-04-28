@@ -9,6 +9,12 @@ import apiClient from "../apiClient";
 import Bubble from "../components/Bubble";
 import CountdownTimer from "../components/CountdownTimer";
 import Icon from "../components/Icon";
+import {
+    GAME_START_DELAY,
+    TURN_START_DELAY,
+    WORD_LIST_LENGTH,
+    WORD_LIST_MAX_WORD_SIZE,
+} from "../config";
 import { useStore } from "../contexts/storeContext";
 import { useWebSocketContext } from "../contexts/WebsocketProvider";
 import { DeathmatchRules, GamePlayer, LobbyState, Player, RoomState, Turn, Word } from "../types";
@@ -443,9 +449,9 @@ function CurrentPlayer() {
 
             <Stack direction="horizontal" gap={2} className="fs-4 justify-content-evenly">
                 {gameState === "STARTING" ? (
-                    <CountdownTimer time={3} precisionDigit={0} />
+                    <CountdownTimer time={GAME_START_DELAY} precisionDigit={0} />
                 ) : gameState === "WAITING" ? (
-                    <CountdownTimer time={3} precisionDigit={0} />
+                    <CountdownTimer time={TURN_START_DELAY} precisionDigit={0} />
                 ) : (
                     <CountdownTimer
                         time={gameRules.round_time}
@@ -475,8 +481,6 @@ function WordList() {
     const gameState = _gameState as "STARTING" | "ENDING" | "WAITING" | "START_TURN" | "END_TURN";
 
     const { sendWordInput } = useWebSocketContext();
-
-    const turns = gameTurns.length > 5 ? gameTurns.slice(-5) : gameTurns;
     const wordRef = useRef<HTMLInputElement>(null);
 
     function submitNewWord(event: React.FormEvent<HTMLFormElement>) {
@@ -489,36 +493,45 @@ function WordList() {
         wordRef.current!.value = "";
     }
 
-    const positionToSize: Record<number, { fontSize: string }> = {
-        0: { fontSize: "0.75rem" },
-        1: { fontSize: "1rem" },
-        2: { fontSize: "1.25rem" },
-        3: { fontSize: "1.5rem" },
-        4: { fontSize: "1.75rem" },
-        5: { fontSize: "2rem" },
-    };
+    let positionToSize: Record<number, { fontSize: string }> = {};
+    const sizeStep = WORD_LIST_MAX_WORD_SIZE / WORD_LIST_LENGTH;
+    for (let i = 0; i <= WORD_LIST_LENGTH; i++) {
+        positionToSize[i] = { fontSize: `${(i + 1) * sizeStep}rem` };
+    }
+
     const symbol = (word: Word) => (word.is_correct ? "check" : "close");
     const points = (word: Word | null) =>
         word?.is_correct ? "+" + roomState?.rules.reward : roomState?.rules.penalty;
     const color = (word: Word | null) => (word?.is_correct ? "text-success" : "text-danger"); // GREEN or RED
-    const tooltip = (word: Word | null) =>
-        word?.is_correct ? "Word is correct" : (currentTurn.info as string);
+    const tooltip = (word: Word | null) => {
+        if (word?.is_correct) {
+            let tooltipText = "";
+            Object.entries(word.description as object).forEach(([partOfSpeech, description]) => {
+                tooltipText += `${
+                    partOfSpeech.charAt(0).toUpperCase() + partOfSpeech.slice(1).toLowerCase()
+                }: ${description}\n\n`;
+            });
+            return tooltipText;
+        } else {
+            return currentTurn.info as string;
+        }
+    };
 
     return (
         <Bubble>
             <Container className="px-2 py-1">
                 <Table borderless className="m-0 text-center">
                     <tbody>
-                        {Array.from({ length: 5 }).map((_, index) => {
-                            const turnOffset = 5 - turns.length;
+                        {Array.from({ length: WORD_LIST_LENGTH }).map((_, index) => {
+                            const turnOffset = WORD_LIST_LENGTH - gameTurns.length;
                             const turnIndex: number = index - turnOffset;
                             if (turnIndex < 0) {
                                 return;
                             }
 
-                            const word = turns[turnIndex].word;
-                            const player_name = gamePlayers[turns[turnIndex].player_idx].name;
-
+                            const word = gameTurns[turnIndex].word;
+                            const player_name = gamePlayers[gameTurns[turnIndex].player_idx].name;
+                            console.log(`Processing index: ${index}, turnIndex: ${turnIndex}`); // Log to check indices being processed
                             return (
                                 <tr key={word ? word.content : index}>
                                     <td
@@ -560,24 +573,24 @@ function WordList() {
                             );
                         })}
                         <tr>
-                            <td className="p-0 border-0 align-middle">
+                            <td className="p-0 border-0 align-middle" style={{ height: "35px" }}>
                                 {gameStatus === "In progress"
                                     ? gamePlayers[currentTurn?.player_idx as number].name
                                     : gamePlayers[0].name}
                             </td>
                             {gameState === "START_TURN" && isLocalPlayersTurn() ? (
                                 <td
-                                    className={`d-flex p-0 border-0 ${positionToSize[5]} justify-content-center`}
+                                    className={`d-flex p-0 m-1 border-0 ${positionToSize[5]} justify-content-center`}
+                                    style={{ height: "35px" }}
                                 >
                                     <Form
                                         onSubmit={submitNewWord}
-                                        className="d-flex justify-content-center"
+                                        className="d-flex justify-content-center w-100"
                                     >
                                         <Form.Control
                                             type="text"
                                             placeholder="Write here..."
-                                            className="py-1 mt-2"
-                                            disabled={gameStatus !== "In progress"}
+                                            className="p-0"
                                             ref={wordRef}
                                             autoFocus
                                             style={{
@@ -590,12 +603,11 @@ function WordList() {
                                     </Form>
                                 </td>
                             ) : (
-                                <td className={`p-0 border-0 justify-content-center`}>
-                                    <Spinner
-                                        animation="border"
-                                        size="sm"
-                                        className="my-2 mx-auto"
-                                    />
+                                <td
+                                    className={`d-flex p-0 m-1 border-0 align-items-center justify-content-center`}
+                                    style={{ height: "35px" }}
+                                >
+                                    <Spinner animation="border" size="sm" className="m-auto" />
                                 </td>
                             )}
                             <td></td>
