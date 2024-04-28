@@ -85,14 +85,16 @@ function RoomList() {
                     <tr style={{ height: "0.25rem" }}></tr>
                 </thead>
                 <tbody>
+                    <tr style={{ height: "0.25rem" }}></tr>
                     {rooms !== undefined && Object.values(rooms).length === 0 && (
                         <tr>
-                            <td className="p-1 ms-auto">No games available</td>
+                            <td colSpan={4} className="p-1 ms-auto text-center">
+                                No games available
+                            </td>
                         </tr>
                     )}
                     {rooms !== undefined && Object.values(rooms).length !== 0 && (
                         <>
-                            <tr style={{ height: "0.25rem" }}></tr>
                             {Object.values(rooms).map((room) => {
                                 return (
                                     <tr key={room.id}>

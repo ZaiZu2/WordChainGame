@@ -324,7 +324,9 @@ async def broadcast_full_lobby_state(
 
     rooms = await db.scalars(
         select(d.Room)
-        .where(d.Room.status != d.RoomStatusEnum.EXPIRED)
+        .where(
+            and_(d.Room.status != d.RoomStatusEnum.EXPIRED, d.Room.id_ != d.LOBBY.id_)
+        )
         .options(joinedload(d.Room.owner))
     )
     rooms_out = {

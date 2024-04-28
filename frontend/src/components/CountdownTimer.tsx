@@ -14,12 +14,14 @@ export default function CountdownTimer({
     precisionDigit = 1,
 }: CountdownTimerProps) {
     const [countdown, setCountdown] = useState(time);
-    const end_date = start_date
-        ? new Date(new Date(start_date).getTime() + time * 1000)
-        : new Date(Date.now() + time * 1000);
 
     useEffect(() => {
+        const end_date = start_date
+            ? new Date(new Date(start_date).getTime() + time * 1000)
+            : new Date(Date.now() + time * 1000);
+
         setCountdown(time);
+
         const timerId = setInterval(() => {
             setCountdown((_) => {
                 const time_left = end_date.getTime() - Date.now();
@@ -34,6 +36,6 @@ export default function CountdownTimer({
 
         // Return a cleanup function that clears the interval
         return () => clearInterval(timerId);
-    }, [time, start_date, end_date, precisionDigit]);
+    }, [time, start_date, precisionDigit]);
     return <div className={className}>{countdown.toFixed(precisionDigit)}</div>;
 }
