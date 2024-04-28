@@ -17,7 +17,7 @@ from sqlalchemy.orm import joinedload
 import src.models as d  # d - database
 from config import Config, get_config
 from src.connection_manager import ConnectionManager
-from src.game import GameManager
+from src.game.game import GameManager
 from src.models import async_session
 
 

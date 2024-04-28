@@ -26,7 +26,7 @@ from src.dependencies import (
     get_player,
     set_auth_cookie,
 )
-from src.game import GameManager
+from src.game.game import GameManager
 from src.helpers import (
     TagsEnum,
     accept_websocket_connection,

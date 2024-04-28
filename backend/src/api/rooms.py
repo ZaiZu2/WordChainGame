@@ -22,7 +22,7 @@ from src.dependencies import (
     get_player,
     get_room,
 )
-from src.game import GameManager
+from src.game.game import GameManager
 from src.helpers import (
     TagsEnum,
     move_player_and_broadcast_message,
