@@ -39,7 +39,7 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 
 @asynccontextmanager
-async def start_db() -> AsyncGenerator[AsyncSession, None]:
+async def init_db_session() -> AsyncGenerator[AsyncSession, None]:
     """A `get_db` clone, but can be used as a stand-alone async context manager."""  # noqa: D401
     async with async_session() as session:
         try:
