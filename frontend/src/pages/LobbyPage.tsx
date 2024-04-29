@@ -69,23 +69,23 @@ function RoomList() {
             <Table borderless size="sm" className="m-0">
                 <thead className="border-bottom">
                     <tr>
-                        <td>
+                        <td className="p-0">
                             <Icon symbol="home" tooltip="Name" iconSize={4} />
                         </td>
-                        <td>
+                        <td className="p-0">
                             <Icon symbol="shield_person" tooltip="Status" iconSize={4} />
                         </td>
-                        <td>
+                        <td className="p-0">
                             <Icon symbol="group" tooltip="Capacity" iconSize={4} />
                         </td>
-                        <td>
+                        <td className="p-0">
                             <Icon symbol="manage_accounts" tooltip="Owner" iconSize={4} />
                         </td>
                     </tr>
-                    <tr style={{ height: "0.25rem" }}></tr>
+                    <tr style={{ height: "0.5rem" }}></tr>
                 </thead>
                 <tbody>
-                    <tr style={{ height: "0.25rem" }}></tr>
+                    <tr style={{ height: "0.5rem" }}></tr>
                     {rooms !== undefined && Object.values(rooms).length === 0 && (
                         <tr>
                             <td colSpan={4} className="p-1 ms-auto text-center">
@@ -98,8 +98,8 @@ function RoomList() {
                             {Object.values(rooms).map((room) => {
                                 return (
                                     <tr key={room.id}>
-                                        <td>{room.name}</td>
-                                        <td>
+                                        <td className="p-0">{room.name}</td>
+                                        <td className="p-0">
                                             <Icon
                                                 symbol={
                                                     room.status === "Closed"
@@ -112,11 +112,11 @@ function RoomList() {
                                                 iconSize={4}
                                             />
                                         </td>
-                                        <td>
+                                        <td className="p-0">
                                             {room.players_no}/{room.capacity}
                                         </td>
-                                        <td>{room.owner_name}</td>
-                                        <td>
+                                        <td className="p-0">{room.owner_name}</td>
+                                        <td className="p-0">
                                             <Stack
                                                 direction="horizontal"
                                                 gap={2}
