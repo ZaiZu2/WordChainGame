@@ -298,11 +298,11 @@ function PlayerCard() {
                             <Icon symbol="light_mode" tooltip="Readiness" iconSize={4} />
                         </td>
                     </tr>
-                    <tr style={{ height: "0.25rem" }} />
+                    <tr style={{ height: "0.5rem" }} />
                 </thead>
 
                 <tbody>
-                    <tr style={{ height: "0.25rem" }} />
+                    <tr style={{ height: "0.5rem" }} />
                     {Object.values(roomState.players).map((player, index) => {
                         return (
                             <tr key={player.name}>
