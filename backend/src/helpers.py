@@ -11,7 +11,7 @@ import src.models as d  # d - database
 import src.schemas as s  # s - schema
 from config import get_config
 from src.connection_manager import ConnectionManager
-from src.dependencies import start_db
+from src.dependencies import init_db_session
 from src.error_handlers import PlayerAlreadyConnectedError
 from src.game.deathmatch import Deathmatch
 from src.game.game import GameManager
@@ -284,6 +284,8 @@ async def run_game(
     await conn_manager.broadcast_game_state(room_id, end_game_state)
 
     # TODO: Do i really want to store transient room changes in the DB?
+    # Ideally, Room should store it's state in memory only
+    async with init_db_session() as db:
         await export_and_persist_game(game, db)
         room = cast(
             d.Room,
