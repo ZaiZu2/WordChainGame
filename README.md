@@ -9,7 +9,9 @@ Be advised that this is an ongoing project (started in January).
   - [x] Close and open rooms to avoid unexpected guests
   - [x] Communicate with other players in a lobby and room chats.
   - [x] Define game type (well, for now just one) and it's game parameters
-  - [ ] Play a game
+  - [x] Play a game
+  - [ ] Schedule a recurring abandoned room clean up
+  - [ ] Introduce mute/ownership buttons
   - [ ] Check the leaderboards and your game history
   - [ ] Deploy fully containerized on AWS using Nginx & Uvicorn
 
