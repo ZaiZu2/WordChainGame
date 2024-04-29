@@ -6,7 +6,7 @@ from uuid import UUID, uuid4
 
 import sqlalchemy as sa
 import sqlalchemy.orm as so
-from sqlalchemy import select
+from sqlalchemy import CheckConstraint, UniqueConstraint, select
 from sqlalchemy.ext.asyncio import (
     AsyncAttrs,
     async_sessionmaker,
@@ -135,10 +135,17 @@ class Message(Base):
 # TODO: Add composite unique constraint on `word` and `game_id`?
 class Turn(Base):
     __tablename__ = 'turns'
+    __table_args__ = (
+        CheckConstraint(
+            '(word IS NULL AND is_correct IS NULL) OR (word IS NOT NULL AND is_correct IS NOT NULL)',
+            name='word_is_correct_co_nullable',
+        ),
+        UniqueConstraint('word', 'game_id', name='word_game_id_unique'),
+    )
 
     id_: so.Mapped[int] = so.mapped_column('id', primary_key=True)
     word: so.Mapped[str | None] = so.mapped_column(sa.String(255))
-    is_correct: so.Mapped[bool] = so.mapped_column()
+    is_correct: so.Mapped[bool | None] = so.mapped_column()
     started_on: so.Mapped[datetime] = so.mapped_column(default=sa.func.now())
     ended_on: so.Mapped[datetime | None] = so.mapped_column(nullable=True)
 
