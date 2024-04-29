@@ -82,10 +82,10 @@ function RoomList() {
                             <Icon symbol="manage_accounts" tooltip="Owner" iconSize={4} />
                         </td>
                     </tr>
-                    <tr style={{ height: "0.25rem" }}></tr>
+                    <tr style={{ height: "0.5rem" }}></tr>
                 </thead>
                 <tbody>
-                    <tr style={{ height: "0.25rem" }}></tr>
+                    <tr style={{ height: "0.5rem" }}></tr>
                     {rooms !== undefined && Object.values(rooms).length === 0 && (
                         <tr>
                             <td colSpan={4} className="p-1 ms-auto text-center">
