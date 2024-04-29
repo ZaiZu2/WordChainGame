@@ -284,7 +284,7 @@ async def run_game(
     await conn_manager.broadcast_game_state(room_id, end_game_state)
 
     # TODO: Do i really want to store transient room changes in the DB?
-    async with start_db() as db:
+        await export_and_persist_game(game, db)
         room = cast(
             d.Room,
             await db.scalar(
@@ -345,4 +345,43 @@ async def broadcast_full_lobby_state(
     )
 
     lobby_state = s.LobbyState(rooms=rooms_out, players=players_out, stats=stats)
+    await conn_manager.broadcast_lobby_state(lobby_state)
+
+
+async def export_and_persist_game(game: Deathmatch, db: AsyncSession) -> None:
+    """Gather game data designated to be persisted and issue a bulk insert."""
+    game_db = await db.scalar(select(d.Game).where(d.Game.id_ == game.id_))
+    game_db.ended_on = datetime.utcnow()
+    game_db.status = d.GameStatusEnum.FINISHED
+    db.add(game_db)
+
+    turn_db_dicts = []
+    for turn in game.turns:
+        turn_db_dict = dict(
+            word=turn.word.content if turn.word else None,
+            is_correct=turn.word.is_correct if turn.word else None,
+            started_on=turn.started_on,
+            ended_on=turn.ended_on,
+            player_id=turn.player_id,
+            game_id=game.id_,
+        )
+        turn_db_dicts.append(turn_db_dict)
+
+    # Bulk insert
+    await db.execute(insert(d.Turn), turn_db_dicts)
+
+
+async def broadcast_single_room_state(
+    room: d.Room, conn_manager: ConnectionManager
+) -> None:
+    """Send `LobbyState` and `RoomState` broadcast for a single room state change."""
+    room_state = s.RoomState(**room.to_dict(), owner_name=room.owner.name)
+    await conn_manager.broadcast_room_state(room.id_, room_state)
+
+    room_out = s.RoomOut(
+        players_no=len(conn_manager.pool.get_room_conns(room.id_)),
+        owner_name=room.owner.name,
+        **room.to_dict(),
+    )
+    lobby_state = s.LobbyState(rooms={room.id_: room_out})
     await conn_manager.broadcast_lobby_state(lobby_state)
