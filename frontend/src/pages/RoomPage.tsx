@@ -9,7 +9,12 @@ import apiClient from "../apiClient";
 import Bubble from "../components/Bubble";
 import CountdownTimer from "../components/CountdownTimer";
 import Icon from "../components/Icon";
-import { GAME_START_DELAY, WORD_LIST_LENGTH, WORD_LIST_MAX_WORD_SIZE } from "../config";
+import {
+    GAME_START_DELAY,
+    TURN_START_DELAY,
+    WORD_LIST_LENGTH,
+    WORD_LIST_MAX_WORD_SIZE,
+} from "../config";
 import { useStore } from "../contexts/storeContext";
 import { useWebSocketContext } from "../contexts/WebsocketProvider";
 import { DeathmatchRules, GamePlayer, LobbyState, Player, RoomState, Turn, Word } from "../types";
@@ -153,6 +158,8 @@ function ButtonBar() {
         isRoomOwner,
         toggleModal,
         updateLobbyState,
+        updateGameState,
+        resetGameState,
     } = useStore();
     const player = _player as Player;
     const roomState = _roomState as RoomState;
@@ -281,28 +288,28 @@ function PlayerCard() {
             <Table borderless size="sm" className="m-0">
                 <thead className="border-bottom">
                     <tr>
-                        <td className="p-0">
+                        <td>
                             <Icon symbol="leaderboard" tooltip="Number" iconSize={4} />
                         </td>
-                        <td className="p-0">
+                        <td>
                             <Icon symbol="person" tooltip="Name" iconSize={4} />
                         </td>
-                        <td className="p-0">
+                        <td>
                             <Icon symbol="light_mode" tooltip="Readiness" iconSize={4} />
                         </td>
                     </tr>
-                    <tr style={{ height: "0.5rem" }} />
+                    <tr style={{ height: "0.25rem" }} />
                 </thead>
 
                 <tbody>
-                    <tr style={{ height: "0.5rem" }} />
+                    <tr style={{ height: "0.25rem" }} />
                     {Object.values(roomState.players).map((player, index) => {
                         return (
                             <tr key={player.name}>
-                                <td className="p-0">{index + 1}</td>
-                                <td className="p-0">{player.name}</td>
+                                <td>{index + 1}</td>
+                                <td>{player.name}</td>
 
-                                <td className="p-0">
+                                <td>
                                     {isRoomOwner(player.name) ? (
                                         <Icon
                                             symbol="manage_accounts"
@@ -343,28 +350,28 @@ function ScoreCard() {
             <Table borderless size="sm" className="m-0">
                 <thead className="border-bottom">
                     <tr>
-                        <td className="p-0">
+                        <td>
                             <Icon symbol="leaderboard" tooltip="Position" iconSize={4} />
                         </td>
-                        <td className="p-0">
+                        <td>
                             <Icon symbol="person" tooltip="Name" iconSize={4} />
                         </td>
-                        <td className="p-0">
+                        <td>
                             <Icon symbol="scoreboard" tooltip="Score" iconSize={4} />
                         </td>
-                        <td className="p-0">
+                        <td>
                             <Icon symbol="error" tooltip="Mistakes" iconSize={4} />
                         </td>
                     </tr>
-                    <tr style={{ height: "0.5rem" }} />
+                    <tr style={{ height: "0.25rem" }} />
                 </thead>
                 <tbody>
-                    <tr style={{ height: "0.5rem" }} />
+                    <tr style={{ height: "0.25rem" }} />
                     {[...gamePlayers]
                         .sort((a, b) => {
                             if (a.place !== null && b.place !== null) {
                                 // If both places are not null, sort by place
-                                return b.place - a.place;
+                                return a.place - b.place;
                             } else if (a.place !== null) {
                                 // If only a's place is not null, b comes first
                                 return 1;
@@ -373,19 +380,17 @@ function ScoreCard() {
                                 return -1;
                             } else {
                                 // If both places are null, sort by score
-                                return b.score - a.score;
+                                return a.score - b.score;
                             }
                         })
                         .map((player, index) => {
                             return (
                                 <tr key={player.name}>
-                                    <td className="p-0">
-                                        {player.place ? player.place : index + 1}
-                                    </td>
-                                    <td className="p-0">{player.name}</td>
+                                    <td>{player.place ? player.place : "-"}</td>
+                                    <td>{player.name}</td>
 
-                                    <td className="p-0">{player.score}</td>
-                                    <td className="p-0">{player.mistakes}</td>
+                                    <td>{player.score}</td>
+                                    <td>{player.mistakes}</td>
                                 </tr>
                             );
                         })}
@@ -442,17 +447,16 @@ function CurrentPlayer() {
                 })}
             </Stack>
 
-            <Stack direction="horizontal" gap={2} className="justify-content-evenly">
+            <Stack direction="horizontal" gap={2} className="fs-4 justify-content-evenly">
                 {gameState === "STARTING" ? (
-                    <CountdownTimer time={GAME_START_DELAY} precisionDigit={0} className="fs-4" />
+                    <CountdownTimer time={GAME_START_DELAY} precisionDigit={0} />
                 ) : gameState === "WAITING" ? (
-                    <Spinner animation="border" size="sm" className="m-2" />
+                    <CountdownTimer time={TURN_START_DELAY} precisionDigit={0} />
                 ) : (
                     <CountdownTimer
                         time={gameRules.round_time}
                         start_date={currentTurn.started_on}
                         precisionDigit={2}
-                        className="fs-4"
                     />
                 )}
             </Stack>
@@ -527,6 +531,7 @@ function WordList() {
 
                             const word = gameTurns[turnIndex].word;
                             const player_name = gamePlayers[gameTurns[turnIndex].player_idx].name;
+                            console.log(`Processing index: ${index}, turnIndex: ${turnIndex}`); // Log to check indices being processed
                             return (
                                 <tr key={word ? word.content : index}>
                                     <td
