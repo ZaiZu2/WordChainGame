@@ -8,7 +8,7 @@ from sqlalchemy import and_, insert, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-import src.models as d  # d - database
+import src.database as d  # d - database
 import src.schemas as s  # s - schema
 from config import get_config
 from src.connection_manager import ConnectionManager

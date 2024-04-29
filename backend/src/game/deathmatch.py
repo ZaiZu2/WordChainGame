@@ -2,7 +2,7 @@ import random
 from datetime import datetime
 from typing import Any, cast
 
-import src.models as d
+import src.database as d
 import src.schemas as s
 from config import get_config
 from src.game.utils import check_word_correctness

@@ -12,7 +12,7 @@ from pydantic import (
     validator,
 )
 
-import src.models as d
+# FILE STORING ONLY DOMAIN SCHEMAS USED AS INTERNAL DATA STRUCTURES
 
 
 class GeneralBaseModel(BaseModel):
@@ -36,13 +36,27 @@ UTCDatetime = Annotated[
     ),  # Serialize Timestamps to zulu format
 ]
 
-#################################### DOMAIN SCHEMAS ####################################
-
 
 class Player(GeneralBaseModel):
     id_: UUID = Field(serialization_alias='id')
     name: str
     created_on: UTCDatetime
+
+
+class GamePlayer(GeneralBaseModel):
+    id_: UUID
+    name: str
+    in_game: bool = True
+    place: int | None = None
+    score: int
+    mistakes: int = 0
+
+    @validator('in_game')
+    @classmethod
+    def validate_in_game(cls, in_game, values):
+        if not in_game and values.get('place') is None:
+            raise ValueError('`place` must be set if `in_game` is changed to False')
+        return in_game
 
 
 class GameTypeEnum(str, Enum):
@@ -56,31 +70,6 @@ class GameStateEnum(str, Enum):
     WAITING = 'WAITING'
     START_TURN = 'START_TURN'
     END_TURN = 'END_TURN'
-
-
-class Rules(GeneralBaseModel):
-    type_: GameTypeEnum = Field(serialization_alias='type')
-
-
-class DeathmatchRules(Rules):
-    type_: Literal[GameTypeEnum.DEATHMATCH] = Field(
-        GameTypeEnum.DEATHMATCH, serialization_alias='type'
-    )
-    round_time: int = Field(10, ge=3, le=30)
-    start_score: int = Field(0, ge=0, le=10)
-    penalty: int = Field(-5, ge=-10, le=0)  # If 0, player loses after a single mistake
-    reward: int = Field(2, ge=0, le=10)
-
-
-class CurrentStatistics(GeneralBaseModel):
-    active_players: int
-    active_rooms: int
-
-
-class AllTimeStatistics(GeneralBaseModel):
-    longest_chain: int
-    longest_game_time: int
-    total_games: int
 
 
 class Word(GeneralBaseModel):
@@ -105,12 +94,18 @@ class Turn(GeneralBaseModel):
     player_id: UUID
 
 
-class TurnOut(GeneralBaseModel):
-    word: Word | None = None
-    started_on: UTCDatetime
-    ended_on: UTCDatetime | None = None
-    info: str | None = None
-    player_idx: int
+class Rules(GeneralBaseModel):
+    type_: GameTypeEnum = Field(serialization_alias='type')
+
+
+class DeathmatchRules(Rules):
+    type_: Literal[GameTypeEnum.DEATHMATCH] = Field(
+        GameTypeEnum.DEATHMATCH, serialization_alias='type'
+    )
+    round_time: int = Field(10, ge=3, le=30)
+    start_score: int = Field(0, ge=0, le=10)
+    penalty: int = Field(-5, ge=-10, le=0)  # If 0, player loses after a single mistake
+    reward: int = Field(2, ge=0, le=10)
 
 
 class GameEvent(Protocol):
@@ -124,56 +119,3 @@ class PlayerLostEvent(GeneralBaseModel):
 
 class GameFinishedEvent(GeneralBaseModel):
     type_: Literal['GameFinished'] = 'GameFinished'
-
-
-################################## VALIDATION SCHEMAS ##################################
-
-
-class LobbyPlayerOut(GeneralBaseModel):
-    """Player data sent as a part of LobbyState."""
-
-    name: str
-    created_on: UTCDatetime
-
-
-class RoomPlayerOut(LobbyPlayerOut):
-    """Player data sent as a part of RoomState."""
-
-    ready: bool
-
-
-class GamePlayer(GeneralBaseModel):
-    id_: UUID
-    name: str
-    in_game: bool = True
-    place: int | None = None
-    score: int
-    mistakes: int = 0
-
-    @validator('in_game')
-    @classmethod
-    def validate_in_game(cls, in_game, values):
-        if not in_game and values.get('place') is None:
-            raise ValueError('`place` must be set if `in_game` is changed to False')
-        return in_game
-
-
-class RoomOut(GeneralBaseModel):
-    id_: int = Field(serialization_alias='id')
-    name: str
-    players_no: int
-    capacity: int
-    status: d.RoomStatusEnum
-    rules: DeathmatchRules
-    owner_name: str
-
-
-class RoomIn(GeneralBaseModel):
-    name: str = Field(..., max_length=10)
-    capacity: int = Field(5, ge=1, le=10)
-    rules: DeathmatchRules
-
-
-class RoomInModify(GeneralBaseModel):
-    capacity: int = Field(5, ge=1, le=10)
-    rules: DeathmatchRules

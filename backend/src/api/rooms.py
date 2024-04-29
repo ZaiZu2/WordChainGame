@@ -10,7 +10,7 @@ from fastapi import (
 from sqlalchemy import insert, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-import src.models as d  # d - database
+import src.database as d  # d - database
 import src.schemas as s  # s - schema
 from config import Config
 from src.connection_manager import ConnectionManager
