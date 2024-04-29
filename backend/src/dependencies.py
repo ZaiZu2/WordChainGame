@@ -14,11 +14,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-import src.models as d  # d - database
+import src.database as d  # d - database
 from config import Config, get_config
 from src.connection_manager import ConnectionManager
+from src.database import async_session
 from src.game.game import GameManager
-from src.models import async_session
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:

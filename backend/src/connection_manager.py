@@ -5,7 +5,7 @@ from uuid import UUID
 
 from fastapi import WebSocket
 
-import src.models as d  # d - database
+import src.database as d  # d - database
 import src.schemas as s  # s - schema
 from src.error_handlers import PlayerAlreadyConnectedError
 

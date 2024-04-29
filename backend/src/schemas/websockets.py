@@ -3,8 +3,10 @@ from typing import Annotated, Literal
 
 from pydantic import Field
 
-import src.models as d
-import src.schemas.general as s
+import src.database as d
+import src.schemas as s
+
+# FILE STORING ONLY WEBSOCKET VALIDATION SCHEMAS USED AS WEBSOCKET INPUTS/OUTPUTS
 
 
 class WebSocketMessageTypeEnum(str, Enum):
@@ -31,6 +33,8 @@ class WordInput(_GameInput, s.GeneralBaseModel):
     word: str
 
 
+# Pydantic's Discriminated Union
+# https://docs.pydantic.dev/latest/concepts/unions/#discriminated-unions-with-str-discriminators
 GameInput = Annotated[WordInput, Field(discriminator='input_type')]
 
 #################################### GAME OUTPUTS ####################################
@@ -71,6 +75,8 @@ class EndTurnState(_GameState, s.GeneralBaseModel):
     current_turn: s.TurnOut
 
 
+# Pydantic's Discriminated Union
+# https://docs.pydantic.dev/latest/concepts/unions/#discriminated-unions-with-str-discriminators
 GameState = Annotated[
     StartGameState | EndGameState | WaitState | StartTurnState | EndTurnState,
     Field(discriminator='state'),

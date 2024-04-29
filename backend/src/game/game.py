@@ -1,4 +1,4 @@
-import src.models as d
+import src.database as d
 import src.schemas as s
 from src.game.deathmatch import Deathmatch
 
