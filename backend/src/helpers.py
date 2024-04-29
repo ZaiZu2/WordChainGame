@@ -1,9 +1,10 @@
 import asyncio
+from datetime import datetime
 from enum import Enum
 from typing import cast
 
 from fastapi import WebSocket, WebSocketDisconnect, WebSocketException
-from sqlalchemy import and_, select
+from sqlalchemy import and_, insert, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
@@ -297,19 +298,7 @@ async def run_game(
         )
         await db.refresh(room)
         room.status = d.RoomStatusEnum.OPEN
-
-        # TODO:: Abstract or at least generalize broadcasting updates to room changes
-        # Update everyone with the status change of the room
-        room_state = s.RoomState(**room.to_dict(), owner_name=room.owner.name)
-        await conn_manager.broadcast_room_state(room.id_, room_state)
-
-        room_out = s.RoomOut(
-            players_no=len(conn_manager.pool.get_room_conns(room.id_)),
-            owner_name=room.owner.name,
-            **room.to_dict(),
-        )
-        lobby_state = s.LobbyState(rooms={room.id_: room_out})
-        await conn_manager.broadcast_lobby_state(lobby_state)
+        await broadcast_single_room_state(room, conn_manager)
 
 
 async def broadcast_full_lobby_state(

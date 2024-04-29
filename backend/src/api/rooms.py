@@ -25,6 +25,7 @@ from src.dependencies import (
 from src.game.game import GameManager
 from src.helpers import (
     TagsEnum,
+    broadcast_single_room_state,
     move_player_and_broadcast_message,
     run_game,
 )
@@ -315,20 +316,6 @@ async def start_game(
         )
     )
     await db.refresh(game_db, attribute_names=['players'])
-
-    # TODO:: Abstract or at least generalize broadcasting updates to room changes
-    # Update everyone with the status change of the room
-    room_state = s.RoomState(**room.to_dict(), owner_name=room.owner.name)
-    await conn_manager.broadcast_room_state(room.id_, room_state)
-
-    room_out = s.RoomOut(
-        players_no=len(conn_manager.pool.get_room_conns(room.id_)),
-        owner_name=room.owner.name,
-        **room.to_dict(),
-    )
-    lobby_state = s.LobbyState(rooms={room.id_: room_out})
-    await conn_manager.broadcast_lobby_state(lobby_state)
-
-    # Store the game in memory during it's progress
+    await broadcast_single_room_state(room, conn_manager)
     game = game_manager.create(game_db)
     asyncio.create_task(run_game(game, room.id_, conn_manager))
