@@ -78,7 +78,7 @@ export type Turn = {
 };
 
 type StartGameState = {
-    state: "STARTING";
+    state: "STARTED";
     id: number;
     status: "Starting";
     players: GamePlayer[];
@@ -87,7 +87,7 @@ type StartGameState = {
 };
 
 type EndGameState = {
-    state: "ENDING";
+    state: "ENDED";
     status: "Finished";
 };
 
@@ -96,13 +96,13 @@ type WaitState = {
 };
 
 type StartTurnState = {
-    state: "START_TURN";
+    state: "STARTED_TURN";
     current_turn: Turn;
     status?: "In progress";
 };
 
 type EndTurnState = {
-    state: "END_TURN";
+    state: "ENDED_TURN";
     players: GamePlayer[];
     lost_players: GamePlayer[];
     current_turn: Turn;

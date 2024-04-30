@@ -22,7 +22,7 @@ export const initialGameStoreSlice = {
 
 export default function GameStoreSlice(switchMode: (mode: "lobby" | "room" | "game") => void) {
     const [gameState, setGameState] = useState<
-        "STARTING" | "ENDING" | "WAITING" | "START_TURN" | "END_TURN" | undefined
+        "STARTED" | "ENDED" | "WAITING" | "STARTED_TURN" | "ENDED_TURN" | undefined
     >(undefined);
     const [gameId, setGameId] = useState<number | undefined>(undefined);
     const [gameStatus, setGameStatus] = useState<
@@ -39,7 +39,7 @@ export default function GameStoreSlice(switchMode: (mode: "lobby" | "room" | "ga
         setGameState(newGameState.state);
 
         switch (newGameState.state) {
-            case "STARTING":
+            case "STARTED":
                 resetGameState();
                 switchMode("game");
 
@@ -51,18 +51,17 @@ export default function GameStoreSlice(switchMode: (mode: "lobby" | "room" | "ga
                 // Also initialize FE-only state
                 setGameTurns([]);
                 break;
-            case "ENDING":
+            case "ENDED":
                 setGameStatus("Finished");
-                switchMode("room");
                 break;
             case "WAITING":
                 setGameState(newGameState.state);
                 break;
-            case "START_TURN":
+            case "STARTED_TURN":
                 newGameState.status && setGameStatus(newGameState.status);
                 setGameCurrentTurn(newGameState.current_turn);
                 break;
-            case "END_TURN":
+            case "ENDED_TURN":
                 setGamePlayers(newGameState.players);
                 setGameTurns((prevGameTurns) => [
                     ...(prevGameTurns || []),
