@@ -65,7 +65,7 @@ export type GamePlayer = {
 export type Word = {
     content: string;
     is_correct?: boolean;
-    description?: Record<string, string>;
+    description?: [string, string][];
 };
 
 export type Turn = {

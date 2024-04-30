@@ -506,10 +506,8 @@ function WordList() {
     const tooltip = (word: Word | null) => {
         if (word?.is_correct) {
             let tooltipText = "";
-            Object.entries(word.description as object).forEach(([partOfSpeech, description]) => {
-                tooltipText += `${
-                    partOfSpeech.charAt(0).toUpperCase() + partOfSpeech.slice(1).toLowerCase()
-                }: ${description}\n\n`;
+            word.description!.forEach(([partOfSpeech, description]) => {
+                tooltipText += `${partOfSpeech}: ${description}\n\n`;
             });
             return tooltipText;
         } else {

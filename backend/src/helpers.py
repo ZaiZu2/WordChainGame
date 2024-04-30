@@ -251,7 +251,7 @@ async def listen_for_messages(
 async def run_game(
     game: Deathmatch, room_id: int, conn_manager: ConnectionManager
 ) -> None:
-    word_input_queue = conn_manager.pool.get_room(room_id=room_id).word_input_buffer
+    word_input_buffer = conn_manager.pool.get_room(room_id=room_id).word_input_buffer
 
     start_game_state = game.start()
     await conn_manager.broadcast_game_state(room_id, start_game_state)
@@ -266,7 +266,7 @@ async def run_game(
 
         try:
             word_input = await asyncio.wait_for(
-                word_input_queue.get(), game.time_left_in_turn
+                word_input_buffer.get(), game.time_left_in_turn
             )
         except asyncio.TimeoutError:
             end_turn_state = game.end_turn_timed_out()

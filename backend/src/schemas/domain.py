@@ -74,7 +74,7 @@ class GameStateEnum(str, Enum):
 
 class Word(GeneralBaseModel):
     content: str | None = None
-    description: dict[str, str] | None = None
+    description: list[tuple[str, str]] | None = None
     is_correct: bool | None = None
 
     def __hash__(self) -> int:

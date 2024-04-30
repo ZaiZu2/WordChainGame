@@ -14,7 +14,9 @@ class Config(BaseSettings):
     AUTH_COOKIE_NAME: str = 'player_id'
     AUTH_COOKIE_EXPIRATION: int = 1200  # seconds
 
-    DICTIONARY_API_URL: str = 'https://api.dictionaryapi.dev/api/v2/entries/en/'
+    DICTIONARY_API_KEY: str
+    DICTIONARY_API_URL: str = 'https://www.dictionaryapi.com/api/v3/references/collegiate/json/{word}?key={api_key}'
+
     GAME_START_DELAY: int = 1  # seconds, Delay game start to prime the players
     TURN_START_DELAY: int = 1  # seconds, Delay each turn start to prime the players
     MAX_TURN_TIME_DEVIATION: float = 0.1  # seconds
