@@ -1,5 +1,5 @@
 import asyncio
-from typing import Annotated
+from typing import Annotated, cast
 
 from fastapi import (
     APIRouter,
@@ -12,10 +12,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 import src.database as d  # d - database
 import src.schemas as s  # s - schema
-from config import Config
-from src.connection_manager import ConnectionManager
+from src.connection_manager import ConnectionManager, RoomInfo
 from src.dependencies import (
-    get_config,
     get_connection_manager,
     get_db,
     get_game_manager,
@@ -91,7 +89,6 @@ async def join_room(
     db: Annotated[AsyncSession, Depends(get_db)],
     conn_manager: Annotated[ConnectionManager, Depends(get_connection_manager)],
 ) -> s.RoomState:
-    conn = conn_manager.pool.get_conn(player.id_)
     old_room_id = conn_manager.pool.get_room(player_id=player.id_).room_id
 
     if room.id_ == old_room_id:
@@ -108,18 +105,15 @@ async def join_room(
     await move_player_and_broadcast_message(
         player, old_room_id, room.id_, db, conn_manager
     )
-    if player.id_ == room.owner_id:
-        conn.ready = True
 
     # Broadcast the info about all the players in the room, as the joining player
     # needs that context
-    conns = list(conn_manager.pool.get_room_conns(room.id_))
-    room_players = await db.scalars(
-        select(d.Player).where(d.Player.id_.in_([conn.player_id for conn in conns]))
-    )
+    room_conns = conn_manager.pool.get_room_conns(room.id_)
     players_out = {
-        room_player.name: s.RoomPlayerOut(ready=conn.ready, **room_player.to_dict())
-        for room_player, conn in zip(room_players, conns)
+        conn.player_name: s.RoomPlayerOut(
+            name=conn.player_name, ready=conn.ready, in_game=conn.in_game
+        )
+        for conn in room_conns
     }
     room_state = s.RoomState(
         players=players_out, owner_name=room.owner.name, **room.to_dict()
@@ -238,12 +232,11 @@ async def toggle_room_status(
 async def toggle_player_readiness(
     room: Annotated[d.Room, Depends(get_room)],
     player: Annotated[d.Player, Depends(get_player)],
-    db: Annotated[AsyncSession, Depends(get_db)],
     conn_manager: Annotated[ConnectionManager, Depends(get_connection_manager)],
-):
+) -> None:
     conn = conn_manager.pool.get_conn(player.id_)
-    found_room_id = conn_manager.pool.get_room(player_id=player.id_)
-    if found_room_id is None:
+    room_info = conn_manager.pool.get_room(player_id=player.id_)
+    if room_info is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail='Player is not in the room'
         )
@@ -253,7 +246,39 @@ async def toggle_player_readiness(
     room_state = s.RoomState(
         **room.to_dict(),
         owner_name=room.owner.name,
-        players={player.name: s.RoomPlayerOut(ready=conn.ready, **player.to_dict())},
+        players={
+            player.name: s.RoomPlayerOut(
+                name=conn.player_name, ready=conn.ready, in_game=conn.in_game
+            )
+        },
+    )
+    await conn_manager.broadcast_room_state(room.id_, room_state)
+
+
+@router.post('/rooms/{room_id}/return', status_code=status.HTTP_200_OK)
+async def return_from_game(
+    room: Annotated[d.Room, Depends(get_room)],
+    player: Annotated[d.Player, Depends(get_player)],
+    conn_manager: Annotated[ConnectionManager, Depends(get_connection_manager)],
+) -> None:
+    """Inform the room that the player returned to the room from a game."""
+    conn = conn_manager.pool.get_conn(player.id_)
+    room_info = conn_manager.pool.get_room(player_id=player.id_)
+    if room_info is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail='Player is not in the room'
+        )
+
+    conn.in_game = False
+
+    room_state = s.RoomState(
+        **room.to_dict(),
+        owner_name=room.owner.name,
+        players={
+            player.name: s.RoomPlayerOut(
+                name=conn.player_name, ready=conn.ready, in_game=conn.in_game
+            )
+        },
     )
     await conn_manager.broadcast_room_state(room.id_, room_state)
 
@@ -265,15 +290,15 @@ async def start_game(
     db: Annotated[AsyncSession, Depends(get_db)],
     conn_manager: Annotated[ConnectionManager, Depends(get_connection_manager)],
     game_manager: Annotated[GameManager, Depends(get_game_manager)],
-    config: Annotated[Config, Depends(get_config)],
 ) -> None:
+    conn_manager.pool.get_conn(player.id_).ready = True
+    room_info = cast(RoomInfo, conn_manager.pool.get_room(player_id=player.id_))
+
     if room.owner_id != player.id_:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail='Player is not the owner'
         )
-
-    found_room_id = conn_manager.pool.get_room(player_id=player.id_)
-    if found_room_id is None:
+    if room_info is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail='Player is not in the room'
         )
@@ -317,5 +342,20 @@ async def start_game(
     )
     await db.refresh(game_db, attribute_names=['players'])
     await broadcast_single_room_state(room, conn_manager)
+
     game = game_manager.create(game_db)
     asyncio.create_task(run_game(game, room.id_, conn_manager))
+
+    players_out = {}
+    for conn in room_info.conns.values():
+        conn.ready = False
+        conn.in_game = True
+
+        players_out[conn.player_name] = s.RoomPlayerOut(
+            name=conn.player_name, ready=conn.ready, in_game=conn.in_game
+        )
+
+    room_state = s.RoomState(
+        players=players_out, owner_name=room.owner.name, **room.to_dict()
+    )
+    await conn_manager.broadcast_room_state(room_state.id_, room_state)

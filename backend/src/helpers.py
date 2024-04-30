@@ -11,7 +11,7 @@ from sqlalchemy.orm import joinedload
 import src.database as d  # d - database
 import src.schemas as s  # s - schema
 from config import get_config
-from src.connection_manager import ConnectionManager
+from src.connection_manager import ConnectionManager, RoomInfo
 from src.dependencies import init_db_session
 from src.error_handlers import PlayerAlreadyConnectedError
 from src.game.deathmatch import Deathmatch
@@ -109,7 +109,7 @@ async def accept_websocket_connection(
     await websocket.accept()
 
     try:
-        conn_manager.connect(player.id_, d.LOBBY.id_, websocket)
+        conn_manager.connect(player.id_, player.name, d.LOBBY.id_, websocket)
     except PlayerAlreadyConnectedError:
         exc_args = (
             s.CustomWebsocketCodeEnum.MULTIPLE_CLIENTS,
@@ -251,7 +251,8 @@ async def listen_for_messages(
 async def run_game(
     game: Deathmatch, room_id: int, conn_manager: ConnectionManager
 ) -> None:
-    word_input_buffer = conn_manager.pool.get_room(room_id=room_id).word_input_buffer
+    room_info = cast(RoomInfo, conn_manager.pool.get_room(room_id=room_id))
+    word_input_buffer = room_info.word_input_buffer
 
     start_game_state = game.start()
     await conn_manager.broadcast_game_state(room_id, start_game_state)
@@ -296,7 +297,6 @@ async def run_game(
                 .options(joinedload(d.Room.owner))
             ),
         )
-        await db.refresh(room)
         room.status = d.RoomStatusEnum.OPEN
         await broadcast_single_room_state(room, conn_manager)
 

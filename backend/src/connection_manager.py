@@ -35,12 +35,14 @@ class WordInputBuffer:
 class Connection:
     """Class storing transient connection (player) state."""
 
-    def __init__(self, player_id: UUID, websocket: WebSocket):
+    def __init__(self, player_id: UUID, player_name: str, websocket: WebSocket):
         self.websocket = websocket
         self.player_id = player_id
+        self.player_name = player_name
 
         # Here is also stored transient room data e.g. ready state, mute state, etc.
-        self.ready: bool = False  # Player's ready state in a room
+        self.ready: bool = False  # Flag necessary to start a game
+        self.in_game: bool = False  # Flag denoting if the player is still in the game view (e.g. post-game statistics)
 
     def __hash__(self) -> int:
         return self.player_id.int
@@ -135,13 +137,15 @@ class ConnectionManager:
     def __init__(self) -> None:
         self.pool = ConnectionPool()
 
-    def connect(self, player_id: UUID, room_id: int, websocket: WebSocket):
+    def connect(
+        self, player_id: UUID, player_name: str, room_id: int, websocket: WebSocket
+    ):
         if self.pool.get_conn(player_id):
             raise PlayerAlreadyConnectedError(
                 'Player is already connected with another client.'
             )
 
-        conn = Connection(player_id, websocket)
+        conn = Connection(player_id, player_name, websocket)
         self.pool.add(conn, room_id)
 
     def disconnect(self, player_id: UUID):
@@ -241,12 +245,11 @@ class ConnectionManager:
         """Move a player's websocket connection from one room to another."""
         if not (self.pool.get_room(player_id=player_id).room_id == from_room_id):
             raise ValueError('Player is not in the specified room')
-        conn = self.pool.get_conn(player_id)
-        if conn is None:
-            raise ValueError('Player is not in a room')
         if not self.pool.exists(to_room_id):
             raise ValueError('Room to move the player to does not exist')
 
-        conn.ready = False
+        conn = self.pool.get_conn(player_id)
         self.pool.remove(player_id)
+        conn.ready = False
+        conn.in_game = False
         self.pool.add(conn, to_room_id)

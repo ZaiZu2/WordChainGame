@@ -186,8 +186,9 @@ class Deathmatch:
             ),
         )
 
-    def end(self) -> s.EndGameState:
         self.state = s.GameStateEnum.ENDED
+
+    def end(self) -> s.EndGameState:
         self.status = d.GameStatusEnum.FINISHED
         self.events.append(s.GameFinishedEvent())
         return s.EndGameState(status=self.status)

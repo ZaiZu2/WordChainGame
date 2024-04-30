@@ -22,11 +22,11 @@ def check_word_correctness(word: str) -> s.Word:
     if any(isinstance(elem, str) for elem in data):
         return s.Word(content=word, is_correct=False)
 
-    definitions = [definition for definition in data if definition.get('hom')]
+    definitions = [definition for definition in data if definition.get('fl')]
 
     description: list[tuple[str, str]] = [
         (definition['fl'], definition['shortdef'][0])
-        for definition in definitions
-        if definition.get('fl')
+        for i, definition in enumerate(definitions)
+        if i < 3 and definition.get('fl')
     ]
     return s.Word(content=word, is_correct=True, description=description)

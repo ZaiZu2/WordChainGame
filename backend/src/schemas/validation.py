@@ -29,13 +29,13 @@ class LobbyPlayerOut(m.GeneralBaseModel):
     """Player data sent as a part of LobbyState."""
 
     name: str
-    created_on: m.UTCDatetime
 
 
 class RoomPlayerOut(LobbyPlayerOut):
     """Player data sent as a part of RoomState."""
 
     ready: bool
+    in_game: bool
 
 
 class RoomOut(m.GeneralBaseModel):
