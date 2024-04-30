@@ -30,7 +30,7 @@ export function useWebSocketContext(): WebSocketContext {
 
 export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     const {
-        player,
+        loggedPlayer: player,
         roomState,
         logOut,
         updateChatMessages,

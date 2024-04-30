@@ -22,7 +22,7 @@ export type StoreContext = {
     roomState: RoomState | null;
     allTimeStatistics: AllTimeStatistics | undefined;
     mode: "lobby" | "room" | "game";
-    player: Player | null | undefined;
+    loggedPlayer: Player | null | undefined;
     switchMode: (mode: "lobby" | "room" | "game") => void;
     updateChatMessages: (newChatMessages: ChatMessage[]) => void;
     purgeChatMessages: () => void;
@@ -33,7 +33,7 @@ export type StoreContext = {
     logIn: (id: UUID) => void;
     logOut: () => void;
     isRoomOwner: (playerName?: string) => boolean;
-    isLocalPlayersTurn: () => boolean;
+    isLoggedPlayersTurn: () => boolean;
 
     modalConfigs: ModalConfigs;
     toggleModal: <K extends keyof ModalConfigs>(
@@ -48,7 +48,7 @@ const StoreContextObject = createContext<StoreContext>({
     lobbyState: null,
     roomState: null,
     mode: "lobby",
-    player: null,
+    loggedPlayer: null,
     allTimeStatistics: undefined,
     switchMode: (mode: "lobby" | "room" | "game") => {},
     updateChatMessages: (newChatMessages: ChatMessage[]) => {},
@@ -59,7 +59,7 @@ const StoreContextObject = createContext<StoreContext>({
     logIn: () => {},
     logOut: () => {},
     isRoomOwner: (playerName?: string) => false,
-    isLocalPlayersTurn: () => true,
+    isLoggedPlayersTurn: () => true,
 
     modalConfigs: {},
     toggleModal: <K extends keyof ModalConfigs>(
@@ -77,7 +77,7 @@ export function useStore() {
 
 export default function StoreProvider({ children }: { children: React.ReactNode }) {
     const [mode, setMode] = useState<"lobby" | "room" | "game">("lobby");
-    const [player, setPlayer] = useState<Player | null | undefined>();
+    const [loggedPlayer, setLoggedPlayer] = useState<Player | null | undefined>();
     const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
     const [lobbyState, setLobbyState] = useState<LobbyState | null>(null);
     const [roomState, setRoomState] = useState<RoomState | null>(null);
@@ -94,24 +94,24 @@ export default function StoreProvider({ children }: { children: React.ReactNode 
         (async () => {
             try {
                 const response = await apiClient.get<Player>("/players/me");
-                setPlayer(response.body);
+                setLoggedPlayer(response.body);
             } catch (error) {
                 if (error instanceof AuthError) {
-                    setPlayer(null);
+                    setLoggedPlayer(null);
                 }
             }
         })();
     }, []);
 
     async function logIn(id: UUID) {
-        const body = id === undefined ? { id: player?.id } : { id: id };
+        const body = id === undefined ? { id: loggedPlayer?.id } : { id: id };
         const response = await apiClient.post<Player>("/players/login", { body: body });
-        setPlayer(response.body);
+        setLoggedPlayer(response.body);
     }
 
     async function logOut() {
-        await apiClient.post<null>("/players/logout", { body: { id: player?.id } });
-        setPlayer(null);
+        await apiClient.post<null>("/players/logout", { body: { id: loggedPlayer?.id } });
+        setLoggedPlayer(null);
     }
 
     function purgeChatMessages() {
@@ -187,16 +187,16 @@ export default function StoreProvider({ children }: { children: React.ReactNode 
      */
     function isRoomOwner(playerName?: string): boolean {
         if (playerName === undefined) {
-            return (player as Player).name === (roomState as RoomState).owner_name;
+            return (loggedPlayer as Player).name === (roomState as RoomState).owner_name;
         } else {
             return playerName === (roomState as RoomState).owner_name;
         }
     }
 
-    function isLocalPlayersTurn(): boolean {
+    function isLoggedPlayersTurn(): boolean {
         const currentPlayerName =
             gameStoreSlice.gamePlayers?.[gameStoreSlice.currentTurn?.player_idx as number]?.name;
-        return currentPlayerName === player?.name;
+        return currentPlayerName === loggedPlayer?.name;
     }
 
     function toggleModal<K extends keyof ModalConfigs>(
@@ -237,7 +237,7 @@ export default function StoreProvider({ children }: { children: React.ReactNode 
                 allTimeStatistics,
                 mode,
                 switchMode,
-                player,
+                loggedPlayer: loggedPlayer,
                 updateChatMessages,
                 purgeChatMessages,
                 updateLobbyState,
@@ -246,7 +246,7 @@ export default function StoreProvider({ children }: { children: React.ReactNode 
                 logIn,
                 logOut,
                 isRoomOwner,
-                isLocalPlayersTurn,
+                isLoggedPlayersTurn: isLoggedPlayersTurn,
                 modalConfigs,
                 toggleModal,
                 ...gameStoreSlice,

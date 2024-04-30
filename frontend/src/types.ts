@@ -19,11 +19,11 @@ export type RoomIn = {
 export type Player = {
     id?: UUID;
     name: string;
-    created_on: Date;
 };
 
 export type RoomPlayer = Player & {
     ready: boolean;
+    in_game: boolean;
 };
 
 export type RequestOptions = {

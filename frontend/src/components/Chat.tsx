@@ -35,6 +35,7 @@ export default function Chat() {
                     minHeight: "100px",
                     maxHeight: "300px",
                     overflowY: "auto",
+                    wordBreak: "break-word", // Add this line to break long words
                 }}
             >
                 {chatMessages.map((message, index) => {

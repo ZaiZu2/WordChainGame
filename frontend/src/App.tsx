@@ -13,7 +13,7 @@ import LobbyPage from "./pages/LobbyPage";
 import RoomPage from "./pages/RoomPage";
 
 export default function App() {
-    const { player, modalConfigs } = useStore();
+    const { loggedPlayer: player, modalConfigs } = useStore();
 
     return (
         <BrowserRouter>

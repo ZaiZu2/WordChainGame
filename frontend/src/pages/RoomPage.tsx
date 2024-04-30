@@ -46,7 +46,7 @@ export default function RoomPage() {
                     <ButtonBar />
                 </Stack>
             </Bubble>
-            {mode === "room" && <PlayerCard />}
+            {mode === "room" && <PlayerList />}
             {mode === "game" && (
                 <>
                     <ScoreCard />
@@ -155,7 +155,7 @@ function Rules() {
 
 function ButtonBar() {
     const {
-        player: _player,
+        loggedPlayer: _player,
         roomState: _roomState,
         chatMessages,
         switchMode,
@@ -214,7 +214,13 @@ function ButtonBar() {
         switchMode("game");
     }
 
-    function returnToRoom() {
+    async function returnToRoom(roomId: number) {
+        try {
+            await apiClient.post<null>(`/rooms/${roomId}/return`);
+        } catch (error) {
+            //TODO: Handle error
+            return;
+        }
         switchMode("room");
     }
 
@@ -291,7 +297,7 @@ function ButtonBar() {
                 <Button
                     variant="primary"
                     size="sm"
-                    onClick={returnToRoom}
+                    onClick={() => returnToRoom(roomState.id!)}
                     disabled={roomState.status === "In progress"}
                 >
                     Return to room
@@ -301,9 +307,13 @@ function ButtonBar() {
     );
 }
 
-function PlayerCard() {
-    const { mode, roomState: _roomState, isRoomOwner } = useStore();
+function PlayerList() {
+    const { roomState: _roomState, isRoomOwner, loggedPlayer } = useStore();
     const roomState = _roomState as RoomState;
+
+    function mutePlayer(playerName: string) {}
+
+    function kickPlayer(playerName: string) {}
 
     return (
         <Bubble>
@@ -311,10 +321,14 @@ function PlayerCard() {
                 <thead className="border-bottom">
                     <tr>
                         <td>
-                            <Icon symbol="leaderboard" tooltip="Number" iconSize={4} />
+                            <Icon symbol="person" tooltip="Name" iconSize={4} />
                         </td>
                         <td>
-                            <Icon symbol="person" tooltip="Name" iconSize={4} />
+                            <Icon
+                                symbol="hand_gesture"
+                                tooltip="Player returned from the previous game"
+                                iconSize={4}
+                            />
                         </td>
                         <td>
                             <Icon symbol="light_mode" tooltip="Readiness" iconSize={4} />
@@ -325,20 +339,35 @@ function PlayerCard() {
 
                 <tbody>
                     <tr style={{ height: "0.5rem" }} />
-                    {Object.values(roomState.players).map((player, index) => {
+                    {Object.values(roomState.players).map((roomPlayer, index) => {
                         return (
-                            <tr key={player.name}>
-                                <td>{index + 1}</td>
-                                <td>{player.name}</td>
-
+                            <tr key={roomPlayer.name}>
+                                <td>{roomPlayer.name}</td>
                                 <td>
-                                    {isRoomOwner(player.name) ? (
+                                    {roomPlayer.in_game ? (
+                                        <Icon
+                                            symbol="close"
+                                            className="text-danger"
+                                            tooltip="Not available"
+                                            iconSize={4}
+                                        />
+                                    ) : (
+                                        <Icon
+                                            symbol="check"
+                                            className="text-success"
+                                            tooltip="Available"
+                                            iconSize={4}
+                                        />
+                                    )}
+                                </td>
+                                <td>
+                                    {isRoomOwner(roomPlayer.name) ? (
                                         <Icon
                                             symbol="manage_accounts"
                                             tooltip="Owner"
                                             iconSize={4}
                                         />
-                                    ) : player.ready ? (
+                                    ) : roomPlayer.ready ? (
                                         <Icon
                                             symbol="check"
                                             className="text-success"
@@ -353,6 +382,36 @@ function PlayerCard() {
                                             iconSize={4}
                                         />
                                     )}
+                                </td>
+                                <td>
+                                    <Stack
+                                        direction="horizontal"
+                                        gap={2}
+                                        className="justify-content-end"
+                                    >
+                                        {roomPlayer.name != loggedPlayer?.name && (
+                                            <Button
+                                                onClick={() => {
+                                                    mutePlayer(roomPlayer.name);
+                                                }}
+                                                variant="primary"
+                                                size="sm"
+                                            >
+                                                Mute
+                                            </Button>
+                                        )}
+                                        {isRoomOwner() && roomPlayer.name != loggedPlayer?.name && (
+                                            <Button
+                                                onClick={() => {
+                                                    kickPlayer(roomPlayer.name);
+                                                }}
+                                                variant="primary"
+                                                size="sm"
+                                            >
+                                                Kick
+                                            </Button>
+                                        )}
+                                    </Stack>
                                 </td>
                             </tr>
                         );
@@ -385,10 +444,10 @@ function ScoreCard() {
                             <Icon symbol="error" tooltip="Mistakes" iconSize={4} />
                         </td>
                     </tr>
-                    <tr style={{ height: "0.25rem" }} />
+                    <tr style={{ height: "0.5rem" }} />
                 </thead>
                 <tbody>
-                    <tr style={{ height: "0.25rem" }} />
+                    <tr style={{ height: "0.5rem" }} />
                     {[...gamePlayers]
                         .sort((a, b) => {
                             if (a.place !== null && b.place !== null) {
@@ -491,7 +550,7 @@ function WordList() {
         roomState,
         gamePlayers: _gamePlayers,
         gameTurns: _gameTurns,
-        isLocalPlayersTurn,
+        isLoggedPlayersTurn: isLocalPlayersTurn,
         currentTurn: _currentTurn,
         gameStatus: _gameStatus,
         gameState: _gameState,
