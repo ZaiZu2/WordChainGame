@@ -47,7 +47,7 @@ class _GameState(s.GeneralBaseModel):
 
 
 class StartGameState(_GameState, s.GeneralBaseModel):
-    state: Literal[s.GameStateEnum.STARTING] = s.GameStateEnum.STARTING
+    state: Literal[s.GameStateEnum.STARTED] = s.GameStateEnum.STARTED
     id_: int = Field(serialization_alias='id')
     status: d.GameStatusEnum
     players: list[s.GamePlayer]
@@ -55,7 +55,7 @@ class StartGameState(_GameState, s.GeneralBaseModel):
 
 
 class EndGameState(_GameState, s.GeneralBaseModel):
-    state: Literal[s.GameStateEnum.ENDING] = s.GameStateEnum.ENDING
+    state: Literal[s.GameStateEnum.ENDED] = s.GameStateEnum.ENDED
     status: d.GameStatusEnum
 
 
@@ -64,13 +64,13 @@ class WaitState(_GameState, s.GeneralBaseModel):
 
 
 class StartTurnState(_GameState, s.GeneralBaseModel):
-    state: Literal[s.GameStateEnum.START_TURN] = s.GameStateEnum.START_TURN
+    state: Literal[s.GameStateEnum.STARTED_TURN] = s.GameStateEnum.STARTED_TURN
     current_turn: s.TurnOut
     status: d.GameStatusEnum | None = None
 
 
 class EndTurnState(_GameState, s.GeneralBaseModel):
-    state: Literal[s.GameStateEnum.END_TURN] = s.GameStateEnum.END_TURN
+    state: Literal[s.GameStateEnum.ENDED_TURN] = s.GameStateEnum.ENDED_TURN
     players: list[s.GamePlayer]
     current_turn: s.TurnOut
 

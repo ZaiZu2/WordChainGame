@@ -65,11 +65,11 @@ class GameTypeEnum(str, Enum):
 
 class GameStateEnum(str, Enum):
     CREATING = 'CREATING'
-    STARTING = 'STARTING'
-    ENDING = 'ENDING'
+    STARTED = 'STARTED'
+    ENDED = 'ENDED'
     WAITING = 'WAITING'
-    START_TURN = 'START_TURN'
-    END_TURN = 'END_TURN'
+    STARTED_TURN = 'STARTED_TURN'
+    ENDED_TURN = 'ENDED_TURN'
 
 
 class Word(GeneralBaseModel):

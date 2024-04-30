@@ -13,18 +13,20 @@ def check_word_correctness(word: str) -> s.Word:
         )
     )
 
-    # TODO: Handle connection errors and other exceptions
-    if response.status_code == 404:
-        # TODO: Function does 2  things - unpacks response and returns False on failed validation
-        return s.Word(content=word, is_correct=False)
-    if response.status_code == 500:
+    if response.status_code // 100 == 5:
         raise Exception('Dictionary API is not available')
 
-    definitions = [
-        definition for definition in response.json() if definition.get('hom')
-    ]
+    data = response.json()
+
+    # Mirriam-Webster returns a list of similar words if the word is not found
+    if any(isinstance(elem, str) for elem in data):
+        return s.Word(content=word, is_correct=False)
+
+    definitions = [definition for definition in data if definition.get('hom')]
 
     description: list[tuple[str, str]] = [
-        (definition['fl'], definition['shortdef'][0]) for definition in definitions
+        (definition['fl'], definition['shortdef'][0])
+        for definition in definitions
+        if definition.get('fl')
     ]
     return s.Word(content=word, is_correct=True, description=description)

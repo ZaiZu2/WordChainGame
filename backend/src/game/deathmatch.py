@@ -63,7 +63,7 @@ class Deathmatch:
         self, id_: int, players: list[d.Player], rules: s.DeathmatchRules
     ) -> None:
         self.id_ = id_
-        self.status = d.GameStatusEnum.STARTING
+        self.status = d.GameStatusEnum.STARTED
         self.rules = rules
         self.state: s.GameStateEnum = s.GameStateEnum.CREATING
 
@@ -102,7 +102,7 @@ class Deathmatch:
         return self.rules.round_time - time_elapsed.total_seconds()
 
     def start(self) -> s.StartGameState:
-        self.state = s.GameStateEnum.STARTING
+        self.state = s.GameStateEnum.STARTED
 
         return s.StartGameState(
             id_=self.id_,
@@ -119,10 +119,10 @@ class Deathmatch:
         if self.state not in [
             s.GameStateEnum.CREATING,
             s.GameStateEnum.WAITING,
-            s.GameStateEnum.END_TURN,
+            s.GameStateEnum.ENDED_TURN,
         ]:
             raise ValueError(f'Turn cannot be started in the {self.state} game state')
-        self.state = s.GameStateEnum.START_TURN
+        self.state = s.GameStateEnum.STARTED_TURN
         self.status = d.GameStatusEnum.IN_PROGRESS
         self.events = []
 
@@ -140,9 +140,9 @@ class Deathmatch:
         )
 
     def end_turn_in_time(self, word: str) -> s.EndTurnState:
-        if self.state != s.GameStateEnum.START_TURN:
+        if self.state != s.GameStateEnum.STARTED_TURN:
             raise ValueError(f'Turn cannot be started in the {self.state} game state')
-        self.state = s.GameStateEnum.END_TURN
+        self.state = s.GameStateEnum.ENDED_TURN
 
         current_turn = cast(s.Turn, self.current_turn)
         current_turn.ended_on = datetime.utcnow()
@@ -160,9 +160,9 @@ class Deathmatch:
         )
 
     def end_turn_timed_out(self) -> s.EndTurnState:
-        if self.state != s.GameStateEnum.START_TURN:
+        if self.state != s.GameStateEnum.STARTED_TURN:
             raise ValueError(f'Turn cannot be started in the {self.state} game state')
-        self.state = s.GameStateEnum.END_TURN
+        self.state = s.GameStateEnum.ENDED_TURN
 
         current_turn = cast(s.Turn, self.current_turn)
         current_turn.ended_on = datetime.utcnow()
@@ -187,7 +187,7 @@ class Deathmatch:
         )
 
     def end(self) -> s.EndGameState:
-        self.state = s.GameStateEnum.ENDING
+        self.state = s.GameStateEnum.ENDED
         self.status = d.GameStatusEnum.FINISHED
         self.events.append(s.GameFinishedEvent())
         return s.EndGameState(status=self.status)
@@ -203,12 +203,6 @@ class Deathmatch:
             return True
 
         return False
-
-    def did_turn_timed_out(self, turn_no: int) -> bool:
-        """Check if the turn in the game has timed out."""
-        if turn_no <= len(self.turns):
-            return False
-        return True
 
     def _validate_word(self, word: str) -> tuple[s.Word, str]:
         word = word.lower()
