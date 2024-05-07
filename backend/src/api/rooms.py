@@ -283,6 +283,78 @@ async def return_from_game(
     await conn_manager.broadcast_room_state(room.id_, room_state)
 
 
+# TODO: Probably implement UUID as a player `password` and normal INT PK as
+# identifier which can be shared with the client. This is getting really messy.
+@router.post(
+    '/rooms/{room_id}/players/{player_name}/kick', status_code=status.HTTP_200_OK
+)
+async def kick_player(
+    player_name: str,
+    room: Annotated[d.Room, Depends(get_room)],
+    player: Annotated[d.Player, Depends(get_player)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    conn_manager: Annotated[ConnectionManager, Depends(get_connection_manager)],
+) -> None:
+    room_info = cast(RoomInfo, conn_manager.pool.get_room(player_id=player.id_))
+
+    if room.owner_id != player.id_:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail='Player is not the owner'
+        )
+    if room_info is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail='Player is not in the room'
+        )
+
+    player_to_kick = await db.scalar(
+        select(d.Player).where(d.Player.name == player_name)
+    )
+    if player_to_kick is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='Player to kick does not exist',
+        )
+
+    to_kick_room_info = conn_manager.pool.get_room(player_id=player_to_kick.id_)
+    if to_kick_room_info is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='Player to kick is not in the room',
+        )
+
+    await conn_manager.send_action(s.Action(action='KICK_PLAYER'), player_to_kick.id_)
+    await move_player_and_broadcast_message(
+        player_to_kick,
+        room.id_,
+        d.LOBBY.id_,
+        db,
+        conn_manager,
+        leave_message=f'{player.name} got kicked from the room',
+    )
+
+    # Broadcast only the info about the leaving player, as this is all the context other
+    # clients need to keep their state up to date
+    room_state = s.RoomState(
+        **room.to_dict(),
+        owner_name=room.owner.name,
+        players={player_to_kick.name: None},
+    )
+    await conn_manager.broadcast_room_state(room.id_, room_state)
+
+    # Broadcast the info about all the players in the room, as the joining player
+    # needs that context
+    room_out = s.RoomOut(
+        players_no=len(conn_manager.pool.get_room_conns(room.id_)),
+        owner_name=room.owner.name,
+        **room.to_dict(),
+    )
+    lobby_state = s.LobbyState(
+        rooms={room.id_: room_out},
+        players={player.name: s.LobbyPlayerOut(**player_to_kick.to_dict())},
+    )
+    await conn_manager.broadcast_lobby_state(lobby_state)
+
+
 @router.post('/rooms/{room_id}/start', status_code=status.HTTP_201_CREATED)
 async def start_game(
     room: Annotated[d.Room, Depends(get_room)],

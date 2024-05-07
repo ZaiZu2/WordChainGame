@@ -78,6 +78,7 @@ async def move_player_and_broadcast_message(
     to_room_id: int,
     db: AsyncSession,
     conn_manager: ConnectionManager,
+    leave_message: str | None = None,
 ) -> None:
     """
     Move the player from the old room to the new one and broadcast the change in
@@ -86,7 +87,7 @@ async def move_player_and_broadcast_message(
     conn_manager.move_player(player.id_, from_room_id, to_room_id)
 
     message = d.Message(
-        content=f'{player.name} left the room',
+        content=leave_message or f'{player.name} left the room',
         room_id=from_room_id,
         player_id=d.ROOT.id_,
     )
@@ -98,6 +99,9 @@ async def move_player_and_broadcast_message(
         player_id=d.ROOT.id_,
     )
     await save_and_broadcast_message(message, db, conn_manager)
+
+    # TODO: Add RoomState websocket message as well?
+    # TODO: Add LobbyState websocket message if lobby is involved?
 
 
 async def accept_websocket_connection(

@@ -253,3 +253,11 @@ class ConnectionManager:
         conn.ready = False
         conn.in_game = False
         self.pool.add(conn, to_room_id)
+
+    async def send_action(self, action: s.Action, player_id: UUID) -> None:
+        conn = self.pool.get_conn(player_id)
+        if conn is None:
+            raise ValueError('Player is not connected')
+
+        websocket_message = s.WebSocketMessage(payload=action)
+        await conn.websocket.send_json(websocket_message.model_dump_json(by_alias=True))

@@ -12,10 +12,11 @@ import src.schemas as s
 class WebSocketMessageTypeEnum(str, Enum):
     CHAT = 'chat'  # chat messages sent by players
     GAME_STATE = 'game_state'  # issued words, scores, ...?
-    GAME_INPUT = 'game_input'  # player's input his turn
     LOBBY_STATE = 'lobby_state'  # available rooms, ...?
     ROOM_STATE = 'room_state'  # players in the room, ...?
     CONNECTION_STATE = 'connection_state'
+    GAME_INPUT = 'game_input'  # player's input his turn
+    ACTION = 'action'
 
 
 #################################### GAME INPUTS ####################################
@@ -36,6 +37,7 @@ class WordInput(_GameInput, s.GeneralBaseModel):
 # Pydantic's Discriminated Union
 # https://docs.pydantic.dev/latest/concepts/unions/#discriminated-unions-with-str-discriminators
 GameInput = Annotated[WordInput, Field(discriminator='input_type')]
+
 
 #################################### GAME OUTPUTS ####################################
 
@@ -81,6 +83,20 @@ GameState = Annotated[
     StartGameState | EndGameState | WaitState | StartTurnState | EndTurnState,
     Field(discriminator='state'),
 ]
+
+
+#################################### ACTIONS ####################################
+
+
+class _Action(s.GeneralBaseModel):
+    type_: Literal[WebSocketMessageTypeEnum.ACTION] = WebSocketMessageTypeEnum.ACTION
+
+
+class KickPlayerAction(_Action, s.GeneralBaseModel):
+    action: Literal['KICK_PLAYER'] = Field('KICK_PLAYER')
+
+
+Action = KickPlayerAction
 
 
 #################################### OTHER MESSAGES ####################################
@@ -133,5 +149,11 @@ class ConnectionState(s.GeneralBaseModel):
 
 class WebSocketMessage(s.GeneralBaseModel):
     payload: (
-        ChatMessage | GameState | GameInput | LobbyState | RoomState | ConnectionState
+        ChatMessage
+        | GameState
+        | LobbyState
+        | RoomState
+        | ConnectionState
+        | GameInput
+        | Action
     ) = Field(discriminator='type_')
