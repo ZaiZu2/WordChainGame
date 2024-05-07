@@ -2,6 +2,7 @@ import { UUID } from "crypto";
 import { createContext, useContext, useEffect, useState } from "react";
 
 import {
+    Action as Action,
     AllTimeStatistics,
     ChatMessage,
     GameState,
@@ -32,6 +33,7 @@ export type StoreContext = {
     setAllTimeStatistics: (newAllTimeStatistics: AllTimeStatistics) => void;
     logIn: (id: UUID) => void;
     logOut: () => void;
+    executeAction: (newActionMessage: Action) => void;
     isRoomOwner: (playerName?: string) => boolean;
     isLoggedPlayersTurn: () => boolean;
 
@@ -58,6 +60,7 @@ const StoreContextObject = createContext<StoreContext>({
     setAllTimeStatistics: (newAllTimeStatistics: AllTimeStatistics) => {},
     logIn: () => {},
     logOut: () => {},
+    executeAction: (newActionMessage: Action) => {},
     isRoomOwner: (playerName?: string) => false,
     isLoggedPlayersTurn: () => true,
 
@@ -112,6 +115,17 @@ export default function StoreProvider({ children }: { children: React.ReactNode 
     async function logOut() {
         await apiClient.post<null>("/players/logout", { body: { id: loggedPlayer?.id } });
         setLoggedPlayer(null);
+    }
+
+    function executeAction(newActionMessage: Action) {
+        switch (newActionMessage.action) {
+            case "KICK_PLAYER":
+                purgeChatMessages();
+                switchMode("lobby");
+                break;
+            default:
+                console.log("Unknown action", newActionMessage);
+        }
     }
 
     function purgeChatMessages() {
@@ -245,6 +259,7 @@ export default function StoreProvider({ children }: { children: React.ReactNode 
                 setAllTimeStatistics,
                 logIn,
                 logOut,
+                executeAction,
                 isRoomOwner,
                 isLoggedPlayersTurn: isLoggedPlayersTurn,
                 modalConfigs,

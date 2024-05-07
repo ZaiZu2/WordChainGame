@@ -68,6 +68,8 @@ export default function GameStoreSlice(switchMode: (mode: "lobby" | "room" | "ga
                     newGameState.current_turn,
                 ]);
                 break;
+            default:
+                console.log("Unknown game state", newGameState);
         }
     }
 

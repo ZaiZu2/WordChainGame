@@ -9,12 +9,7 @@ import apiClient from "../apiClient";
 import Bubble from "../components/Bubble";
 import CountdownTimer from "../components/CountdownTimer";
 import Icon from "../components/Icon";
-import {
-    GAME_START_DELAY,
-    TURN_START_DELAY,
-    WORD_LIST_LENGTH,
-    WORD_LIST_MAX_WORD_SIZE,
-} from "../config";
+import { WORD_LIST_LENGTH, WORD_LIST_MAX_WORD_SIZE } from "../config";
 import { useStore } from "../contexts/storeContext";
 import { useWebSocketContext } from "../contexts/WebsocketProvider";
 import { DeathmatchRules, GamePlayer, LobbyState, Player, RoomState, Turn, Word } from "../types";
@@ -313,7 +308,14 @@ function PlayerList() {
 
     function mutePlayer(playerName: string) {}
 
-    function kickPlayer(playerName: string) {}
+    function kickPlayer(playerName: string) {
+        try {
+            apiClient.post(`/rooms/${roomState.id}/players/${playerName}/kick`);
+        } catch (error) {
+            //TODO: Handle error
+            return;
+        }
+    }
 
     return (
         <Bubble>
@@ -528,19 +530,23 @@ function CurrentPlayer() {
                 })}
             </Stack>
 
-            <Stack direction="horizontal" gap={2} className="fs-4 justify-content-evenly">
+            <Container
+                className="d-flex justify-content-evenly align-items-center"
+                style={{ height: "35px" }}
+            >
                 {gameState === "STARTED" ? (
-                    <CountdownTimer time={GAME_START_DELAY} precisionDigit={0} />
+                    <Spinner animation="border" size="sm" />
                 ) : gameState === "WAITING" ? (
-                    <CountdownTimer time={TURN_START_DELAY} precisionDigit={0} />
+                    <Spinner animation="border" size="sm" />
                 ) : (
                     <CountdownTimer
                         time={gameRules.round_time}
                         start_date={currentTurn.started_on}
                         precisionDigit={2}
+                        className="fs-4"
                     />
                 )}
-            </Stack>
+            </Container>
         </Bubble>
     );
 }

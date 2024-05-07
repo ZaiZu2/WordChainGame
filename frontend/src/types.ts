@@ -152,13 +152,20 @@ export type ConnectionState = {
     reason: string;
 };
 
+export type KickPlayerAction = {
+    action: "KICK_PLAYER";
+};
+
+export type Action = KickPlayerAction;
+
 export type WebSocketMessage =
     | { payload: ChatMessage & { type_: "chat" } }
     | { payload: GameState & { type_: "game_state" } }
-    | { payload: GameInput & { type_: "game_input" } }
     | { payload: LobbyState & { type_: "lobby_state" } }
     | { payload: RoomState & { type_: "room_state" } }
-    | { payload: ConnectionState & { type_: "connection_state" } };
+    | { payload: ConnectionState & { type_: "connection_state" } }
+    | { payload: GameInput & { type_: "game_input" } }
+    | { payload: Action & { type_: "action" } };
 
 export type ModalConfigs = {
     roomRules?: RoomRulesConfig;
