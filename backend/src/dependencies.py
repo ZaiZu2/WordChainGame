@@ -82,6 +82,7 @@ async def get_player(
             detail='Player is not authenticated',
         )
 
+    # Extend cookie's expiration time, after each new, successful request
     await set_auth_cookie(player_id, response)
     return player
 

@@ -12,7 +12,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 import src.database as d  # d - database
 import src.schemas as s  # s - schema
-from src.connection_manager import ConnectionManager, RoomInfo
+import src.schemas.domain as m
+from src.connection_manager import ConnectionManager
 from src.dependencies import (
     get_connection_manager,
     get_db,
@@ -94,7 +95,7 @@ async def join_room(
     db: Annotated[AsyncSession, Depends(get_db)],
     conn_manager: Annotated[ConnectionManager, Depends(get_connection_manager)],
 ) -> s.RoomState:
-    old_room_id = conn_manager.pool.get_room(player_id=player.id_).room_id
+    old_room_id = conn_manager.pool.get_room(player_id=player.id_).id_
 
     if room.id_ == old_room_id:
         return s.RoomState(owner_name=room.owner.name, **room.to_dict())
@@ -115,8 +116,8 @@ async def join_room(
     # needs that context
     room_conns = conn_manager.pool.get_room_conns(room.id_)
     players_out = {
-        conn.player_name: s.RoomPlayerOut(
-            name=conn.player_name, ready=conn.ready, in_game=conn.in_game
+        conn.name: s.RoomPlayerOut(
+            name=conn.name, ready=conn.ready, in_game=conn.in_game
         )
         for conn in room_conns
     }
@@ -150,14 +151,14 @@ async def leave_room(
 ) -> s.LobbyState:
     # TODO: Ensure that the player terminated any active game before leaving the room
     # TODO: Ensure that the player is not the owner of the room
-    old_room_id = conn_manager.pool.get_room(player_id=player.id_).room_id
+    old_room_id = conn_manager.pool.get_room(player_id=player.id_).id_
     if old_room_id is None or room.id_ != old_room_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail='Player is not in the room'
         )
 
     await move_player_and_broadcast_message(
-        player, old_room_id, d.LOBBY.id_, db, conn_manager
+        player, old_room_id, m.LOBBY.id_, db, conn_manager
     )
 
     # Ensure the room is not left by the owner in CLOSED status, as it will not be
@@ -257,7 +258,7 @@ async def toggle_player_readiness(
         owner_name=room.owner.name,
         players={
             player.name: s.RoomPlayerOut(
-                name=conn.player_name, ready=conn.ready, in_game=conn.in_game
+                name=conn.name, ready=conn.ready, in_game=conn.in_game
             )
         },
     )
@@ -285,7 +286,7 @@ async def return_from_game(
         owner_name=room.owner.name,
         players={
             player.name: s.RoomPlayerOut(
-                name=conn.player_name, ready=conn.ready, in_game=conn.in_game
+                name=conn.name, ready=conn.ready, in_game=conn.in_game
             )
         },
     )
@@ -304,7 +305,7 @@ async def kick_player(
     db: Annotated[AsyncSession, Depends(get_db)],
     conn_manager: Annotated[ConnectionManager, Depends(get_connection_manager)],
 ) -> None:
-    room_info = cast(RoomInfo, conn_manager.pool.get_room(player_id=player.id_))
+    room_info = cast(m.Room, conn_manager.pool.get_room(player_id=player.id_))
 
     if room.owner_id != player.id_:
         raise HTTPException(
@@ -335,7 +336,7 @@ async def kick_player(
     await move_player_and_broadcast_message(
         player_to_kick,
         room.id_,
-        d.LOBBY.id_,
+        m.LOBBY.id_,
         db,
         conn_manager,
         leave_message=f'{player_to_kick.name} got kicked from the room',
@@ -374,7 +375,7 @@ async def start_game(
     game_manager: Annotated[GameManager, Depends(get_game_manager)],
 ) -> None:
     conn_manager.pool.get_conn(player.id_).ready = True
-    room_info = cast(RoomInfo, conn_manager.pool.get_room(player_id=player.id_))
+    room_info = cast(m.Room, conn_manager.pool.get_room(player_id=player.id_))
 
     if room.owner_id != player.id_:
         raise HTTPException(
@@ -395,10 +396,7 @@ async def start_game(
         await db.scalars(
             select(d.Player).where(
                 d.Player.id_.in_(
-                    [
-                        conn.player_id
-                        for conn in conn_manager.pool.get_room_conns(room.id_)
-                    ]
+                    [conn.id_ for conn in conn_manager.pool.get_room_conns(room.id_)]
                 )
             )
         )
@@ -433,8 +431,8 @@ async def start_game(
         conn.ready = False
         conn.in_game = True
 
-        players_out[conn.player_name] = s.RoomPlayerOut(
-            name=conn.player_name, ready=conn.ready, in_game=conn.in_game
+        players_out[conn.name] = s.RoomPlayerOut(
+            name=conn.name, ready=conn.ready, in_game=conn.in_game
         )
 
     room_state = s.RoomState(

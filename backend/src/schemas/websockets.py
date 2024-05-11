@@ -3,8 +3,8 @@ from typing import Annotated, Literal
 
 from pydantic import Field
 
-import src.database as d
 import src.schemas as s
+import src.schemas.domain as m
 
 # FILE STORING ONLY WEBSOCKET VALIDATION SCHEMAS USED AS WEBSOCKET INPUTS/OUTPUTS
 
@@ -51,14 +51,14 @@ class _GameState(s.GeneralBaseModel):
 class StartGameState(_GameState, s.GeneralBaseModel):
     state: Literal[s.GameStateEnum.STARTED] = s.GameStateEnum.STARTED
     id_: int = Field(serialization_alias='id')
-    status: d.GameStatusEnum
+    status: m.GameStatusEnum
     players: list[s.GamePlayer]
     rules: s.DeathmatchRules
 
 
 class EndGameState(_GameState, s.GeneralBaseModel):
     state: Literal[s.GameStateEnum.ENDED] = s.GameStateEnum.ENDED
-    status: d.GameStatusEnum
+    status: m.GameStatusEnum
 
 
 class WaitState(_GameState, s.GeneralBaseModel):
@@ -68,7 +68,7 @@ class WaitState(_GameState, s.GeneralBaseModel):
 class StartTurnState(_GameState, s.GeneralBaseModel):
     state: Literal[s.GameStateEnum.STARTED_TURN] = s.GameStateEnum.STARTED_TURN
     current_turn: s.TurnOut
-    status: d.GameStatusEnum | None = None
+    status: m.GameStatusEnum | None = None
 
 
 class EndTurnState(_GameState, s.GeneralBaseModel):
@@ -129,7 +129,7 @@ class RoomState(s.GeneralBaseModel):
     id_: int = Field(serialization_alias='id')
     name: str
     capacity: int
-    status: d.RoomStatusEnum
+    status: m.RoomStatusEnum
     rules: s.DeathmatchRules
     owner_name: str
     players: dict[str, s.RoomPlayerOut | None] | None = None  # player_name: player

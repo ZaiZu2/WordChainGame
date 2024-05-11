@@ -16,7 +16,8 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import src.database as d  # d - database
-import src.schemas as s  # s - schema
+import src.schemas.domain as m  # m - domain
+import src.schemas.validation as v  # v - validation
 from config import Config, get_config
 from src.connection_manager import ConnectionManager
 from src.dependencies import (
@@ -41,15 +42,15 @@ router = APIRouter(tags=[TagsEnum.MAIN])
 @router.get('/players/me', status_code=status.HTTP_200_OK)
 async def get_client_player(
     player: Annotated[d.Player, Depends(get_player)],
-) -> s.Player:
-    return player
+) -> v.Player:
+    return v.Player(**player.to_dict())
 
 
 @router.post('/players', status_code=status.HTTP_201_CREATED)
 async def create_player(
     name: Annotated[str, Body(embed=True, max_length=10)],
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> s.Player:
+) -> v.Player:
     if await db.scalar(select(d.Player).where(d.Player.name == name)):
         raise HTTPException(
             status_code=409, detail=[f'Player with name {name} already exists']
@@ -60,7 +61,7 @@ async def create_player(
     await db.flush()
     await db.refresh(player)
 
-    return s.Player.model_validate(player)
+    return v.Player(**player.to_dict())
 
 
 @router.post('/players/login', status_code=status.HTTP_200_OK)
@@ -68,13 +69,13 @@ async def login_player(
     id_: Annotated[UUID, Body(embed=True, alias='id')],
     response: Response,
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> s.Player:
+) -> v.Player:
     player = await db.scalar(select(d.Player).where(d.Player.id_ == id_))
     if not player:
         raise HTTPException(status.HTTP_403_FORBIDDEN, 'Player not found')
 
     await set_auth_cookie(player.id_, response)
-    return s.Player.model_validate(player)
+    return v.Player(**player.to_dict())
 
 
 @router.post('/players/logout', status_code=status.HTTP_200_OK)
@@ -89,7 +90,7 @@ async def update_player_name(
     name: Annotated[str, Body(embed=True)],
     player: Annotated[d.Player, Depends(get_player)],
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> s.Player:
+) -> v.Player:
     if db.scalar(select(d.Player).where(d.Player.name == name)):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -100,18 +101,18 @@ async def update_player_name(
     db.add(player)
     await db.flush()
     await db.refresh(player)
-    return player
+    return v.Player(**player.to_dict())
 
 
 @router.get('/stats', status_code=status.HTTP_200_OK)
 async def get_stats(
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> s.AllTimeStatistics:
+) -> v.AllTimeStatistics:
     total_games = await db.scalar(
-        select(func.count(d.Game.id_)).where(d.Game.status == d.GameStatusEnum.FINISHED)
+        select(func.count(d.Game.id_)).where(d.Game.status == m.GameStatusEnum.FINISHED)
     )
     # TODO: Calculate the longest chain and the longest game time
-    return s.AllTimeStatistics(
+    return v.AllTimeStatistics(
         longest_chain=10, longest_game_time=1234, total_games=total_games
     )
 

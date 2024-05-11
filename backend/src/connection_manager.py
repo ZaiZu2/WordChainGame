@@ -1,65 +1,12 @@
 import asyncio
 from collections import namedtuple
-from typing import Any
 from uuid import UUID
 
 from fastapi import WebSocket
 
-import src.database as d  # d - database
 import src.schemas as s  # s - schema
+import src.schemas.domain as m
 from src.error_handlers import PlayerAlreadyConnectedError
-
-
-class WordInputBuffer:
-    """Buffer for propagating WordInput from the message listening coroutine to `run_game` coroutine."""
-
-    def __init__(self):
-        self._lock = asyncio.Lock()
-        self._new_input_event = asyncio.Event()
-        self._input = None
-
-    async def put(self, input_: s.WordInput) -> None:
-        async with self._lock:
-            self._input = input_
-            self._new_input_event.set()
-
-    async def get(self) -> s.WordInput:
-        await self._new_input_event.wait()
-        async with self._lock:
-            input_ = self._input
-            self._input = None
-            self._new_input_event.clear()
-        return input_
-
-
-class Connection:
-    """Class storing transient connection (player) state."""
-
-    def __init__(self, player_id: UUID, player_name: str, websocket: WebSocket):
-        self.websocket = websocket
-        self.player_id = player_id
-        self.player_name = player_name
-
-        # Here is also stored transient room data e.g. ready state, mute state, etc.
-        self.ready: bool = False  # Flag necessary to start a game
-        self.in_game: bool = False  # Flag denoting if the player is still in the game view (e.g. post-game statistics)
-
-    def __hash__(self) -> int:
-        return self.player_id.int
-
-    def __eq__(self, other: Any) -> bool:
-        if isinstance(other, Connection):
-            return self.player_id == other.player_id
-        return False
-
-
-class RoomInfo:
-    """Class storing transient room state."""
-
-    def __init__(self, room_id: int) -> None:
-        self.room_id: int = room_id
-        self.conns: dict[UUID, Connection] = {}
-        self.word_input_buffer: WordInputBuffer = WordInputBuffer()
 
 
 class ConnectionPool:
@@ -67,10 +14,10 @@ class ConnectionPool:
 
     def __init__(self) -> None:
         # {
-        #     room_id: RoomInfo,
+        #     room_id: m.Room,
         #     ...
         # }
-        self._room_map: dict[int, RoomInfo] = {d.LOBBY.id_: RoomInfo(d.LOBBY.id_)}
+        self._room_map: dict[int, m.Room] = {m.LOBBY.id_: m.LOBBY}
         # {
         #     player_id: (Connection, room_id),
         #     ...
@@ -85,14 +32,14 @@ class ConnectionPool:
     def active_rooms(self) -> int:
         return len(self._room_map) - 1
 
-    def get_conn(self, player_id: UUID) -> Connection | None:
+    def get_conn(self, player_id: UUID) -> m.Player | None:
         if not (player_info := self._player_map.get(player_id, None)):
             return None
         return player_info.conn
 
     def get_room(
         self, *, room_id: int | None = None, player_id: UUID | None = None
-    ) -> RoomInfo | None:
+    ) -> m.Room | None:
         if not (bool(room_id) ^ bool(player_id)):
             raise ValueError('Either room_id or player_id must be provided')
 
@@ -106,18 +53,18 @@ class ConnectionPool:
 
         return room_info
 
-    def get_room_conns(self, room_id: int) -> set[Connection]:
+    def get_room_conns(self, room_id: int) -> set[m.Player]:
         room_conns = self._room_map[room_id].conns
         return set(room_conns.values())
 
-    def add(self, conn: Connection, room_id: int) -> None:
+    def add(self, conn: m.Player, room_id: int) -> None:
         # TODO: Should the room be implicitly created if it doesn't exist?
         if room_id in self._room_map:
-            self._room_map[room_id].conns[conn.player_id] = conn
+            self._room_map[room_id].conns[conn.id_] = conn
         else:
-            self._room_map[room_id].conns = {conn.player_id: conn}
+            self._room_map[room_id].conns = {conn.id_: conn}
 
-        self._player_map[conn.player_id] = ConnectionPool.PlayerInfo(conn, room_id)
+        self._player_map[conn.id_] = ConnectionPool.PlayerInfo(conn, room_id)
 
     def remove(self, player_id: UUID) -> None:
         player_info = self._player_map.pop(player_id)
@@ -130,23 +77,20 @@ class ConnectionPool:
     def create_room(self, room_id: int) -> None:
         if self.exists(room_id):
             raise ValueError('Room already exists')
-        self._room_map[room_id] = RoomInfo(room_id)
+        self._room_map[room_id] = m.Room(room_id)
 
 
 class ConnectionManager:
     def __init__(self) -> None:
         self.pool = ConnectionPool()
 
-    def connect(
-        self, player_id: UUID, player_name: str, room_id: int, websocket: WebSocket
-    ):
-        if self.pool.get_conn(player_id):
+    def connect(self, player: m.Player, room_id: int):
+        if self.pool.get_conn(player.id_):
             raise PlayerAlreadyConnectedError(
                 'Player is already connected with another client.'
             )
 
-        conn = Connection(player_id, player_name, websocket)
-        self.pool.add(conn, room_id)
+        self.pool.add(player, room_id)
 
     def disconnect(self, player_id: UUID):
         if not self.pool.get_conn(player_id):
@@ -181,7 +125,7 @@ class ConnectionManager:
         that is due to be updated/removed (if set to None) - data which is not included
         in the message MUST stay the same on the client side.
         """
-        lobby_conns = self.pool.get_room_conns(d.LOBBY.id_)
+        lobby_conns = self.pool.get_room_conns(m.LOBBY.id_)
 
         websocket_message = s.WebSocketMessage(payload=lobby_state)
         message_json = websocket_message.model_dump_json(by_alias=True)
@@ -243,7 +187,7 @@ class ConnectionManager:
 
     def move_player(self, player_id: UUID, from_room_id: int, to_room_id: int) -> None:
         """Move a player's websocket connection from one room to another."""
-        if not (self.pool.get_room(player_id=player_id).room_id == from_room_id):
+        if not (self.pool.get_room(player_id=player_id).id_ == from_room_id):
             raise ValueError('Player is not in the specified room')
         if not self.pool.exists(to_room_id):
             raise ValueError('Room to move the player to does not exist')

@@ -1,5 +1,5 @@
 import src.database as d
-import src.schemas as s
+import src.schemas.domain as m  # m - domain
 from src.game.deathmatch import Deathmatch
 
 
@@ -16,8 +16,8 @@ class GameManager:
         return self.games[game_id]
 
     def create(self, game_db: d.Game) -> Deathmatch:
-        if game_db.rules['type_'] == s.GameTypeEnum.DEATHMATCH:
-            rules = s.DeathmatchRules(**game_db.rules)
+        if game_db.rules['type_'] == m.GameTypeEnum.DEATHMATCH:
+            rules = m.DeathmatchRules(**game_db.rules)
             game = self.games[game_db.id_] = Deathmatch(
                 game_db.id_, game_db.players, rules
             )
@@ -27,7 +27,7 @@ class GameManager:
 
     def end(self, game_id: int) -> Deathmatch:
         game = self.games[game_id]
-        game.status = d.GameStatusEnum.FINISHED
+        game.status = m.GameStatusEnum.FINISHED
         del self.games[game_id]
         return game
 

@@ -15,6 +15,8 @@ from src.helpers import tags_metadata
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # HACK: Temporary DB recreation logic for repeatable development environment
+    # Must be removed for a production environment
     await recreate_database()
     await create_root_objects()
     yield

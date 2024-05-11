@@ -10,8 +10,9 @@ from sqlalchemy.orm import joinedload
 
 import src.database as d  # d - database
 import src.schemas as s  # s - schema
+import src.schemas.domain as m
 from config import get_config
-from src.connection_manager import ConnectionManager, RoomInfo
+from src.connection_manager import ConnectionManager
 from src.dependencies import init_db_session
 from src.error_handlers import PlayerAlreadyConnectedError
 from src.game.deathmatch import Deathmatch
@@ -37,7 +38,7 @@ tags_metadata = [
 
 async def save_and_send_message(
     message: d.Message,
-    player: d.Player,
+    player: m.Player,
     db: AsyncSession,
     conn_manager: ConnectionManager,
 ) -> None:
@@ -89,14 +90,14 @@ async def move_player_and_broadcast_message(
     message = d.Message(
         content=leave_message or f'{player.name} left the room',
         room_id=from_room_id,
-        player_id=d.ROOT.id_,
+        player_id=m.ROOT.id_,
     )
     await save_and_broadcast_message(message, db, conn_manager)
 
     message = d.Message(
         content=f'{player.name} joined the room',
         room_id=to_room_id,
-        player_id=d.ROOT.id_,
+        player_id=m.ROOT.id_,
     )
     await save_and_broadcast_message(message, db, conn_manager)
 
@@ -105,15 +106,16 @@ async def move_player_and_broadcast_message(
 
 
 async def accept_websocket_connection(
-    player: d.Player,
+    player_db: d.Player,
     websocket: WebSocket,
     db: AsyncSession,
     conn_manager: ConnectionManager,
 ) -> None:
     await websocket.accept()
+    player = m.Player(**player_db.to_dict(), room=m.LOBBY, websocket=websocket)
 
     try:
-        conn_manager.connect(player.id_, player.name, d.LOBBY.id_, websocket)
+        conn_manager.connect(player, m.LOBBY.id_)
     except PlayerAlreadyConnectedError:
         exc_args = (
             s.CustomWebsocketCodeEnum.MULTIPLE_CLIENTS,
@@ -125,19 +127,19 @@ async def accept_websocket_connection(
         # Inform the original client about the connection attempt
         room_id_with_logged_player = conn_manager.pool.get_room(
             player_id=player.id_
-        ).room_id
+        ).id_
         message = d.Message(
             content='Someone tried to log into your account from another device',
             room_id=room_id_with_logged_player,
-            player_id=d.ROOT.id_,
+            player_id=m.ROOT.id_,
         )
         await save_and_send_message(message, player, db, conn_manager)
         raise WebSocketException(*exc_args) from None
 
     message = d.Message(
-        content=f'{player.name} joined the room',
-        room_id=d.LOBBY.id_,
-        player_id=d.ROOT.id_,
+        content=f'{player_db.name} joined the room',
+        room_id=m.LOBBY.id_,
+        player_id=m.ROOT.id_,
     )
     await save_and_broadcast_message(message, db, conn_manager)
 
@@ -148,10 +150,10 @@ async def handle_player_disconnect(
     conn_manager: ConnectionManager,
 ) -> None:
     await db.refresh(player)
-    room_id = conn_manager.pool.get_room(player_id=player.id_).room_id
+    room_id = conn_manager.pool.get_room(player_id=player.id_).id_
     conn_manager.disconnect(player.id_)
 
-    is_player_in_lobby = room_id == d.LOBBY.id_
+    is_player_in_lobby = room_id == m.LOBBY.id_
     if not is_player_in_lobby:
         active_game_with_player = await db.scalar(
             select(d.Game).where(
@@ -164,7 +166,7 @@ async def handle_player_disconnect(
 
         if not active_game_with_player:
             # If disconnected while in a game room, throw the player into the lobby
-            # player.room_id = d.LOBBY.id_
+            # player.room_id = m.LOBBY.id_
             # db.add(player)
             # await db.flush([player])
             room = await db.scalar(
@@ -182,7 +184,7 @@ async def handle_player_disconnect(
             message = d.Message(
                 content=f'{player.name} disconnected from the room',
                 room_id=room_id,
-                player_id=d.ROOT.id_,
+                player_id=m.ROOT.id_,
             )
             await save_and_broadcast_message(message, db, conn_manager)
             return
@@ -199,7 +201,7 @@ async def handle_player_disconnect(
         message = d.Message(
             content=f'{player.name} disconnected from the room',
             room_id=room_id,
-            player_id=d.ROOT.id_,
+            player_id=m.ROOT.id_,
         )
         await save_and_broadcast_message(message, db, conn_manager)
 
@@ -236,7 +238,7 @@ async def listen_for_messages(
                     if game is None or game.players.current.id_ != player.id_:
                         continue  # TODO: Handle malicious attempts to send game input
 
-                    room_id = conn_manager.pool.get_room(player_id=player.id_).room_id
+                    room_id = conn_manager.pool.get_room(player_id=player.id_).id_
                     word_input_buffer = conn_manager.pool.get_room(
                         room_id=room_id
                     ).word_input_buffer
@@ -257,7 +259,7 @@ async def listen_for_messages(
 async def run_game(
     game: Deathmatch, room_id: int, conn_manager: ConnectionManager
 ) -> None:
-    room_info = cast(RoomInfo, conn_manager.pool.get_room(room_id=room_id))
+    room_info = cast(m.Room, conn_manager.pool.get_room(room_id=room_id))
     word_input_buffer = room_info.word_input_buffer
 
     start_game_state = game.start()
@@ -310,8 +312,8 @@ async def run_game(
 async def broadcast_full_lobby_state(
     db: AsyncSession, conn_manager: ConnectionManager
 ) -> None:
-    lobby_conns = conn_manager.pool.get_room_conns(d.LOBBY.id_)
-    player_ids = [conn.player_id for conn in lobby_conns]
+    lobby_conns = conn_manager.pool.get_room_conns(m.LOBBY.id_)
+    player_ids = [conn.id_ for conn in lobby_conns]
     room_players = await db.scalars(
         select(d.Player).where(d.Player.id_.in_(player_ids))
     )
@@ -323,7 +325,7 @@ async def broadcast_full_lobby_state(
     rooms = await db.scalars(
         select(d.Room)
         .where(
-            and_(d.Room.status != d.RoomStatusEnum.EXPIRED, d.Room.id_ != d.LOBBY.id_)
+            and_(d.Room.status != d.RoomStatusEnum.EXPIRED, d.Room.id_ != m.LOBBY.id_)
         )
         .options(joinedload(d.Room.owner))
     )

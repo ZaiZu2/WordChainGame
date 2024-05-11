@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from datetime import datetime
-from enum import Enum
 from uuid import UUID, uuid4
 
 import sqlalchemy as sa
@@ -13,7 +12,11 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
+import src.schemas.domain as m
 from config import get_config
+
+# FILE STORING ONLY ORM SCHEMAS USED AS PERSISTANCE MODELS
+
 
 metadata = sa.MetaData(
     naming_convention={
@@ -59,7 +62,7 @@ class Player(Base):
     id_: so.Mapped[UUID] = so.mapped_column('id', primary_key=True, default=uuid4)
     name: so.Mapped[str] = so.mapped_column(sa.String(10), unique=True)
     created_on: so.Mapped[datetime] = so.mapped_column(default=sa.func.now())
-    last_active_on: so.Mapped[datetime] = so.mapped_column(default=sa.func.now())
+    # last_active_on: so.Mapped[datetime] = so.mapped_column(default=sa.func.now())
 
     messages: so.Mapped[list[Message]] = so.relationship(back_populates='player')
     turns: so.Mapped[list[Turn]] = so.relationship(back_populates='player')
@@ -68,44 +71,31 @@ class Player(Base):
     )
 
 
-class RoomStatusEnum(str, Enum):
-    OPEN = 'Open'
-    CLOSED = 'Closed'
-    IN_PROGRESS = 'In progress'
-    EXPIRED = 'Expired'
-
-
 class Room(Base):
     __tablename__ = 'rooms'
 
     id_: so.Mapped[int] = so.mapped_column('id', primary_key=True)
     name: so.Mapped[str] = so.mapped_column(sa.String(10), unique=True)
-    status: so.Mapped[RoomStatusEnum] = so.mapped_column(
-        default=RoomStatusEnum.OPEN, nullable=False
-    )
-    capacity: so.Mapped[int] = so.mapped_column(nullable=False)
+    # status: so.Mapped[RoomStatusEnum] = so.mapped_column(
+    #     default=RoomStatusEnum.OPEN, nullable=False
+    # )
+    # capacity: so.Mapped[int] = so.mapped_column(nullable=False)
     created_on: so.Mapped[datetime] = so.mapped_column(default=sa.func.now())
     ended_on: so.Mapped[datetime | None] = so.mapped_column()
-    rules: so.Mapped[dict] = so.mapped_column(sa.JSON, nullable=False)
+    # rules: so.Mapped[dict] = so.mapped_column(sa.JSON, nullable=False)
 
-    owner_id: so.Mapped[UUID] = so.mapped_column(sa.ForeignKey('players.id'))
-    owner: so.Mapped[Player] = so.relationship(foreign_keys=[owner_id])
+    # owner_id: so.Mapped[UUID] = so.mapped_column(sa.ForeignKey('players.id'))
+    # owner: so.Mapped[Player] = so.relationship(foreign_keys=[owner_id])
 
     games: so.Mapped[list[Game]] = so.relationship(back_populates='room')
     messages: so.Mapped[list[Message]] = so.relationship(back_populates='room')
-
-
-class GameStatusEnum(str, Enum):
-    STARTED = 'STARTED'
-    IN_PROGRESS = 'IN PROGRESS'
-    FINISHED = 'FINISHED'
 
 
 class Game(Base):
     __tablename__ = 'games'
 
     id_: so.Mapped[int] = so.mapped_column('id', primary_key=True)
-    status: so.Mapped[GameStatusEnum] = so.mapped_column(nullable=False)
+    status: so.Mapped[m.GameStatusEnum] = so.mapped_column(nullable=False)
     created_on: so.Mapped[datetime] = so.mapped_column(default=sa.func.now())
     ended_on: so.Mapped[datetime | None] = so.mapped_column()
     rules: so.Mapped[dict] = so.mapped_column(sa.JSON)  # TODO: Add TypedDict for rules
@@ -119,6 +109,7 @@ class Game(Base):
     )
 
 
+# Acts as a Domain model as well as internal schema does not differ from the database schema
 class Message(Base):
     __tablename__ = 'messages'
 
@@ -165,8 +156,6 @@ async def create_root_objects():
     """Create a db representations of a lobby chat and the it's necessary owner on server startup."""
     async with async_session() as db:
         try:
-            await db.begin()
-
             if await db.scalar(select(Room).where(Room.id_ == 1)):
                 raise ValueError(
                     f'Table "{Room.__tablename__}" is not empty - "lobby" room must be created with id=1'
@@ -176,29 +165,10 @@ async def create_root_objects():
                     f'Table "{Room.__tablename__}" is not empty - Root player must be created with the name "root"'
                 )
 
-            global ROOT, LOBBY
-            db.add_all([LOBBY, ROOT])
+            root = Player(id_=get_config().ROOT_ID, name=get_config().ROOT_NAME)
+            lobby = Room(id_=get_config().LOBBY_ID, name=get_config().LOBBY_NAME)
+            db.add_all([lobby, root])
             await db.commit()
-            await db.refresh(LOBBY)
-            so.make_transient(LOBBY)
-            await db.refresh(ROOT)
-            so.make_transient(ROOT)
         except Exception:
             await db.rollback()
             raise
-
-
-# Import here to avoid circular import - s.DeathmatchRules is used in ROOT
-# initialization for convenience only
-import src.schemas as s  # noqa: E402
-
-# Global root db objects, accessible to all components of the application
-# Their dynamic attrs (id, ...) are set in `create_root_objects()` on webserver startup
-ROOT = Player(name='root')
-LOBBY = Room(
-    name='lobby',
-    status=RoomStatusEnum.OPEN,
-    capacity=0,
-    owner=ROOT,
-    rules=s.DeathmatchRules().model_dump(by_alias=True),  # type: ignore
-)

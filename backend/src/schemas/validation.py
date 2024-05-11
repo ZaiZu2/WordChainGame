@@ -1,6 +1,7 @@
+from uuid import UUID
+
 from pydantic import Field
 
-import src.database as d
 import src.schemas.domain as m
 
 # FILE STORING ONLY VALIDATION SCHEMAS USED AS RESTAPI INPUTS/OUTPUTS
@@ -25,6 +26,12 @@ class TurnOut(m.GeneralBaseModel):
     player_idx: int
 
 
+class Player(m.GeneralBaseModel):
+    id_: UUID = Field(serialization_alias='id')
+    name: str
+    created_on: m.UTCDatetime
+
+
 class LobbyPlayerOut(m.GeneralBaseModel):
     """Player data sent as a part of LobbyState."""
 
@@ -43,7 +50,7 @@ class RoomOut(m.GeneralBaseModel):
     name: str
     players_no: int
     capacity: int
-    status: d.RoomStatusEnum
+    status: m.RoomStatusEnum
     rules: m.DeathmatchRules
     owner_name: str
 
