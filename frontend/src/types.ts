@@ -168,10 +168,16 @@ export type WebSocketMessage =
     | { payload: Action & { type_: "action" } };
 
 export type ModalConfigs = {
-    roomRules?: RoomRulesConfig;
+    roomRules?: RoomRulesModalConfig;
+    generic?: GenericModalConfig;
 };
 
-export type RoomRulesConfig = {
+export type GenericModalConfig = {
+    title?: string;
+    body?: string;
+};
+
+export type RoomRulesModalConfig = {
     defaultValues?: RoomIn;
     disabledFields?: "name"[];
     onSubmit: "PUT" | "POST";

@@ -6,7 +6,7 @@ import Modal from "react-bootstrap/Modal";
 import Row from "react-bootstrap/Row";
 import Stack from "react-bootstrap/Stack";
 
-import { RoomIn, RoomOut, RoomRulesConfig, RoomState } from "@/types";
+import { RoomIn, RoomOut, RoomRulesModalConfig, RoomState } from "@/types";
 
 import apiClient from "../apiClient";
 import { useStore } from "../contexts/storeContext";
@@ -16,7 +16,7 @@ export default function RoomRulesModal({
     defaultValues,
     disabledFields,
     onSubmit,
-}: RoomRulesConfig) {
+}: RoomRulesModalConfig) {
     const { toggleModal, modalConfigs, roomState: _roomState } = useStore();
     const roomState = _roomState as RoomState;
 

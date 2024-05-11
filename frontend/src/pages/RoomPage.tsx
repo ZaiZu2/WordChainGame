@@ -398,6 +398,7 @@ function PlayerList() {
                                                 }}
                                                 variant="primary"
                                                 size="sm"
+                                                disabled
                                             >
                                                 Mute
                                             </Button>

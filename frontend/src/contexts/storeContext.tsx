@@ -122,6 +122,9 @@ export default function StoreProvider({ children }: { children: React.ReactNode 
             case "KICK_PLAYER":
                 purgeChatMessages();
                 switchMode("lobby");
+                toggleModal("generic", {
+                    title: "You have been kicked from the room",
+                });
                 break;
             default:
                 console.log("Unknown action", newActionMessage);

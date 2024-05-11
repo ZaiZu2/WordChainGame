@@ -3,6 +3,7 @@ import Stack from "react-bootstrap/Stack";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
 import Chat from "./components/Chat";
+import GenericModal from "./components/GenericModal";
 import Header from "./components/Header";
 import { LoginModal } from "./components/NewPlayerModal";
 import RoomRulesModal from "./components/RoomRulesModal";
@@ -26,6 +27,12 @@ export default function App() {
                             disabledFields={modalConfigs.roomRules.disabledFields}
                             defaultValues={modalConfigs.roomRules.defaultValues}
                             onSubmit={modalConfigs.roomRules.onSubmit}
+                        />
+                    )}
+                    {modalConfigs.generic && (
+                        <GenericModal
+                            title={modalConfigs.generic.title}
+                            body={modalConfigs.generic.body}
                         />
                     )}
                     <Header />
