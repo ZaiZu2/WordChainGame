@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from datetime import datetime, timedelta
 from enum import Enum
 from typing import Annotated, Any, Literal, Protocol
@@ -43,11 +43,19 @@ UTCDatetime = Annotated[
     ),  # Serialize Timestamps to zulu format
 ]
 
+
+class UpdateableMixin:
+    def update(self, **kwargs):
+        for key, value in kwargs:
+            if key in fields(self):
+                setattr(self, key, value)
+
+
 ##### PLAYER #####
 
 
 @dataclass(kw_only=True)
-class Player:
+class Player(UpdateableMixin):
     """Class storing transient connection (player) state."""
 
     id_: UUID
@@ -119,7 +127,7 @@ class RoomStatusEnum(str, Enum):
 
 
 @dataclass(kw_only=True)
-class Room:
+class Room(UpdateableMixin):
     """Class storing transient room state."""
 
     id_: int
@@ -130,8 +138,8 @@ class Room:
     ended_on: datetime | None = None  # Unecessary, this info is persisted in ORM model
     owner: Player
     rules: DeathmatchRules
+    players: dict[UUID, Player] = field(default_factory=dict)
 
-    conns: dict[UUID, Player] = field(default_factory=dict)
     word_input_buffer: WordInputBuffer = WordInputBuffer()
 
 

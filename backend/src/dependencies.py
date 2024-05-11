@@ -10,11 +10,9 @@ from fastapi import (
     Response,
     status,
 )
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload
 
-import src.database as d  # d - database
+import src.schemas.domain as m  # m - domain
 from config import Config, get_config
 from src.connection_manager import ConnectionManager
 from src.database import async_session
@@ -65,16 +63,16 @@ def get_game_manager() -> GameManager:
 
 async def get_player(
     response: Response,
-    db: Annotated[AsyncSession, Depends(get_db)],
+    conn_manager: Annotated[ConnectionManager, Depends(get_connection_manager)],
     player_id: Annotated[UUID | Literal[''] | None, Cookie()] = None,
-) -> d.Player:
+) -> m.Player:
     if player_id is None or player_id == '':
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail='Player is not authenticated',
         )
 
-    player = await db.scalar(select(d.Player).where(d.Player.id_ == player_id))
+    player = conn_manager.pool.get_player(player_id)  # type: ignore
     if not player:
         await set_auth_cookie('', response)
         raise HTTPException(
@@ -89,12 +87,9 @@ async def get_player(
 
 async def get_room(
     room_id: int,
-    player: Annotated[d.Player, Depends(get_player)],
-    db: Annotated[AsyncSession, Depends(get_db)],
-) -> d.Room:
-    room = await db.scalar(
-        select(d.Room).where(d.Room.id_ == room_id).options(joinedload(d.Room.owner))
-    )
+    conn_manager: Annotated[ConnectionManager, Depends(get_connection_manager)],
+) -> m.Room:
+    room = conn_manager.pool.get_room(room_id=room_id)
     if room is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail='Room not found'

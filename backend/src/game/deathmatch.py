@@ -1,9 +1,10 @@
 import random
+from dataclasses import asdict
 from datetime import datetime
 from typing import Any, cast
 
-import src.database as d
-import src.schemas as s
+import src.schemas.domain as m  # m - domain
+import src.schemas.validation as v  # v - validation
 from config import get_config
 from src.game.utils import check_word_correctness
 
@@ -11,7 +12,7 @@ from src.game.utils import check_word_correctness
 class OrderedPlayers(list):
     """Augmented list class which mimics circular singly-linked list. Randomizes the order of players upon instantiation and keeps track of the current player."""
 
-    def __init__(self, players: list[s.GamePlayer]) -> None:
+    def __init__(self, players: list[m.GamePlayer]) -> None:
         super().__init__(players)
         random.shuffle(self)
 
@@ -29,7 +30,7 @@ class OrderedPlayers(list):
         raise AttributeError('`current` attr can only be read')
 
     @property
-    def current(self) -> s.GamePlayer:
+    def current(self) -> m.GamePlayer:
         return self[self._current_idx]
 
     def next(self) -> None:
@@ -60,27 +61,27 @@ class OrderedPlayers(list):
 
 class Deathmatch:
     def __init__(
-        self, id_: int, players: list[d.Player], rules: s.DeathmatchRules
+        self, id_: int, players: list[m.Player], rules: m.DeathmatchRules
     ) -> None:
         self.id_ = id_
-        self.status = d.GameStatusEnum.STARTED
+        self.status = m.GameStatusEnum.STARTED
         self.rules = rules
-        self.state: s.GameStateEnum = s.GameStateEnum.CREATING
+        self.state: m.GameStateEnum = m.GameStateEnum.CREATING
 
         game_players = [
-            s.GamePlayer(score=self.rules.start_score, mistakes=0, **player.to_dict())
+            m.GamePlayer(score=self.rules.start_score, mistakes=0, **asdict(player))
             for player in players
         ]
         self.players = OrderedPlayers(game_players)
 
-        self._turns: list[s.Turn] = []
-        self._current_turn: s.Turn | None = None
+        self._turns: list[m.Turn] = []
+        self._current_turn: m.Turn | None = None
 
-        self.words: set[s.Word] = set()
-        self.events: list[s.GameEvent] = []  # Must be emptied after each turn
+        self.words: set[m.Word] = set()
+        self.events: list[m.GameEvent] = []  # Must be emptied after each turn
 
     @property
-    def turns(self) -> list[s.Turn]:
+    def turns(self) -> list[m.Turn]:
         return self._turns
 
     @turns.setter
@@ -88,7 +89,7 @@ class Deathmatch:
         raise AttributeError('`turns` attr can only be read')
 
     @property
-    def current_turn(self) -> s.Turn | None:
+    def current_turn(self) -> m.Turn | None:
         return self._current_turn
 
     @current_turn.setter
@@ -97,74 +98,74 @@ class Deathmatch:
 
     @property
     def time_left_in_turn(self) -> float:
-        current_turn = cast(s.Turn, self.current_turn)
+        current_turn = cast(m.Turn, self.current_turn)
         time_elapsed = datetime.utcnow() - current_turn.started_on
         return self.rules.round_time - time_elapsed.total_seconds()
 
-    def start(self) -> s.StartGameState:
-        self.state = s.GameStateEnum.STARTED
+    def start(self) -> v.StartGameState:
+        self.state = m.GameStateEnum.STARTED
 
-        return s.StartGameState(
+        return v.StartGameState(
             id_=self.id_,
             status=self.status,
             players=self.players,
             rules=self.rules,
         )
 
-    def wait(self) -> s.WaitState:
-        self.state = s.GameStateEnum.WAITING
-        return s.WaitState()
+    def wait(self) -> v.WaitState:
+        self.state = m.GameStateEnum.WAITING
+        return v.WaitState()
 
-    def start_turn(self) -> s.StartTurnState:
+    def start_turn(self) -> v.StartTurnState:
         if self.state not in [
-            s.GameStateEnum.CREATING,
-            s.GameStateEnum.WAITING,
-            s.GameStateEnum.ENDED_TURN,
+            m.GameStateEnum.CREATING,
+            m.GameStateEnum.WAITING,
+            m.GameStateEnum.ENDED_TURN,
         ]:
             raise ValueError(f'Turn cannot be started in the {self.state} game state')
-        self.state = s.GameStateEnum.STARTED_TURN
-        self.status = d.GameStatusEnum.IN_PROGRESS
+        self.state = m.GameStateEnum.STARTED_TURN
+        self.status = m.GameStatusEnum.IN_PROGRESS
         self.events = []
 
         if self.turns:  # Don't iterate on the first turn
             self.players.next()
-        self._current_turn = s.Turn(
+        self._current_turn = m.Turn(
             started_on=datetime.utcnow(), player_id=self.players.current.id_
         )
 
-        return s.StartTurnState(
-            current_turn=s.TurnOut(
-                player_idx=self.players.current_idx, **self.current_turn.model_dump()
+        return v.StartTurnState(
+            current_turn=v.TurnOut(
+                player_idx=self.players.current_idx, **asdict(self.current_turn)
             ),
             status=self.status,
         )
 
-    def end_turn_in_time(self, word: str) -> s.EndTurnState:
-        if self.state != s.GameStateEnum.STARTED_TURN:
+    def end_turn_in_time(self, word: str) -> v.EndTurnState:
+        if self.state != m.GameStateEnum.STARTED_TURN:
             raise ValueError(f'Turn cannot be started in the {self.state} game state')
-        self.state = s.GameStateEnum.ENDED_TURN
+        self.state = m.GameStateEnum.ENDED_TURN
 
-        current_turn = cast(s.Turn, self.current_turn)
+        current_turn = cast(m.Turn, self.current_turn)
         current_turn.ended_on = datetime.utcnow()
         current_turn.word, current_turn.info = self._validate_word(word)
 
         self._evaluate_turn()
         self._turns.append(current_turn)
 
-        return s.EndTurnState(
+        return v.EndTurnState(
             players=self.players,
-            current_turn=s.TurnOut(
+            current_turn=v.TurnOut(
                 player_idx=self.players.current_idx,
-                **self.current_turn.model_dump(),
+                **asdict(self.current_turn),
             ),
         )
 
-    def end_turn_timed_out(self) -> s.EndTurnState:
-        if self.state != s.GameStateEnum.STARTED_TURN:
+    def end_turn_timed_out(self) -> v.EndTurnState:
+        if self.state != m.GameStateEnum.STARTED_TURN:
             raise ValueError(f'Turn cannot be started in the {self.state} game state')
-        self.state = s.GameStateEnum.ENDED_TURN
+        self.state = m.GameStateEnum.ENDED_TURN
 
-        current_turn = cast(s.Turn, self.current_turn)
+        current_turn = cast(m.Turn, self.current_turn)
         current_turn.ended_on = datetime.utcnow()
         current_turn.word = None
         current_turn.info = 'Turn time exceeded'
@@ -177,21 +178,20 @@ class Deathmatch:
 
         self._evaluate_turn()
         self.turns.append(current_turn)
+        self.state = m.GameStateEnum.ENDED
 
-        return s.EndTurnState(
+        return v.EndTurnState(
             players=self.players,
-            current_turn=s.TurnOut(
+            current_turn=v.TurnOut(
                 player_idx=self.players.current_idx,
-                **self.current_turn.model_dump(),
+                **asdict(self.current_turn),
             ),
         )
 
-        self.state = s.GameStateEnum.ENDED
-
-    def end(self) -> s.EndGameState:
-        self.status = d.GameStatusEnum.FINISHED
-        self.events.append(s.GameFinishedEvent())
-        return s.EndGameState(status=self.status)
+    def end(self) -> v.EndGameState:
+        self.status = m.GameStatusEnum.FINISHED
+        self.events.append(m.GameFinishedEvent())
+        return v.EndGameState(status=self.status)
 
     def is_finished(self) -> bool:
         # Handle case with just 1 player playing
@@ -205,16 +205,16 @@ class Deathmatch:
 
         return False
 
-    def _validate_word(self, word: str) -> tuple[s.Word, str]:
+    def _validate_word(self, word: str) -> tuple[m.Word, str]:
         word = word.lower()
         if not self._is_compatible_with_previous_word(word):
             return (
-                s.Word(content=word, is_correct=False),
+                m.Word(content=word, is_correct=False),
                 'Word does not start with the last letter of the previous word',
             )
 
         if word in self.words:
-            return s.Word(content=word, is_correct=False), 'Word has already been used'
+            return m.Word(content=word, is_correct=False), 'Word has already been used'
 
         word_obj = check_word_correctness(word)
         if not word_obj.is_correct:
@@ -241,7 +241,7 @@ class Deathmatch:
         return False
 
     def _evaluate_turn(self) -> None:
-        current_turn = cast(s.Turn, self._current_turn)
+        current_turn = cast(m.Turn, self._current_turn)
 
         # TODO: Deal with edge cases like penalty == 0 . Maybe figure out a better way to handle this
         did_turn_timed_out = not current_turn.word
@@ -254,4 +254,4 @@ class Deathmatch:
         # Player lost
         if self.players.current.score <= 0:
             self.players.remove_current()
-            self.events.append(s.PlayerLostEvent(player_name=self.players.current.name))
+            self.events.append(m.PlayerLostEvent(player_name=self.players.current.name))

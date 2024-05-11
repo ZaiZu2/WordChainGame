@@ -3,8 +3,8 @@ from typing import Annotated, Literal
 
 from pydantic import Field
 
-import src.schemas as s
-import src.schemas.domain as m
+import src.schemas.domain as m  # m - domain
+import src.schemas.validation as v  # v - validation
 
 # FILE STORING ONLY WEBSOCKET VALIDATION SCHEMAS USED AS WEBSOCKET INPUTS/OUTPUTS
 
@@ -22,13 +22,13 @@ class WebSocketMessageTypeEnum(str, Enum):
 #################################### GAME INPUTS ####################################
 
 
-class _GameInput(s.GeneralBaseModel):
+class _GameInput(m.GeneralBaseModel):
     type_: Literal[WebSocketMessageTypeEnum.GAME_INPUT] = (
         WebSocketMessageTypeEnum.GAME_INPUT
     )
 
 
-class WordInput(_GameInput, s.GeneralBaseModel):
+class WordInput(_GameInput, m.GeneralBaseModel):
     input_type: Literal['word_input'] = Field('word_input')
     game_id: int
     word: str
@@ -42,39 +42,39 @@ GameInput = Annotated[WordInput, Field(discriminator='input_type')]
 #################################### GAME OUTPUTS ####################################
 
 
-class _GameState(s.GeneralBaseModel):
+class _GameState(m.GeneralBaseModel):
     type_: Literal[WebSocketMessageTypeEnum.GAME_STATE] = (
         WebSocketMessageTypeEnum.GAME_STATE
     )
 
 
-class StartGameState(_GameState, s.GeneralBaseModel):
-    state: Literal[s.GameStateEnum.STARTED] = s.GameStateEnum.STARTED
+class StartGameState(_GameState, m.GeneralBaseModel):
+    state: Literal[m.GameStateEnum.STARTED] = m.GameStateEnum.STARTED
     id_: int = Field(serialization_alias='id')
     status: m.GameStatusEnum
-    players: list[s.GamePlayer]
-    rules: s.DeathmatchRules
+    players: list[m.GamePlayer]
+    rules: m.DeathmatchRules
 
 
-class EndGameState(_GameState, s.GeneralBaseModel):
-    state: Literal[s.GameStateEnum.ENDED] = s.GameStateEnum.ENDED
+class EndGameState(_GameState, m.GeneralBaseModel):
+    state: Literal[m.GameStateEnum.ENDED] = m.GameStateEnum.ENDED
     status: m.GameStatusEnum
 
 
-class WaitState(_GameState, s.GeneralBaseModel):
-    state: Literal[s.GameStateEnum.WAITING] = s.GameStateEnum.WAITING
+class WaitState(_GameState, m.GeneralBaseModel):
+    state: Literal[m.GameStateEnum.WAITING] = m.GameStateEnum.WAITING
 
 
-class StartTurnState(_GameState, s.GeneralBaseModel):
-    state: Literal[s.GameStateEnum.STARTED_TURN] = s.GameStateEnum.STARTED_TURN
-    current_turn: s.TurnOut
+class StartTurnState(_GameState, m.GeneralBaseModel):
+    state: Literal[m.GameStateEnum.STARTED_TURN] = m.GameStateEnum.STARTED_TURN
+    current_turn: v.TurnOut
     status: m.GameStatusEnum | None = None
 
 
-class EndTurnState(_GameState, s.GeneralBaseModel):
-    state: Literal[s.GameStateEnum.ENDED_TURN] = s.GameStateEnum.ENDED_TURN
-    players: list[s.GamePlayer]
-    current_turn: s.TurnOut
+class EndTurnState(_GameState, m.GeneralBaseModel):
+    state: Literal[m.GameStateEnum.ENDED_TURN] = m.GameStateEnum.ENDED_TURN
+    players: list[m.GamePlayer]
+    current_turn: v.TurnOut
 
 
 # Pydantic's Discriminated Union
@@ -88,11 +88,11 @@ GameState = Annotated[
 #################################### ACTIONS ####################################
 
 
-class _Action(s.GeneralBaseModel):
+class _Action(m.GeneralBaseModel):
     type_: Literal[WebSocketMessageTypeEnum.ACTION] = WebSocketMessageTypeEnum.ACTION
 
 
-class KickPlayerAction(_Action, s.GeneralBaseModel):
+class KickPlayerAction(_Action, m.GeneralBaseModel):
     action: Literal['KICK_PLAYER'] = Field('KICK_PLAYER')
 
 
@@ -102,27 +102,27 @@ Action = KickPlayerAction
 #################################### OTHER MESSAGES ####################################
 
 
-class ChatMessage(s.GeneralBaseModel):
+class ChatMessage(m.GeneralBaseModel):
     type_: Literal[WebSocketMessageTypeEnum.CHAT] = Field(
         default=WebSocketMessageTypeEnum.CHAT
     )
     id_: int | None = Field(None, serialization_alias='id')
-    created_on: s.UTCDatetime | None = None
+    created_on: m.UTCDatetime | None = None
     content: str
     player_name: str
     room_id: int
 
 
-class LobbyState(s.GeneralBaseModel):
+class LobbyState(m.GeneralBaseModel):
     type_: Literal[WebSocketMessageTypeEnum.LOBBY_STATE] = Field(
         default=WebSocketMessageTypeEnum.LOBBY_STATE
     )
-    rooms: dict[int, s.RoomOut | None] | None = None  # room_id: room
-    players: dict[str, s.LobbyPlayerOut | None] | None = None  # player_name: player
-    stats: s.CurrentStatistics | None = None
+    rooms: dict[int, v.RoomOut | None] | None = None  # room_id: room
+    players: dict[str, v.LobbyPlayerOut | None] | None = None  # player_name: player
+    stats: v.CurrentStatistics | None = None
 
 
-class RoomState(s.GeneralBaseModel):
+class RoomState(m.GeneralBaseModel):
     type_: Literal[WebSocketMessageTypeEnum.ROOM_STATE] = Field(
         default=WebSocketMessageTypeEnum.ROOM_STATE
     )
@@ -130,16 +130,16 @@ class RoomState(s.GeneralBaseModel):
     name: str
     capacity: int
     status: m.RoomStatusEnum
-    rules: s.DeathmatchRules
+    rules: m.DeathmatchRules
     owner_name: str
-    players: dict[str, s.RoomPlayerOut | None] | None = None  # player_name: player
+    players: dict[str, v.RoomPlayerOut | None] | None = None  # player_name: player
 
 
 class CustomWebsocketCodeEnum(int, Enum):
     MULTIPLE_CLIENTS = 4001  # Player is already connected with another client
 
 
-class ConnectionState(s.GeneralBaseModel):
+class ConnectionState(m.GeneralBaseModel):
     type_: Literal[WebSocketMessageTypeEnum.CONNECTION_STATE] = Field(
         default=WebSocketMessageTypeEnum.CONNECTION_STATE
     )
@@ -147,7 +147,7 @@ class ConnectionState(s.GeneralBaseModel):
     reason: str
 
 
-class WebSocketMessage(s.GeneralBaseModel):
+class WebSocketMessage(m.GeneralBaseModel):
     payload: (
         ChatMessage
         | GameState

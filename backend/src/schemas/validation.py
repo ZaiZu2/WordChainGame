@@ -64,3 +64,8 @@ class RoomIn(m.GeneralBaseModel):
 class RoomInModify(m.GeneralBaseModel):
     capacity: int = Field(5, ge=1, le=10)
     rules: m.DeathmatchRules
+
+
+# HACK: Avoid circular import issue between `validation.py` and `websockets.py` while
+# exposing websocket schemas under `validation.*` namespace
+from src.schemas.websockets import *  # noqa: F403
