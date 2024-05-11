@@ -191,8 +191,10 @@ async def handle_player_disconnect(
             # a time being - to be decided
             pass
     else:
-        # If disconnected while in the lobby, do nothing
-        pass
+        lobby_state = s.LobbyState(
+            players={player.name: None}, stats=get_current_stats(conn_manager)
+        )
+        await conn_manager.broadcast_lobby_state(lobby_state)
 
         message = d.Message(
             content=f'{player.name} disconnected from the room',
@@ -334,12 +336,9 @@ async def broadcast_full_lobby_state(
         for room in rooms
     }
 
-    stats = s.CurrentStatistics(
-        active_players=conn_manager.pool.active_players,
-        active_rooms=conn_manager.pool.active_rooms,
+    lobby_state = s.LobbyState(
+        rooms=rooms_out, players=players_out, stats=get_current_stats(conn_manager)
     )
-
-    lobby_state = s.LobbyState(rooms=rooms_out, players=players_out, stats=stats)
     await conn_manager.broadcast_lobby_state(lobby_state)
 
 
@@ -378,5 +377,14 @@ async def broadcast_single_room_state(
         owner_name=room.owner.name,
         **room.to_dict(),
     )
-    lobby_state = s.LobbyState(rooms={room.id_: room_out})
+    lobby_state = s.LobbyState(
+        rooms={room.id_: room_out}, stats=get_current_stats(conn_manager)
+    )
     await conn_manager.broadcast_lobby_state(lobby_state)
+
+
+def get_current_stats(conn_manager: ConnectionManager) -> s.CurrentStatistics:
+    return s.CurrentStatistics(
+        active_players=conn_manager.pool.active_players,
+        active_rooms=conn_manager.pool.active_rooms,
+    )

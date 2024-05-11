@@ -24,6 +24,7 @@ from src.game.game import GameManager
 from src.helpers import (
     TagsEnum,
     broadcast_single_room_state,
+    get_current_stats,
     move_player_and_broadcast_message,
     run_game,
 )
@@ -51,7 +52,9 @@ async def create_room(
     conn_manager.pool.create_room(room.id_)
 
     room_out = s.RoomOut(players_no=0, owner_name=player.name, **room.to_dict())
-    lobby_state = s.LobbyState(rooms={room.id_: room_out})
+    lobby_state = s.LobbyState(
+        rooms={room.id_: room_out}, stats=get_current_stats(conn_manager)
+    )
     await conn_manager.broadcast_lobby_state(lobby_state)
 
 
@@ -76,7 +79,9 @@ async def modify_room(
         owner_name=room.owner.name,
         **room.to_dict(),
     )
-    lobby_state = s.LobbyState(rooms={room.id_: room_out})
+    lobby_state = s.LobbyState(
+        rooms={room.id_: room_out}, stats=get_current_stats(conn_manager)
+    )
     await conn_manager.broadcast_lobby_state(lobby_state)
 
     return room_state
@@ -125,7 +130,11 @@ async def join_room(
     room_out = s.RoomOut(
         players_no=len(players_out), owner_name=room.owner.name, **room.to_dict()
     )
-    lobby_state = s.LobbyState(rooms={room.id_: room_out}, players={player.name: None})
+    lobby_state = s.LobbyState(
+        rooms={room.id_: room_out},
+        players={player.name: None},
+        stats=get_current_stats(conn_manager),
+    )
     await conn_manager.broadcast_lobby_state(lobby_state)
 
     # TODO: Collect chat history and send it to the player
@@ -177,6 +186,7 @@ async def leave_room(
     lobby_state = s.LobbyState(
         rooms={room.id_: room_out},
         players={player.name: s.LobbyPlayerOut(**player.to_dict())},
+        stats=get_current_stats(conn_manager),
     )
     await conn_manager.broadcast_lobby_state(lobby_state)
 
@@ -222,8 +232,7 @@ async def toggle_room_status(
         **room.to_dict(),
     )
     lobby_state = s.LobbyState(
-        rooms={room.id_: room_out},
-        players={},
+        rooms={room.id_: room_out}, players={}, stats=get_current_stats(conn_manager)
     )
     await conn_manager.broadcast_lobby_state(lobby_state)
 
@@ -329,7 +338,7 @@ async def kick_player(
         d.LOBBY.id_,
         db,
         conn_manager,
-        leave_message=f'{player.name} got kicked from the room',
+        leave_message=f'{player_to_kick.name} got kicked from the room',
     )
 
     # Broadcast only the info about the leaving player, as this is all the context other
@@ -351,6 +360,7 @@ async def kick_player(
     lobby_state = s.LobbyState(
         rooms={room.id_: room_out},
         players={player.name: s.LobbyPlayerOut(**player_to_kick.to_dict())},
+        stats=get_current_stats(conn_manager),
     )
     await conn_manager.broadcast_lobby_state(lobby_state)
 
