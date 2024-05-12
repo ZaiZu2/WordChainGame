@@ -1,3 +1,4 @@
+from typing import Literal
 from uuid import UUID
 
 from pydantic import Field
@@ -45,27 +46,41 @@ class RoomPlayerOut(LobbyPlayerOut):
     in_game: bool
 
 
+class Rules(m.GeneralBaseModel):
+    type_: m.GameTypeEnum = Field(serialization_alias='type')
+
+
+class DeathmatchRulesIn(Rules):
+    type_: Literal[m.GameTypeEnum.DEATHMATCH] = Field(
+        m.GameTypeEnum.DEATHMATCH, serialization_alias='type'
+    )
+    round_time: int = Field(10, ge=3, le=30)
+    start_score: int = Field(0, ge=0, le=10)
+    penalty: int = Field(-5, ge=-10, le=0)  # If 0, player loses after a single mistake
+    reward: int = Field(2, ge=0, le=10)
+
+
 class RoomOut(m.GeneralBaseModel):
     id_: int = Field(serialization_alias='id')
     name: str
     players_no: int
     capacity: int
     status: m.RoomStatusEnum
-    rules: m.DeathmatchRules
+    rules: DeathmatchRulesIn
     owner_name: str
 
 
 class RoomIn(m.GeneralBaseModel):
     name: str = Field(..., max_length=10)
     capacity: int = Field(5, ge=1, le=10)
-    rules: m.DeathmatchRules
+    rules: DeathmatchRulesIn
 
 
 class RoomInModify(m.GeneralBaseModel):
     capacity: int = Field(5, ge=1, le=10)
-    rules: m.DeathmatchRules
+    rules: DeathmatchRulesIn
 
 
 # HACK: Avoid circular import issue between `validation.py` and `websockets.py` while
 # exposing websocket schemas under `validation.*` namespace
-from src.schemas.websockets import *  # noqa: F403
+from src.schemas.websockets import *  # noqa: E402, F403

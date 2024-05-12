@@ -166,7 +166,10 @@ async def create_root_objects():
                 )
 
             root = Player(id_=get_config().ROOT_ID, name=get_config().ROOT_NAME)
-            lobby = Room(id_=get_config().LOBBY_ID, name=get_config().LOBBY_NAME)
+            assert get_config().LOBBY_ID == 1  # Ensure that the lobby ID is 1
+            lobby = Room(
+                name=get_config().LOBBY_NAME
+            )  # Do not pass ID as it is autoincremented
             db.add_all([lobby, root])
             await db.commit()
         except Exception:

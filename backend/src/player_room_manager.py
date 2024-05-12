@@ -38,6 +38,9 @@ class PlayerRoomManager:
         room_players = self._room_map[room_id].players
         return set(room_players.values())
 
+    def get_rooms(self) -> set[m.Room]:
+        return set(self._room_map.values()) - {m.LOBBY}
+
     def add(self, player: m.Player, room_id: int) -> None:
         # TODO: Should the room be implicitly created if it doesn't exist?
         room = self.get_room(room_id=room_id)

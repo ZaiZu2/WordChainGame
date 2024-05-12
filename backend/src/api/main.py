@@ -1,5 +1,4 @@
 import asyncio
-from dataclasses import asdict
 from typing import Annotated, Literal
 from uuid import UUID
 
@@ -44,7 +43,7 @@ router = APIRouter(tags=[TagsEnum.MAIN])
 async def get_client_player(
     player: Annotated[m.Player, Depends(get_player)],
 ) -> v.Player:
-    return v.Player(**asdict(player))
+    return v.Player.model_validate(player)
 
 
 @router.post('/players', status_code=status.HTTP_201_CREATED)
@@ -104,7 +103,7 @@ async def update_player_name(
     db.add(player)
     await db.flush()
     await db.refresh(player)
-    return v.Player(**asdict(player))
+    return v.Player.model_validate(player)
 
 
 @router.get('/stats', status_code=status.HTTP_200_OK)
@@ -137,7 +136,7 @@ async def connect(
     player = m.Player(**player_db.to_dict(), room=m.LOBBY, websocket=websocket)
 
     await accept_websocket_connection(player, websocket, db, conn_manager)
-    await broadcast_full_lobby_state(db, conn_manager)
+    await broadcast_full_lobby_state(conn_manager)
     await db.commit()
 
     try:

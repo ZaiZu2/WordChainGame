@@ -22,7 +22,7 @@ class Config(BaseSettings):
     TURN_START_DELAY: int = 1  # seconds, Delay each turn start to prime the players
     MAX_TURN_TIME_DEVIATION: float = 0.1  # seconds
 
-    ROOT_ID: UUID = '0b90b3b5-a1c7-4e22-bf2b-249033d01902'
+    ROOT_ID: UUID
     ROOT_NAME: str = 'root'
     LOBBY_ID: int = 1
     LOBBY_NAME: str = 'lobby'

@@ -1,5 +1,4 @@
 import asyncio
-from dataclasses import asdict
 from datetime import datetime
 from enum import Enum
 from typing import cast
@@ -175,7 +174,7 @@ async def handle_player_disconnect(
                 .options(joinedload(d.Room.owner))
             )
             room_state = v.RoomState(
-                **asdict(room),
+                **room.to_dict(),
                 owner_name=room.owner.name,
                 players={player.name: None},
             )
@@ -256,21 +255,21 @@ async def listen_for_messages(
 
 
 async def run_game(
-    game: Deathmatch, room_id: int, conn_manager: ConnectionManager
+    game: Deathmatch, room: m.Room, conn_manager: ConnectionManager
 ) -> None:
-    room_info = cast(m.Room, conn_manager.pool.get_room(room_id=room_id))
+    room_info = cast(m.Room, conn_manager.pool.get_room(room_id=room.id_))
     word_input_buffer = room_info.word_input_buffer
 
     start_game_state = game.start()
-    await conn_manager.broadcast_game_state(room_id, start_game_state)
+    await conn_manager.broadcast_game_state(room.id_, start_game_state)
 
     wait_state = game.wait()
-    await conn_manager.broadcast_game_state(room_id, wait_state)
+    await conn_manager.broadcast_game_state(room.id_, wait_state)
     await asyncio.sleep(get_config().GAME_START_DELAY)
 
     while True:
         start_turn_state = game.start_turn()
-        await conn_manager.broadcast_game_state(room_id, start_turn_state)
+        await conn_manager.broadcast_game_state(room.id_, start_turn_state)
 
         try:
             word_input = await asyncio.wait_for(
@@ -280,63 +279,39 @@ async def run_game(
             end_turn_state = game.end_turn_timed_out()
         else:
             end_turn_state = game.end_turn_in_time(word_input.word)
-        await conn_manager.broadcast_game_state(room_id, end_turn_state)
+        await conn_manager.broadcast_game_state(room.id_, end_turn_state)
 
         if game.is_finished():
             break
 
         wait_state = game.wait()
-        await conn_manager.broadcast_game_state(room_id, wait_state)
+        await conn_manager.broadcast_game_state(room.id_, wait_state)
         await asyncio.sleep(get_config().TURN_START_DELAY)
 
     end_game_state = game.end()
-    await conn_manager.broadcast_game_state(room_id, end_game_state)
+    await conn_manager.broadcast_game_state(room.id_, end_game_state)
+    room.status = m.RoomStatusEnum.OPEN
+    await broadcast_single_room_state(room, conn_manager)
 
-    # TODO: Do i really want to store transient room changes in the DB?
-    # Ideally, Room should store it's state in memory only
     async with init_db_session() as db:
         await export_and_persist_game(game, db)
-        room = cast(
-            d.Room,
-            await db.scalar(
-                select(d.Room)
-                .where(d.Room.id_ == room_id)
-                .options(joinedload(d.Room.owner))
-            ),
-        )
-        room.status = m.RoomStatusEnum.OPEN
-        await broadcast_single_room_state(room, conn_manager)
 
 
-async def broadcast_full_lobby_state(
-    db: AsyncSession, conn_manager: ConnectionManager
-) -> None:
-    lobby_conns = conn_manager.pool.get_room_players(m.LOBBY.id_)
-    player_ids = [conn.id_ for conn in lobby_conns]
-    room_players = await db.scalars(
-        select(d.Player).where(d.Player.id_.in_(player_ids))
-    )
+async def broadcast_full_lobby_state(conn_manager: ConnectionManager) -> None:
+    lobby_players = conn_manager.pool.get_room_players(m.LOBBY.id_)
     players_out = {
-        room_player.name: v.LobbyPlayerOut(**room_player.to_dict())
-        for room_player in room_players
+        lobby_player.name: v.LobbyPlayerOut.model_validate(lobby_player)
+        for lobby_player in lobby_players
     }
 
-    rooms = await db.scalars(
-        select(d.Room)
-        .where(
-            and_(d.Room.status != m.RoomStatusEnum.EXPIRED, d.Room.id_ != m.LOBBY.id_)
-        )
-        .options(joinedload(d.Room.owner))
-    )
     rooms_out = {
         room.id_: v.RoomOut(
-            players_no=len(lobby_conns),
+            players_no=len(lobby_players),
             owner_name=room.owner.name,
-            **asdict(room),
+            **room.to_dict(),
         )
-        for room in rooms
+        for room in conn_manager.pool.get_rooms()
     }
-
     lobby_state = v.LobbyState(
         rooms=rooms_out, players=players_out, stats=get_current_stats(conn_manager)
     )
@@ -370,13 +345,13 @@ async def broadcast_single_room_state(
     room: m.Room, conn_manager: ConnectionManager
 ) -> None:
     """Send `LobbyState` and `RoomState` broadcast for a single room state change."""
-    room_state = v.RoomState(**asdict(room), owner_name=room.owner.name)
+    room_state = v.RoomState(**room.to_dict(), owner_name=room.owner.name)
     await conn_manager.broadcast_room_state(room.id_, room_state)
 
     room_out = v.RoomOut(
         players_no=len(conn_manager.pool.get_room_players(room.id_)),
         owner_name=room.owner.name,
-        **asdict(room),
+        **room.to_dict(),
     )
     lobby_state = v.LobbyState(
         rooms={room.id_: room_out}, stats=get_current_stats(conn_manager)

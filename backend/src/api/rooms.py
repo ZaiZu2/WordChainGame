@@ -1,5 +1,4 @@
 import asyncio
-from dataclasses import asdict
 from typing import Annotated
 
 from fastapi import (
@@ -47,14 +46,17 @@ async def create_room(
             detail=f'Game room with name {room_in.name} already exists',
         )
 
-    room_db = d.Room(**room_in.model_dump())
+    room_db = d.Room(name=room_in.name)
     db.add(room_db)
     await db.flush([room_db])
 
-    room = m.Room(**room_db.to_dict(), **room_in.model_dump(), owner=player)
+    room = m.Room(
+        **{**room_db.to_dict(), **room_in.model_dump()}, # overwrite repeating keyword args
+        owner=player,
+    )  # fmt: off
     conn_manager.pool.create_room(room)
 
-    room_out = v.RoomOut(players_no=0, owner_name=player.name, **asdict(room))
+    room_out = v.RoomOut(players_no=0, owner_name=player.name, **room.to_dict())
     lobby_state = v.LobbyState(
         rooms={room.id_: room_out}, stats=get_current_stats(conn_manager)
     )
@@ -77,14 +79,14 @@ async def modify_room(
 
     room.update(**room_in_modify.model_dump())
 
-    room_state = v.RoomState(owner_name=room.owner.name, **asdict(room))
+    room_state = v.RoomState(owner_name=room.owner.name, **room.to_dict())
     await conn_manager.broadcast_room_state(room_state.id_, room_state)
 
     room_conns = conn_manager.pool.get_room_players(room.id_)
     room_out = v.RoomOut(
         players_no=len(room_conns),
         owner_name=room.owner.name,
-        **asdict(room),
+        **room.to_dict(),
     )
     lobby_state = v.LobbyState(
         rooms={room.id_: room_out}, stats=get_current_stats(conn_manager)
@@ -104,7 +106,7 @@ async def join_room(
     old_room_id = conn_manager.pool.get_room(player_id=player.id_).id_
 
     if room.id_ == old_room_id:
-        return v.RoomState(owner_name=room.owner.name, **asdict(room))
+        return v.RoomState(owner_name=room.owner.name, **room.to_dict())
     if room.status != m.RoomStatusEnum.OPEN:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail='Room is not open'
@@ -122,17 +124,17 @@ async def join_room(
     # needs that context
     room_players = conn_manager.pool.get_room_players(room.id_)
     players_out = {
-        player.name: v.RoomPlayerOut(**asdict(player)) for player in room_players
+        player.name: v.RoomPlayerOut.model_validate(player) for player in room_players
     }
     room_state = v.RoomState(
-        players=players_out, owner_name=room.owner.name, **asdict(room)
+        players=players_out, owner_name=room.owner.name, **room.to_dict()
     )
     await conn_manager.broadcast_room_state(room_state.id_, room_state)
 
     # Broadcast only the info about the leaving player, as this is all the context other
     # clients need to keep their state up to date
     room_out = v.RoomOut(
-        players_no=len(players_out), owner_name=room.owner.name, **asdict(room)
+        players_no=len(players_out), owner_name=room.owner.name, **room.to_dict()
     )
     lobby_state = v.LobbyState(
         rooms={room.id_: room_out},
@@ -172,7 +174,7 @@ async def leave_room(
     # Broadcast only the info about the leaving player, as this is all the context other
     # clients need to keep their state up to date
     room_state = v.RoomState(
-        **asdict(room),
+        **room.to_dict(),
         owner_name=room.owner.name,
         players={player.name: None},
     )
@@ -183,11 +185,11 @@ async def leave_room(
     room_out = v.RoomOut(
         players_no=len(conn_manager.pool.get_room_players(room.id_)),
         owner_name=room.owner.name,
-        **asdict(room),
+        **room.to_dict(),
     )
     lobby_state = v.LobbyState(
         rooms={room.id_: room_out},
-        players={player.name: v.LobbyPlayerOut(**asdict(player))},
+        players={player.name: v.LobbyPlayerOut(**player.to_dict())},
         stats=get_current_stats(conn_manager),
     )
     await conn_manager.broadcast_lobby_state(lobby_state)
@@ -216,18 +218,15 @@ async def toggle_room_status(
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST, 'Room status must be either OPEN or CLOSED'
         )
-
     room.status = new_status
-    db.add(room)
-    await db.flush([room])
 
-    room_state = v.RoomState(**asdict(room), owner_name=room.owner.name, players={})
+    room_state = v.RoomState(**room.to_dict(), owner_name=room.owner.name, players={})
     await conn_manager.broadcast_room_state(room.id_, room_state)
 
     room_out = v.RoomOut(
         players_no=len(conn_manager.pool.get_room_players(room.id_)),
         owner_name=room.owner.name,
-        **asdict(room),
+        **room.to_dict(),
     )
     lobby_state = v.LobbyState(
         rooms={room.id_: room_out}, players={}, stats=get_current_stats(conn_manager)
@@ -244,9 +243,9 @@ async def toggle_player_readiness(
     player.ready = not player.ready
 
     room_state = v.RoomState(
-        **asdict(room),
+        **room.to_dict(),
         owner_name=room.owner.name,
-        players={player.name: v.RoomPlayerOut(**asdict(player))},
+        players={player.name: v.RoomPlayerOut.model_validate(player)},
     )
     await conn_manager.broadcast_room_state(room.id_, room_state)
 
@@ -261,9 +260,9 @@ async def return_from_game(
     player.in_game = False
 
     room_state = v.RoomState(
-        **asdict(room),
+        **room.to_dict(),
         owner_name=room.owner.name,
-        players={player.name: v.RoomPlayerOut(**asdict(player))},
+        players={player.name: v.RoomPlayerOut.model_validate(player)},
     )
     await conn_manager.broadcast_room_state(room.id_, room_state)
 
@@ -312,7 +311,7 @@ async def kick_player(
     # Broadcast only the info about the leaving player, as this is all the context other
     # clients need to keep their state up to date
     room_state = v.RoomState(
-        **asdict(room),
+        **room.to_dict(),
         owner_name=room.owner.name,
         players={player_to_kick.name: None},
     )
@@ -323,11 +322,11 @@ async def kick_player(
     room_out = v.RoomOut(
         players_no=len(conn_manager.pool.get_room_players(room.id_)),
         owner_name=room.owner.name,
-        **asdict(room),
+        **room.to_dict(),
     )
     lobby_state = v.LobbyState(
         rooms={room.id_: room_out},
-        players={player.name: v.LobbyPlayerOut(**asdict(player_to_kick))},
+        players={player.name: v.LobbyPlayerOut(**player_to_kick.to_dict())},
         stats=get_current_stats(conn_manager),
     )
     await conn_manager.broadcast_lobby_state(lobby_state)
@@ -376,15 +375,15 @@ async def start_game(
     await broadcast_single_room_state(room, conn_manager)
 
     game = game_manager.create(game_db)
-    asyncio.create_task(run_game(game, room.id_, conn_manager))
+    asyncio.create_task(run_game(game, room, conn_manager))
 
     players_out = {}
     for player in room.players.values():
         player.ready = False
         player.in_game = True
-        players_out[player.name] = v.RoomPlayerOut(**asdict(player))
+        players_out[player.name] = v.RoomPlayerOut.model_validate(player)
 
     room_state = v.RoomState(
-        players=players_out, owner_name=room.owner.name, **asdict(room)
+        players=players_out, owner_name=room.owner.name, **room.to_dict()
     )
     await conn_manager.broadcast_room_state(room_state.id_, room_state)

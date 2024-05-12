@@ -69,7 +69,7 @@ class Deathmatch:
         self.state: m.GameStateEnum = m.GameStateEnum.CREATING
 
         game_players = [
-            m.GamePlayer(score=self.rules.start_score, mistakes=0, **asdict(player))
+            m.GamePlayer(score=self.rules.start_score, mistakes=0, **player.to_dict())
             for player in players
         ]
         self.players = OrderedPlayers(game_players)

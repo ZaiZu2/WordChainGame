@@ -12,7 +12,6 @@ from pydantic import (
     AfterValidator,
     BaseModel,
     ConfigDict,
-    Field,
     PlainSerializer,
     validator,
 )
@@ -44,18 +43,42 @@ UTCDatetime = Annotated[
 ]
 
 
-class UpdateableMixin:
+@dataclass
+class DataclassMixin:
     def update(self, **kwargs):
-        for key, value in kwargs:
-            if key in fields(self):
+        field_names = {f.name for f in fields(self)}
+        for key, value in kwargs.items():
+            if key in field_names:
                 setattr(self, key, value)
+
+    # def to_dict(self, skip_dataclasses: bool = False) -> dict:
+    #     """
+    #     Perform only a shallow serialization of the dataclass - only parent and it's
+    #     children dataclasses will be serialized. Any child backreferencing the parent
+    #     will be skipped. This avoids infinite recursion in the serialization process.
+
+    #     Example:
+    #     -------
+    #     `Player` and `Room` are referencing each other, leading to `asdict` recursion error.
+    #     """
+    #     result = {}
+    #     for f in fields(self):
+    #         value = getattr(self, f.name)
+
+    #         if is_dataclass(value) and f.metadata.get('backref') is True:
+    #             if skip_dataclasses:
+    #                 continue
+    #             result[f.name] = value.to_dict(skip_dataclasses=True)
+    #         else:
+    #             result[f.name] = value
+    #     return result
 
 
 ##### PLAYER #####
 
 
 @dataclass(kw_only=True)
-class Player(UpdateableMixin):
+class Player(DataclassMixin):
     """Class storing transient connection (player) state."""
 
     id_: UUID
@@ -76,6 +99,27 @@ class Player(UpdateableMixin):
         if isinstance(other, Player):
             return self.id_ == other.id_
         return False
+
+    def to_dict(self, depth: int = 1) -> dict:
+        """
+        Cast to a dict, serializing recursive fields to the given depth.
+
+        Convenience method for passing domain models as dicts into Validation models,
+        without the necessity to manually write fields as keyword arguments. `asdict`
+        method is not used to avoid infinite recursion (e.g. `Player` and `Room` are
+        referencing each other, leading to `asdict` recursion error.)
+        """
+        result = {
+            'id_': self.id_,
+            'name': self.name,
+            'created_on': self.created_on,
+            'ready': self.ready,
+            'in_game': self.in_game,
+        }
+        if depth > 0:
+            result['room'] = self.room.to_dict(depth=depth - 1)
+
+        return result
 
 
 class GamePlayer(GeneralBaseModel):
@@ -127,7 +171,7 @@ class RoomStatusEnum(str, Enum):
 
 
 @dataclass(kw_only=True)
-class Room(UpdateableMixin):
+class Room(DataclassMixin):
     """Class storing transient room state."""
 
     id_: int
@@ -141,6 +185,36 @@ class Room(UpdateableMixin):
     players: dict[UUID, Player] = field(default_factory=dict)
 
     word_input_buffer: WordInputBuffer = WordInputBuffer()
+
+    def __hash__(self) -> int:
+        return hash(self.id_)
+
+    def to_dict(self, depth: int = 1) -> dict:
+        """
+        Cast to a dict, optionally skipping serialization of recursive fields in child
+        dataclasses.
+
+        Convenience method for passing domain models as dicts into Validation models,
+        without the necessity to manually write fields as keyword arguments. `asdict`
+        method is not used to avoid infinite recursion (e.g. `Player` and `Room` are
+        referencing each other, leading to `asdict` recursion error.)
+        """
+        result = {
+            'id_': self.id_,
+            'name': self.name,
+            'status': self.status,
+            'capacity': self.capacity,
+            'created_on': self.created_on,
+            'ended_on': self.ended_on,
+            'rules': self.rules,
+        }
+        if depth > 0:
+            result['owner'] = self.owner.to_dict(depth=depth - 1)
+            # result['players'] = {
+            #     player_id: player.to_dict(depth=depth - 1)
+            #     for player_id, player in self.players.items()
+            # }
+        return result
 
 
 ##### GAME #####
@@ -165,7 +239,8 @@ class GameStateEnum(str, Enum):
     ENDED_TURN = 'ENDED_TURN'
 
 
-class Word(GeneralBaseModel):
+@dataclass(kw_only=True)
+class Word:
     content: str | None = None
     description: list[tuple[str, str]] | None = None
     is_correct: bool | None = None
@@ -179,7 +254,8 @@ class Word(GeneralBaseModel):
         return False
 
 
-class Turn(GeneralBaseModel):
+@dataclass(kw_only=True)
+class Turn:
     word: Word | None = None
     started_on: UTCDatetime
     ended_on: UTCDatetime | None = None
@@ -187,18 +263,12 @@ class Turn(GeneralBaseModel):
     player_id: UUID
 
 
-class Rules(GeneralBaseModel):
-    type_: GameTypeEnum = Field(serialization_alias='type')
-
-
-class DeathmatchRules(Rules):
-    type_: Literal[GameTypeEnum.DEATHMATCH] = Field(
-        GameTypeEnum.DEATHMATCH, serialization_alias='type'
-    )
-    round_time: int = Field(10, ge=3, le=30)
-    start_score: int = Field(0, ge=0, le=10)
-    penalty: int = Field(-5, ge=-10, le=0)  # If 0, player loses after a single mistake
-    reward: int = Field(2, ge=0, le=10)
+@dataclass(kw_only=True)
+class DeathmatchRules:
+    round_time: int
+    start_score: int
+    penalty: int
+    reward: int
 
 
 ##### MESSAGE #####
