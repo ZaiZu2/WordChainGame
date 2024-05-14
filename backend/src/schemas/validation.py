@@ -12,7 +12,7 @@ from pydantic import (
     PlainSerializer,
 )
 
-import src.schemas.domain as m
+import src.schemas.domain as d
 
 # FILE STORING ONLY VALIDATION SCHEMAS USED AS RESTAPI INPUTS/OUTPUTS
 
@@ -51,7 +51,7 @@ class AllTimeStatistics(GeneralBaseModel):
 
 
 class TurnOut(GeneralBaseModel):
-    word: m.Word | None = None
+    word: d.Word | None = None
     started_on: UTCDatetime
     ended_on: UTCDatetime | None = None
     info: str | None = None
@@ -86,12 +86,12 @@ class GamePlayer(GeneralBaseModel):
 
 
 class Rules(GeneralBaseModel):
-    type_: m.GameTypeEnum = Field(serialization_alias='type')
+    type_: d.GameTypeEnum = Field(serialization_alias='type')
 
 
 class DeathmatchRules(Rules):
-    type_: Literal[m.GameTypeEnum.DEATHMATCH] = Field(
-        m.GameTypeEnum.DEATHMATCH, serialization_alias='type'
+    type_: Literal[d.GameTypeEnum.DEATHMATCH] = Field(
+        d.GameTypeEnum.DEATHMATCH, serialization_alias='type'
     )
     round_time: int = Field(10, ge=3, le=30)
     start_score: int = Field(0, ge=0, le=10)
@@ -104,7 +104,7 @@ class RoomOut(GeneralBaseModel):
     name: str
     players_no: int
     capacity: int
-    status: m.RoomStatusEnum
+    status: d.RoomStatusEnum
     rules: DeathmatchRules
     owner_name: str
 

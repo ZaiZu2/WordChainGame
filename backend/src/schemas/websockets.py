@@ -3,8 +3,8 @@ from typing import Annotated, Literal
 
 from pydantic import Field
 
-import src.schemas.domain as m  # m - domain
-import src.schemas.validation as v  # v - validation
+import src.schemas.domain as d
+import src.schemas.validation as v
 
 # FILE STORING ONLY WEBSOCKET VALIDATION SCHEMAS USED AS WEBSOCKET INPUTS/OUTPUTS
 
@@ -49,30 +49,30 @@ class _GameState(v.GeneralBaseModel):
 
 
 class StartGameState(_GameState, v.GeneralBaseModel):
-    state: Literal[m.GameStateEnum.STARTED] = m.GameStateEnum.STARTED
+    state: Literal[d.GameStateEnum.STARTED] = d.GameStateEnum.STARTED
     id_: int = Field(serialization_alias='id')
-    status: m.GameStatusEnum
+    status: d.GameStatusEnum
     players: list[v.GamePlayer]
     rules: v.DeathmatchRules
 
 
 class EndGameState(_GameState, v.GeneralBaseModel):
-    state: Literal[m.GameStateEnum.ENDED] = m.GameStateEnum.ENDED
-    status: m.GameStatusEnum
+    state: Literal[d.GameStateEnum.ENDED] = d.GameStateEnum.ENDED
+    status: d.GameStatusEnum
 
 
 class WaitState(_GameState, v.GeneralBaseModel):
-    state: Literal[m.GameStateEnum.WAITING] = m.GameStateEnum.WAITING
+    state: Literal[d.GameStateEnum.WAITING] = d.GameStateEnum.WAITING
 
 
 class StartTurnState(_GameState, v.GeneralBaseModel):
-    state: Literal[m.GameStateEnum.STARTED_TURN] = m.GameStateEnum.STARTED_TURN
+    state: Literal[d.GameStateEnum.STARTED_TURN] = d.GameStateEnum.STARTED_TURN
     current_turn: v.TurnOut
-    status: m.GameStatusEnum | None = None
+    status: d.GameStatusEnum | None = None
 
 
 class EndTurnState(_GameState, v.GeneralBaseModel):
-    state: Literal[m.GameStateEnum.ENDED_TURN] = m.GameStateEnum.ENDED_TURN
+    state: Literal[d.GameStateEnum.ENDED_TURN] = d.GameStateEnum.ENDED_TURN
     players: list[v.GamePlayer]
     current_turn: v.TurnOut
 
@@ -129,7 +129,7 @@ class RoomState(v.GeneralBaseModel):
     id_: int = Field(serialization_alias='id')
     name: str
     capacity: int
-    status: m.RoomStatusEnum
+    status: d.RoomStatusEnum
     rules: v.DeathmatchRules
     owner_name: str
     players: dict[str, v.RoomPlayerOut | None] | None = None  # player_name: player

@@ -1,6 +1,6 @@
 from typing import Iterable
 
-import src.schemas.domain as m  # m - domain
+import src.schemas.domain as d
 from src.game.deathmatch import Deathmatch
 
 
@@ -17,9 +17,9 @@ class GameManager:
         return self.games[game_id]
 
     def create(
-        self, game_id: int, rules: m.DeathmatchRules, players: Iterable[m.Player]
+        self, game_id: int, rules: d.DeathmatchRules, players: Iterable[d.Player]
     ) -> Deathmatch:
-        if rules.type_ == m.GameTypeEnum.DEATHMATCH:
+        if rules.type_ == d.GameTypeEnum.DEATHMATCH:
             game = self.games[game_id] = Deathmatch(game_id, players, rules)
             return game
         else:
@@ -27,7 +27,7 @@ class GameManager:
 
     def end(self, game_id: int) -> Deathmatch:
         game = self.games[game_id]
-        game.status = m.GameStatusEnum.FINISHED
+        game.status = d.GameStatusEnum.FINISHED
         del self.games[game_id]
         return game
 
@@ -35,7 +35,7 @@ class GameManager:
 # TODO: Build and use abstract interface when you figure out the interface
 # class Game(Protocol):
 #     id_: int
-#     status: d.GameStatusEnum
+#     status: db.GameStatusEnum
 #     turns: list[s.Turn]
 
 #     def __init__(self, rules: s.Rules):

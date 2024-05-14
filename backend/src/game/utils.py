@@ -1,12 +1,12 @@
 import httpx
 
-import src.schemas.domain as m  # m - domain
+import src.schemas.domain as d
 from config import get_config
 
 client = httpx.Client()
 
 
-def check_word_correctness(word: str) -> m.Word:
+def check_word_correctness(word: str) -> d.Word:
     response = client.get(
         get_config().DICTIONARY_API_URL.format(
             word=word, api_key=get_config().DICTIONARY_API_KEY
@@ -20,7 +20,7 @@ def check_word_correctness(word: str) -> m.Word:
 
     # Mirriam-Webster returns a list of similar words if the word is not found
     if any(isinstance(elem, str) for elem in data):
-        return m.Word(content=word, is_correct=False)
+        return d.Word(content=word, is_correct=False)
 
     definitions = [definition for definition in data if definition.get('fl')]
 
@@ -29,4 +29,4 @@ def check_word_correctness(word: str) -> m.Word:
         for i, definition in enumerate(definitions)
         if i < 3 and definition.get('fl')
     ]
-    return m.Word(content=word, is_correct=True, description=description)
+    return d.Word(content=word, is_correct=True, description=description)

@@ -10,14 +10,14 @@ from fastapi import (
 from sqlalchemy import insert, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-import src.database as d  # d - database
-import src.schemas.domain as m  # m - domain
-import src.schemas.validation as v  # v - validation
+import src.schemas.database as db
+import src.schemas.domain as d
+import src.schemas.validation as v
 from src.api.utils import cast_v2d_rules
 from src.connection_manager import ConnectionManager
 from src.dependencies import (
     get_connection_manager,
-    get_db,
+    get_db_session,
     get_game_manager,
     get_player,
     get_room,
@@ -37,21 +37,21 @@ router = APIRouter(tags=[TagsEnum.ROOMS])
 @router.post('/rooms', status_code=status.HTTP_201_CREATED)
 async def create_room(
     room_in: v.RoomIn,
-    player: Annotated[m.Player, Depends(get_player)],
-    db: Annotated[AsyncSession, Depends(get_db)],
+    player: Annotated[d.Player, Depends(get_player)],
+    db_session: Annotated[AsyncSession, Depends(get_db_session)],
     conn_manager: Annotated[ConnectionManager, Depends(get_connection_manager)],
 ) -> v.RoomOut:
-    if await db.scalar(select(d.Room).where(d.Room.name == room_in.name)):
+    if await db_session.scalar(select(db.Room).where(db.Room.name == room_in.name)):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=f'Game room with name {room_in.name} already exists',
         )
 
-    room_db = d.Room(name=room_in.name)
-    db.add(room_db)
-    await db.flush([room_db])
+    room_db = db.Room(name=room_in.name)
+    db_session.add(room_db)
+    await db_session.flush([room_db])
 
-    room = m.Room(
+    room = d.Room(
         id_=room_db.id_,
         name=room_db.name,
         capacity=room_in.capacity,
@@ -72,8 +72,8 @@ async def create_room(
 @router.put('/rooms/{room_id}', status_code=status.HTTP_200_OK)
 async def modify_room(
     room_in_modify: v.RoomInModify,
-    room: Annotated[m.Room, Depends(get_room)],
-    player: Annotated[m.Player, Depends(get_player)],
+    room: Annotated[d.Room, Depends(get_room)],
+    player: Annotated[d.Player, Depends(get_player)],
     conn_manager: Annotated[ConnectionManager, Depends(get_connection_manager)],
 ) -> v.RoomOut:
     if room_in_modify.capacity < len(room.players):
@@ -103,16 +103,16 @@ async def modify_room(
 
 @router.post('/rooms/{room_id}/join', status_code=status.HTTP_200_OK)
 async def join_room(
-    room: Annotated[m.Room, Depends(get_room)],
-    player: Annotated[m.Player, Depends(get_player)],
-    db: Annotated[AsyncSession, Depends(get_db)],
+    room: Annotated[d.Room, Depends(get_room)],
+    player: Annotated[d.Player, Depends(get_player)],
+    db_session: Annotated[AsyncSession, Depends(get_db_session)],
     conn_manager: Annotated[ConnectionManager, Depends(get_connection_manager)],
 ) -> v.RoomState:
     old_room_id = conn_manager.pool.get_room(player_id=player.id_).id_
 
     if room.id_ == old_room_id:
         return v.RoomState(owner_name=room.owner.name, **room.to_dict())
-    if room.status != m.RoomStatusEnum.OPEN:
+    if room.status != d.RoomStatusEnum.OPEN:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail='Room is not open'
         )
@@ -122,7 +122,7 @@ async def join_room(
         )
 
     await move_player_and_broadcast_message(
-        player, old_room_id, room.id_, db, conn_manager
+        player, old_room_id, room.id_, db_session, conn_manager
     )
 
     # Broadcast the info about all the players in the room, as the joining player
@@ -154,9 +154,9 @@ async def join_room(
 
 @router.post('/rooms/{room_id}/leave', status_code=status.HTTP_200_OK)
 async def leave_room(
-    room: Annotated[m.Room, Depends(get_room)],
-    player: Annotated[m.Player, Depends(get_player)],
-    db: Annotated[AsyncSession, Depends(get_db)],
+    room: Annotated[d.Room, Depends(get_room)],
+    player: Annotated[d.Player, Depends(get_player)],
+    db_session: Annotated[AsyncSession, Depends(get_db_session)],
     conn_manager: Annotated[ConnectionManager, Depends(get_connection_manager)],
 ) -> v.LobbyState:
     # TODO: Ensure that the player terminated any active game before leaving the room
@@ -168,13 +168,13 @@ async def leave_room(
         )
 
     await move_player_and_broadcast_message(
-        player, old_room_id, m.LOBBY.id_, db, conn_manager
+        player, old_room_id, d.LOBBY.id_, db_session, conn_manager
     )
 
     # Ensure the room is not left by the owner in CLOSED status, as it will not be
     # accessible anymore
-    if room.owner.id_ == player.id_ and room.status == m.RoomStatusEnum.CLOSED:
-        room.status = m.RoomStatusEnum.OPEN
+    if room.owner.id_ == player.id_ and room.status == d.RoomStatusEnum.CLOSED:
+        room.status = d.RoomStatusEnum.OPEN
 
     # Broadcast only the info about the leaving player, as this is all the context other
     # clients need to keep their state up to date
@@ -204,9 +204,9 @@ async def leave_room(
 
 @router.post('/rooms/{room_id}/status', status_code=status.HTTP_200_OK)
 async def toggle_room_status(
-    room: Annotated[m.Room, Depends(get_room)],
-    player: Annotated[m.Player, Depends(get_player)],
-    db: Annotated[AsyncSession, Depends(get_db)],
+    room: Annotated[d.Room, Depends(get_room)],
+    player: Annotated[d.Player, Depends(get_player)],
+    db_session: Annotated[AsyncSession, Depends(get_db_session)],
     conn_manager: Annotated[ConnectionManager, Depends(get_connection_manager)],
 ):
     """Toggle room status between OPEN and CLOSED."""
@@ -215,10 +215,10 @@ async def toggle_room_status(
             status_code=status.HTTP_403_FORBIDDEN, detail='Player is not the owner'
         )
 
-    if room.status == m.RoomStatusEnum.CLOSED:
-        new_status = m.RoomStatusEnum.OPEN
-    elif room.status == m.RoomStatusEnum.OPEN:
-        new_status = m.RoomStatusEnum.CLOSED
+    if room.status == d.RoomStatusEnum.CLOSED:
+        new_status = d.RoomStatusEnum.OPEN
+    elif room.status == d.RoomStatusEnum.OPEN:
+        new_status = d.RoomStatusEnum.CLOSED
     else:
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST, 'Room status must be either OPEN or CLOSED'
@@ -241,8 +241,8 @@ async def toggle_room_status(
 
 @router.post('/rooms/{room_id}/ready', status_code=status.HTTP_200_OK)
 async def toggle_player_readiness(
-    room: Annotated[m.Room, Depends(get_room)],
-    player: Annotated[m.Player, Depends(get_player)],
+    room: Annotated[d.Room, Depends(get_room)],
+    player: Annotated[d.Player, Depends(get_player)],
     conn_manager: Annotated[ConnectionManager, Depends(get_connection_manager)],
 ) -> None:
     player.ready = not player.ready
@@ -257,8 +257,8 @@ async def toggle_player_readiness(
 
 @router.post('/rooms/{room_id}/return', status_code=status.HTTP_200_OK)
 async def return_from_game(
-    room: Annotated[m.Room, Depends(get_room)],
-    player: Annotated[m.Player, Depends(get_player)],
+    room: Annotated[d.Room, Depends(get_room)],
+    player: Annotated[d.Player, Depends(get_player)],
     conn_manager: Annotated[ConnectionManager, Depends(get_connection_manager)],
 ) -> None:
     """Inform the room that the player returned to the room from the previous game."""
@@ -279,9 +279,9 @@ async def return_from_game(
 )
 async def kick_player(
     player_name: str,
-    room: Annotated[m.Room, Depends(get_room)],
-    player: Annotated[m.Player, Depends(get_player)],
-    db: Annotated[AsyncSession, Depends(get_db)],
+    room: Annotated[d.Room, Depends(get_room)],
+    player: Annotated[d.Player, Depends(get_player)],
+    db_session: Annotated[AsyncSession, Depends(get_db_session)],
     conn_manager: Annotated[ConnectionManager, Depends(get_connection_manager)],
 ) -> None:
     if room.owner.id_ != player.id_:
@@ -307,8 +307,8 @@ async def kick_player(
     await move_player_and_broadcast_message(
         player_to_kick,
         room.id_,
-        m.LOBBY.id_,
-        db,
+        d.LOBBY.id_,
+        db_session,
         conn_manager,
         leave_message=f'{player_to_kick.name} got kicked from the room',
     )
@@ -339,9 +339,9 @@ async def kick_player(
 
 @router.post('/rooms/{room_id}/start', status_code=status.HTTP_201_CREATED)
 async def start_game(
-    room: Annotated[m.Room, Depends(get_room)],
-    player: Annotated[m.Player, Depends(get_player)],
-    db: Annotated[AsyncSession, Depends(get_db)],
+    room: Annotated[d.Room, Depends(get_room)],
+    player: Annotated[d.Player, Depends(get_player)],
+    db_session: Annotated[AsyncSession, Depends(get_db_session)],
     conn_manager: Annotated[ConnectionManager, Depends(get_connection_manager)],
     game_manager: Annotated[GameManager, Depends(get_game_manager)],
 ) -> None:
@@ -360,17 +360,17 @@ async def start_game(
             status_code=status.HTTP_400_BAD_REQUEST, detail='Not all players are ready'
         )
 
-    room.status = m.RoomStatusEnum.IN_PROGRESS
+    room.status = d.RoomStatusEnum.IN_PROGRESS
     # Create game placeholder in the database to assign the ID
-    game_db = d.Game(
-        status=m.GameStatusEnum.IN_PROGRESS,
+    game_db = db.Game(
+        status=d.GameStatusEnum.IN_PROGRESS,
         rules=room.rules.to_dict(),
         room_id=room.id_,
     )
-    db.add(game_db)
-    await db.flush([game_db])
-    await db.execute(
-        insert(d.players_games_table).values(
+    db_session.add(game_db)
+    await db_session.flush([game_db])
+    await db_session.execute(
+        insert(db.players_games_table).values(
             [
                 {'game_id': game_db.id_, 'player_id': room_player.id_}
                 for room_player in room.players.values()

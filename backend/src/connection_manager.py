@@ -3,8 +3,8 @@ from uuid import UUID
 
 from fastapi import WebSocket
 
-import src.schemas.domain as m  # m - domain
-import src.schemas.validation as v  # v - validation
+import src.schemas.domain as d
+import src.schemas.validation as v
 from src.error_handlers import PlayerAlreadyConnectedError
 from src.player_room_manager import PlayerRoomManager
 
@@ -13,7 +13,7 @@ class ConnectionManager:
     def __init__(self) -> None:
         self.pool = PlayerRoomManager()
 
-    def connect(self, player: m.Player, room_id: int):
+    def connect(self, player: d.Player, room_id: int):
         if self.pool.get_player(player.id_):
             raise PlayerAlreadyConnectedError(
                 'Player is already connected with another client.'
@@ -58,7 +58,7 @@ class ConnectionManager:
         that is due to be updated/removed (if set to None) - data which is not included
         in the message MUST stay the same on the client side.
         """
-        lobby_players = self.pool.get_room_players(m.LOBBY.id_)
+        lobby_players = self.pool.get_room_players(d.LOBBY.id_)
 
         websocket_message = v.WebSocketMessage(payload=lobby_state)
         message_json = websocket_message.model_dump_json(by_alias=True)

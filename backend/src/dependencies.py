@@ -1,4 +1,3 @@
-from contextlib import asynccontextmanager
 from functools import lru_cache
 from typing import Annotated, AsyncGenerator, Literal
 from uuid import UUID
@@ -12,33 +11,20 @@ from fastapi import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
-import src.schemas.domain as m  # m - domain
+import src.schemas.domain as d
 from config import Config, get_config
 from src.connection_manager import ConnectionManager
 from src.database import async_session
 from src.game.game import GameManager
 
 
-async def get_db() -> AsyncGenerator[AsyncSession, None]:
+async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
     """
     FastAPI dependency injection function to pass a db session into endpoints.
 
     FastAPI internally wraps this function into an async context manager, so it cannot
     be used as a context manager itself.
     """
-    async with async_session() as session:
-        try:
-            await session.begin()
-            yield session
-            await session.commit()
-        except Exception:
-            await session.rollback()
-            raise
-
-
-@asynccontextmanager
-async def init_db_session() -> AsyncGenerator[AsyncSession, None]:
-    """A `get_db` clone, but can be used as a stand-alone async context manager."""  # noqa: D401
     async with async_session() as session:
         try:
             await session.begin()
@@ -65,7 +51,7 @@ async def get_player(
     response: Response,
     conn_manager: Annotated[ConnectionManager, Depends(get_connection_manager)],
     player_id: Annotated[UUID | Literal[''] | None, Cookie()] = None,
-) -> m.Player:
+) -> d.Player:
     if player_id is None or player_id == '':
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -88,7 +74,7 @@ async def get_player(
 async def get_room(
     room_id: int,
     conn_manager: Annotated[ConnectionManager, Depends(get_connection_manager)],
-) -> m.Room:
+) -> d.Room:
     room = conn_manager.pool.get_room(room_id=room_id)
     if room is None:
         raise HTTPException(

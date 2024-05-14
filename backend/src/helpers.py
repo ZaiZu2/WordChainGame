@@ -8,12 +8,12 @@ from sqlalchemy import and_, insert, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-import src.database as d  # d - database
-import src.schemas.domain as m  # m - domain
-import src.schemas.validation as v  # v - validation
+import src.schemas.database as db
+import src.schemas.domain as d
+import src.schemas.validation as v
 from config import get_config
 from src.connection_manager import ConnectionManager
-from src.dependencies import init_db_session
+from src.database import init_db_session
 from src.error_handlers import PlayerAlreadyConnectedError
 from src.game.deathmatch import Deathmatch
 from src.game.game import GameManager
@@ -37,8 +37,8 @@ tags_metadata = [
 
 
 async def save_and_send_message(
-    message: d.Message,
-    player: m.Player,
+    message: db.Message,
+    player: d.Player,
     db: AsyncSession,
     conn_manager: ConnectionManager,
 ) -> None:
@@ -57,7 +57,7 @@ async def save_and_send_message(
 
 
 async def save_and_broadcast_message(
-    message: d.Message, db: AsyncSession, conn_manager: ConnectionManager
+    message: db.Message, db: AsyncSession, conn_manager: ConnectionManager
 ) -> None:
     db.add(message)
     await db.flush([message])
@@ -74,10 +74,10 @@ async def save_and_broadcast_message(
 
 
 async def move_player_and_broadcast_message(
-    player: m.Player,
+    player: d.Player,
     from_room_id: int,
     to_room_id: int,
-    db: AsyncSession,
+    db_session: AsyncSession,
     conn_manager: ConnectionManager,
     leave_message: str | None = None,
 ) -> None:
@@ -87,34 +87,34 @@ async def move_player_and_broadcast_message(
     """
     conn_manager.move_player(player.id_, from_room_id, to_room_id)
 
-    message = d.Message(
+    message = db.Message(
         content=leave_message or f'{player.name} left the room',
         room_id=from_room_id,
-        player_id=m.ROOT.id_,
+        player_id=d.ROOT.id_,
     )
-    await save_and_broadcast_message(message, db, conn_manager)
+    await save_and_broadcast_message(message, db_session, conn_manager)
 
-    message = d.Message(
+    message = db.Message(
         content=f'{player.name} joined the room',
         room_id=to_room_id,
-        player_id=m.ROOT.id_,
+        player_id=d.ROOT.id_,
     )
-    await save_and_broadcast_message(message, db, conn_manager)
+    await save_and_broadcast_message(message, db_session, conn_manager)
 
     # TODO: Add RoomState websocket message as well?
     # TODO: Add LobbyState websocket message if lobby is involved?
 
 
 async def accept_websocket_connection(
-    player: m.Player,
+    player: d.Player,
     websocket: WebSocket,
-    db: AsyncSession,
+    db_session: AsyncSession,
     conn_manager: ConnectionManager,
 ) -> None:
     await websocket.accept()
 
     try:
-        conn_manager.connect(player, m.LOBBY.id_)
+        conn_manager.connect(player, d.LOBBY.id_)
     except PlayerAlreadyConnectedError:
         exc_args = (
             v.CustomWebsocketCodeEnum.MULTIPLE_CLIENTS,
@@ -127,51 +127,51 @@ async def accept_websocket_connection(
         room_id_with_logged_player = conn_manager.pool.get_room(
             player_id=player.id_
         ).id_
-        message = d.Message(
+        message = db.Message(
             content='Someone tried to log into your account from another device',
             room_id=room_id_with_logged_player,
-            player_id=m.ROOT.id_,
+            player_id=d.ROOT.id_,
         )
-        await save_and_send_message(message, player, db, conn_manager)
+        await save_and_send_message(message, player, db_session, conn_manager)
         raise WebSocketException(*exc_args) from None
 
-    message = d.Message(
+    message = db.Message(
         content=f'{player.name} joined the room',
-        room_id=m.LOBBY.id_,
-        player_id=m.ROOT.id_,
+        room_id=d.LOBBY.id_,
+        player_id=d.ROOT.id_,
     )
-    await save_and_broadcast_message(message, db, conn_manager)
+    await save_and_broadcast_message(message, db_session, conn_manager)
 
 
 async def handle_player_disconnect(
-    player: m.Player,
-    db: AsyncSession,
+    player: d.Player,
+    db_session: AsyncSession,
     conn_manager: ConnectionManager,
 ) -> None:
     await db.refresh(player)
     room_id = conn_manager.pool.get_room(player_id=player.id_).id_
     conn_manager.disconnect(player.id_)
 
-    is_player_in_lobby = room_id == m.LOBBY.id_
+    is_player_in_lobby = room_id == d.LOBBY.id_
     if not is_player_in_lobby:
-        active_game_with_player = await db.scalar(
-            select(d.Game).where(
+        active_game_with_player = await db_session.scalar(
+            select(db.Game).where(
                 and_(
-                    d.Game.status == m.GameStatusEnum.IN_PROGRESS,
-                    d.Game.players.contains(player),
+                    db.Game.status == d.GameStatusEnum.IN_PROGRESS,
+                    db.Game.players.contains(player),
                 )
             )
         )
 
         if not active_game_with_player:
             # If disconnected while in a game room, throw the player into the lobby
-            # player.room_id = m.LOBBY.id_
+            # player.room_id = d.LOBBY.id_
             # db.add(player)
             # await db.flush([player])
-            room = await db.scalar(
-                select(d.Room)
-                .where(d.Room.id_ == room_id)
-                .options(joinedload(d.Room.owner))
+            room = await db_session.scalar(
+                select(db.Room)
+                .where(db.Room.id_ == room_id)
+                .options(joinedload(db.Room.owner))
             )
             room_state = v.RoomState(
                 **room.to_dict(),
@@ -180,12 +180,12 @@ async def handle_player_disconnect(
             )
             await conn_manager.broadcast_room_state(room_id, room_state)
 
-            message = d.Message(
+            message = db.Message(
                 content=f'{player.name} disconnected from the room',
                 room_id=room_id,
-                player_id=m.ROOT.id_,
+                player_id=d.ROOT.id_,
             )
-            await save_and_broadcast_message(message, db, conn_manager)
+            await save_and_broadcast_message(message, db_session, conn_manager)
             return
         else:
             # TODO: If disconnected during the game, keep him in a room and the game for
@@ -197,17 +197,17 @@ async def handle_player_disconnect(
         )
         await conn_manager.broadcast_lobby_state(lobby_state)
 
-        message = d.Message(
+        message = db.Message(
             content=f'{player.name} disconnected from the room',
             room_id=room_id,
-            player_id=m.ROOT.id_,
+            player_id=d.ROOT.id_,
         )
-        await save_and_broadcast_message(message, db, conn_manager)
+        await save_and_broadcast_message(message, db_session, conn_manager)
 
 
 async def listen_for_messages(
-    player: m.Player,
-    db: AsyncSession,
+    player: d.Player,
+    db_session: AsyncSession,
     conn_manager: ConnectionManager,
     game_manager: GameManager,
 ):
@@ -222,12 +222,12 @@ async def listen_for_messages(
             match type(websocket_message.payload):
                 case v.ChatMessage:
                     chat_message = cast(v.ChatMessage, websocket_message.payload)
-                    message = d.Message(
+                    message = db.Message(
                         content=chat_message.content,
                         room_id=chat_message.room_id,
                         player=player,
                     )
-                    await save_and_broadcast_message(message, db, conn_manager)
+                    await save_and_broadcast_message(message, db_session, conn_manager)
 
                 case v.WordInput:
                     game_input = cast(v.WordInput, websocket_message.payload)
@@ -251,13 +251,13 @@ async def listen_for_messages(
             print(e)
 
         # Commit all flushed resources to DB every time a message is received
-        await db.commit()
+        await db_session.commit()
 
 
 async def run_game(
-    game: Deathmatch, room: m.Room, conn_manager: ConnectionManager
+    game: Deathmatch, room: d.Room, conn_manager: ConnectionManager
 ) -> None:
-    room_info = cast(m.Room, conn_manager.pool.get_room(room_id=room.id_))
+    room_info = cast(d.Room, conn_manager.pool.get_room(room_id=room.id_))
     word_input_buffer = room_info.word_input_buffer
 
     start_game_state = game.start()
@@ -290,7 +290,7 @@ async def run_game(
 
     end_game_state = game.end()
     await conn_manager.broadcast_game_state(room.id_, end_game_state)
-    room.status = m.RoomStatusEnum.OPEN
+    room.status = d.RoomStatusEnum.OPEN
     await broadcast_single_room_state(room, conn_manager)
 
     async with init_db_session() as db:
@@ -298,7 +298,7 @@ async def run_game(
 
 
 async def broadcast_full_lobby_state(conn_manager: ConnectionManager) -> None:
-    lobby_players = conn_manager.pool.get_room_players(m.LOBBY.id_)
+    lobby_players = conn_manager.pool.get_room_players(d.LOBBY.id_)
     players_out = {
         lobby_player.name: v.LobbyPlayerOut.model_validate(lobby_player)
         for lobby_player in lobby_players
@@ -318,12 +318,12 @@ async def broadcast_full_lobby_state(conn_manager: ConnectionManager) -> None:
     await conn_manager.broadcast_lobby_state(lobby_state)
 
 
-async def export_and_persist_game(game: Deathmatch, db: AsyncSession) -> None:
+async def export_and_persist_game(game: Deathmatch, db_session: AsyncSession) -> None:
     """Gather game data designated to be persisted and issue a bulk insert."""
-    game_db = await db.scalar(select(d.Game).where(d.Game.id_ == game.id_))
+    game_db = await db_session.scalar(select(db.Game).where(db.Game.id_ == game.id_))
     game_db.ended_on = datetime.utcnow()
-    game_db.status = m.GameStatusEnum.FINISHED
-    db.add(game_db)
+    game_db.status = d.GameStatusEnum.FINISHED
+    db_session.add(game_db)
 
     turn_db_dicts = []
     for turn in game.turns:
@@ -338,11 +338,11 @@ async def export_and_persist_game(game: Deathmatch, db: AsyncSession) -> None:
         turn_db_dicts.append(turn_db_dict)
 
     # Bulk insert
-    await db.execute(insert(d.Turn), turn_db_dicts)
+    await db_session.execute(insert(db.Turn), turn_db_dicts)
 
 
 async def broadcast_single_room_state(
-    room: m.Room, conn_manager: ConnectionManager
+    room: d.Room, conn_manager: ConnectionManager
 ) -> None:
     """Send `LobbyState` and `RoomState` broadcast for a single room state change."""
     room_state = v.RoomState(**room.to_dict(), owner_name=room.owner.name)
