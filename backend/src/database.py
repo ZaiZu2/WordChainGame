@@ -13,16 +13,13 @@ from sqlalchemy.ext.asyncio import (
 import src.schemas.database as db
 from config import get_config
 
-# FILE STORING ONLY ORM SCHEMAS USED AS PERSISTANCE MODELS
-
-
 engine = create_async_engine(get_config().DATABASE_URI)
 async_session = async_sessionmaker(bind=engine, autocommit=False, autoflush=True)
 
 
 @asynccontextmanager
 async def init_db_session() -> AsyncGenerator[AsyncSession, None]:
-    """A `get_db` clone, but can be used as a stand-alone async context manager."""  # noqa: D401
+    """A `get_db` dependency clone, but can be used as a stand-alone async context manager."""  # noqa: D401
     async with async_session() as session:
         try:
             await session.begin()

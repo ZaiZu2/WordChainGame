@@ -218,7 +218,6 @@ async def listen_for_messages(
             websocket_message_dict = await player.websocket.receive_json()
             websocket_message = v.WebSocketMessage(**websocket_message_dict)
 
-            await db.refresh(player)
             match type(websocket_message.payload):
                 case v.ChatMessage:
                     chat_message = cast(v.ChatMessage, websocket_message.payload)
@@ -228,7 +227,7 @@ async def listen_for_messages(
                         player=player,
                     )
                     await save_and_broadcast_message(message, db_session, conn_manager)
-
+                    await db_session.commit()
                 case v.WordInput:
                     game_input = cast(v.WordInput, websocket_message.payload)
                     game = game_manager.get(game_input.game_id)
@@ -249,9 +248,6 @@ async def listen_for_messages(
             # channel crashes
             print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
             print(e)
-
-        # Commit all flushed resources to DB every time a message is received
-        await db_session.commit()
 
 
 async def run_game(
