@@ -364,7 +364,7 @@ async def start_game(
     # Create game placeholder in the database to assign the ID
     game_db = d.Game(
         status=m.GameStatusEnum.IN_PROGRESS,
-        rules=room.rules,
+        rules=room.rules.to_dict(),
         room_id=room.id_,
     )
     db.add(game_db)
@@ -379,7 +379,7 @@ async def start_game(
     )
     await broadcast_single_room_state(room, conn_manager)
 
-    game = game_manager.create(game_db)
+    game = game_manager.create(game_db.id_, room.rules, room.players.values())
     asyncio.create_task(run_game(game, room, conn_manager))
 
     players_out = {}

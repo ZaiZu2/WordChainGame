@@ -1,4 +1,5 @@
-import src.database as d
+from typing import Iterable
+
 import src.schemas.domain as m  # m - domain
 from src.game.deathmatch import Deathmatch
 
@@ -15,12 +16,11 @@ class GameManager:
     def get(self, game_id: int) -> Deathmatch:
         return self.games[game_id]
 
-    def create(self, game_db: d.Game) -> Deathmatch:
-        if game_db.rules['type_'] == m.GameTypeEnum.DEATHMATCH:
-            rules = m.DeathmatchRules(**game_db.rules)
-            game = self.games[game_db.id_] = Deathmatch(
-                game_db.id_, game_db.players, rules
-            )
+    def create(
+        self, game_id: int, rules: m.DeathmatchRules, players: Iterable[m.Player]
+    ) -> Deathmatch:
+        if rules.type_ == m.GameTypeEnum.DEATHMATCH:
+            game = self.games[game_id] = Deathmatch(game_id, players, rules)
             return game
         else:
             raise NotImplementedError('Unsupported game type')

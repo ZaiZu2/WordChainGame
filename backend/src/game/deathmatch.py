@@ -1,7 +1,7 @@
 import random
 from dataclasses import asdict
 from datetime import datetime
-from typing import Any, cast
+from typing import Any, Iterable, cast
 
 import src.schemas.domain as m  # m - domain
 import src.schemas.validation as v  # v - validation
@@ -61,7 +61,7 @@ class OrderedPlayers(list):
 
 class Deathmatch:
     def __init__(
-        self, id_: int, players: list[m.Player], rules: m.DeathmatchRules
+        self, id_: int, players: Iterable[m.Player], rules: m.DeathmatchRules
     ) -> None:
         self.id_ = id_
         self.status = m.GameStatusEnum.STARTED
@@ -69,7 +69,7 @@ class Deathmatch:
         self.state: m.GameStateEnum = m.GameStateEnum.CREATING
 
         game_players = [
-            m.GamePlayer(score=self.rules.start_score, mistakes=0, **player.to_dict())
+            m.GamePlayer(id_=player.id_, name=player.name, score=self.rules.start_score)
             for player in players
         ]
         self.players = OrderedPlayers(game_players)

@@ -1,46 +1,17 @@
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass, field, fields, is_dataclass
-from datetime import datetime, timedelta
+from dataclasses import asdict, dataclass, field, fields, is_dataclass
+from datetime import datetime
 from enum import Enum
-from typing import Annotated, Any, Literal, Protocol
+from typing import Any, Literal, Protocol
 from uuid import UUID
 
 from fastapi import WebSocket
-from pydantic import (
-    AfterValidator,
-    BaseModel,
-    ConfigDict,
-    PlainSerializer,
-    validator,
-)
 
 from config import get_config
 
 # FILE STORING ONLY DOMAIN SCHEMAS USED AS INTERNAL DATA STRUCTURES
-
-
-class GeneralBaseModel(BaseModel):
-    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
-
-
-def is_date_utc(date: datetime) -> datetime:
-    if date.utcoffset() is not None and date.utcoffset() != timedelta(0):
-        raise ValueError('Only datetimes in a UTC zone are allowed')
-    date = date.replace(tzinfo=None)  # Cast to naive datetime after validation
-    return date
-
-
-# NOTE: Only UTC timestamps should be accepted by API server.
-# NOTE: Currently used only for APITriggers, as zulu datetime formating can potentially break Desktop
-UTCDatetime = Annotated[
-    datetime,
-    AfterValidator(is_date_utc),  # Validate if the date is in UTC zone (zulu format)
-    PlainSerializer(
-        lambda date: f'{date.isoformat()}Z', when_used='json'
-    ),  # Serialize Timestamps to zulu format
-]
 
 
 @dataclass
@@ -55,6 +26,9 @@ class DataclassMixin:
                     setattr(self, key, prev_dataclass.__class__(**value))
 
                 setattr(self, key, value)
+
+    def to_dict(self) -> dict:
+        return asdict(self)
 
 
 ##### PLAYER #####
@@ -105,20 +79,14 @@ class Player(DataclassMixin):
         return result
 
 
-class GamePlayer(GeneralBaseModel):
+@dataclass(kw_only=True)
+class GamePlayer(DataclassMixin):
     id_: UUID
     name: str
     in_game: bool = True
     place: int | None = None
     score: int
     mistakes: int = 0
-
-    @validator('in_game')
-    @classmethod
-    def validate_in_game(cls, in_game, values):
-        if not in_game and values.get('place') is None:
-            raise ValueError('`place` must be set if `in_game` is changed to False')
-        return in_game
 
 
 ##### ROOM #####
@@ -240,14 +208,14 @@ class Word:
 @dataclass(kw_only=True)
 class Turn:
     word: Word | None = None
-    started_on: UTCDatetime
-    ended_on: UTCDatetime | None = None
+    started_on: datetime
+    ended_on: datetime | None = None
     info: str | None = None
     player_id: UUID
 
 
 @dataclass(kw_only=True)
-class DeathmatchRules:
+class DeathmatchRules(DataclassMixin):
     type_: Literal[GameTypeEnum.DEATHMATCH] = GameTypeEnum.DEATHMATCH
     round_time: int
     start_score: int

@@ -22,13 +22,13 @@ class WebSocketMessageTypeEnum(str, Enum):
 #################################### GAME INPUTS ####################################
 
 
-class _GameInput(m.GeneralBaseModel):
+class _GameInput(v.GeneralBaseModel):
     type_: Literal[WebSocketMessageTypeEnum.GAME_INPUT] = (
         WebSocketMessageTypeEnum.GAME_INPUT
     )
 
 
-class WordInput(_GameInput, m.GeneralBaseModel):
+class WordInput(_GameInput, v.GeneralBaseModel):
     input_type: Literal['word_input'] = Field('word_input')
     game_id: int
     word: str
@@ -42,38 +42,38 @@ GameInput = Annotated[WordInput, Field(discriminator='input_type')]
 #################################### GAME OUTPUTS ####################################
 
 
-class _GameState(m.GeneralBaseModel):
+class _GameState(v.GeneralBaseModel):
     type_: Literal[WebSocketMessageTypeEnum.GAME_STATE] = (
         WebSocketMessageTypeEnum.GAME_STATE
     )
 
 
-class StartGameState(_GameState, m.GeneralBaseModel):
+class StartGameState(_GameState, v.GeneralBaseModel):
     state: Literal[m.GameStateEnum.STARTED] = m.GameStateEnum.STARTED
     id_: int = Field(serialization_alias='id')
     status: m.GameStatusEnum
-    players: list[m.GamePlayer]
+    players: list[v.GamePlayer]
     rules: v.DeathmatchRules
 
 
-class EndGameState(_GameState, m.GeneralBaseModel):
+class EndGameState(_GameState, v.GeneralBaseModel):
     state: Literal[m.GameStateEnum.ENDED] = m.GameStateEnum.ENDED
     status: m.GameStatusEnum
 
 
-class WaitState(_GameState, m.GeneralBaseModel):
+class WaitState(_GameState, v.GeneralBaseModel):
     state: Literal[m.GameStateEnum.WAITING] = m.GameStateEnum.WAITING
 
 
-class StartTurnState(_GameState, m.GeneralBaseModel):
+class StartTurnState(_GameState, v.GeneralBaseModel):
     state: Literal[m.GameStateEnum.STARTED_TURN] = m.GameStateEnum.STARTED_TURN
     current_turn: v.TurnOut
     status: m.GameStatusEnum | None = None
 
 
-class EndTurnState(_GameState, m.GeneralBaseModel):
+class EndTurnState(_GameState, v.GeneralBaseModel):
     state: Literal[m.GameStateEnum.ENDED_TURN] = m.GameStateEnum.ENDED_TURN
-    players: list[m.GamePlayer]
+    players: list[v.GamePlayer]
     current_turn: v.TurnOut
 
 
@@ -88,11 +88,11 @@ GameState = Annotated[
 #################################### ACTIONS ####################################
 
 
-class _Action(m.GeneralBaseModel):
+class _Action(v.GeneralBaseModel):
     type_: Literal[WebSocketMessageTypeEnum.ACTION] = WebSocketMessageTypeEnum.ACTION
 
 
-class KickPlayerAction(_Action, m.GeneralBaseModel):
+class KickPlayerAction(_Action, v.GeneralBaseModel):
     action: Literal['KICK_PLAYER'] = Field('KICK_PLAYER')
 
 
@@ -102,18 +102,18 @@ Action = KickPlayerAction
 #################################### OTHER MESSAGES ####################################
 
 
-class ChatMessage(m.GeneralBaseModel):
+class ChatMessage(v.GeneralBaseModel):
     type_: Literal[WebSocketMessageTypeEnum.CHAT] = Field(
         default=WebSocketMessageTypeEnum.CHAT
     )
     id_: int | None = Field(None, serialization_alias='id')
-    created_on: m.UTCDatetime | None = None
+    created_on: v.UTCDatetime | None = None
     content: str
     player_name: str
     room_id: int
 
 
-class LobbyState(m.GeneralBaseModel):
+class LobbyState(v.GeneralBaseModel):
     type_: Literal[WebSocketMessageTypeEnum.LOBBY_STATE] = Field(
         default=WebSocketMessageTypeEnum.LOBBY_STATE
     )
@@ -122,7 +122,7 @@ class LobbyState(m.GeneralBaseModel):
     stats: v.CurrentStatistics | None = None
 
 
-class RoomState(m.GeneralBaseModel):
+class RoomState(v.GeneralBaseModel):
     type_: Literal[WebSocketMessageTypeEnum.ROOM_STATE] = Field(
         default=WebSocketMessageTypeEnum.ROOM_STATE
     )
@@ -139,7 +139,7 @@ class CustomWebsocketCodeEnum(int, Enum):
     MULTIPLE_CLIENTS = 4001  # Player is already connected with another client
 
 
-class ConnectionState(m.GeneralBaseModel):
+class ConnectionState(v.GeneralBaseModel):
     type_: Literal[WebSocketMessageTypeEnum.CONNECTION_STATE] = Field(
         default=WebSocketMessageTypeEnum.CONNECTION_STATE
     )
@@ -147,7 +147,7 @@ class ConnectionState(m.GeneralBaseModel):
     reason: str
 
 
-class WebSocketMessage(m.GeneralBaseModel):
+class WebSocketMessage(v.GeneralBaseModel):
     payload: (
         ChatMessage
         | GameState
