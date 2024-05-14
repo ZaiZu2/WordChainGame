@@ -50,7 +50,7 @@ class Rules(m.GeneralBaseModel):
     type_: m.GameTypeEnum = Field(serialization_alias='type')
 
 
-class DeathmatchRulesIn(Rules):
+class DeathmatchRules(Rules):
     type_: Literal[m.GameTypeEnum.DEATHMATCH] = Field(
         m.GameTypeEnum.DEATHMATCH, serialization_alias='type'
     )
@@ -66,19 +66,19 @@ class RoomOut(m.GeneralBaseModel):
     players_no: int
     capacity: int
     status: m.RoomStatusEnum
-    rules: DeathmatchRulesIn
+    rules: DeathmatchRules
     owner_name: str
 
 
 class RoomIn(m.GeneralBaseModel):
     name: str = Field(..., max_length=10)
     capacity: int = Field(5, ge=1, le=10)
-    rules: DeathmatchRulesIn
+    rules: DeathmatchRules
 
 
 class RoomInModify(m.GeneralBaseModel):
     capacity: int = Field(5, ge=1, le=10)
-    rules: DeathmatchRulesIn
+    rules: DeathmatchRules
 
 
 # HACK: Avoid circular import issue between `validation.py` and `websockets.py` while

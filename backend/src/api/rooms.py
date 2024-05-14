@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import src.database as d  # d - database
 import src.schemas.domain as m  # m - domain
 import src.schemas.validation as v  # v - validation
+from src.api.utils import cast_v2d_rules
 from src.connection_manager import ConnectionManager
 from src.dependencies import (
     get_connection_manager,
@@ -51,8 +52,12 @@ async def create_room(
     await db.flush([room_db])
 
     room = m.Room(
-        **{**room_db.to_dict(), **room_in.model_dump()}, # overwrite repeating keyword args
+        id_=room_db.id_,
+        name=room_db.name,
+        capacity=room_in.capacity,
+        created_on=room_db.created_on,
         owner=player,
+        rules=cast_v2d_rules(room_in.rules),
     )  # fmt: off
     conn_manager.pool.create_room(room)
 

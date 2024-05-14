@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass, field, fields
+from dataclasses import dataclass, field, fields, is_dataclass
 from datetime import datetime, timedelta
 from enum import Enum
 from typing import Annotated, Any, Literal, Protocol
@@ -49,6 +49,11 @@ class DataclassMixin:
         field_names = {f.name for f in fields(self)}
         for key, value in kwargs.items():
             if key in field_names:
+                prev_dataclass = getattr(self, key)
+                # If the field is a dataclass, create a new instance of it
+                if is_dataclass(prev_dataclass):
+                    setattr(self, key, prev_dataclass.__class__(**value))
+
                 setattr(self, key, value)
 
     # def to_dict(self, skip_dataclasses: bool = False) -> dict:
@@ -265,6 +270,7 @@ class Turn:
 
 @dataclass(kw_only=True)
 class DeathmatchRules:
+    type_: Literal[GameTypeEnum.DEATHMATCH] = GameTypeEnum.DEATHMATCH
     round_time: int
     start_score: int
     penalty: int
@@ -291,7 +297,6 @@ class GameFinishedEvent(GameEvent):
 
 
 # Global root domain models representing server room & user, accessible to all components of the application
-# They are set in `create_root_objects()` on a webserver startup
 ROOT = Player(
     id_=get_config().ROOT_ID,
     name=get_config().ROOT_NAME,
@@ -307,5 +312,8 @@ LOBBY = Room(
     created_on=None,
     owner=ROOT,
     rules=None,
+    # rules=DeathmatchRules(
+    #     type_=GameTypeEnum.DEATHMATCH, round_time=60, start_score=0, penalty=0, reward=0
+    # ),
 )
 ROOT.room = LOBBY
