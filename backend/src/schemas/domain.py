@@ -56,28 +56,6 @@ class DataclassMixin:
 
                 setattr(self, key, value)
 
-    # def to_dict(self, skip_dataclasses: bool = False) -> dict:
-    #     """
-    #     Perform only a shallow serialization of the dataclass - only parent and it's
-    #     children dataclasses will be serialized. Any child backreferencing the parent
-    #     will be skipped. This avoids infinite recursion in the serialization process.
-
-    #     Example:
-    #     -------
-    #     `Player` and `Room` are referencing each other, leading to `asdict` recursion error.
-    #     """
-    #     result = {}
-    #     for f in fields(self):
-    #         value = getattr(self, f.name)
-
-    #         if is_dataclass(value) and f.metadata.get('backref') is True:
-    #             if skip_dataclasses:
-    #                 continue
-    #             result[f.name] = value.to_dict(skip_dataclasses=True)
-    #         else:
-    #             result[f.name] = value
-    #     return result
-
 
 ##### PLAYER #####
 

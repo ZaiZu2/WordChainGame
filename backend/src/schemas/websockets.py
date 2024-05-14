@@ -53,7 +53,7 @@ class StartGameState(_GameState, m.GeneralBaseModel):
     id_: int = Field(serialization_alias='id')
     status: m.GameStatusEnum
     players: list[m.GamePlayer]
-    rules: m.DeathmatchRules
+    rules: v.DeathmatchRules
 
 
 class EndGameState(_GameState, m.GeneralBaseModel):
@@ -130,7 +130,7 @@ class RoomState(m.GeneralBaseModel):
     name: str
     capacity: int
     status: m.RoomStatusEnum
-    rules: m.DeathmatchRules
+    rules: v.DeathmatchRules
     owner_name: str
     players: dict[str, v.RoomPlayerOut | None] | None = None  # player_name: player
 
