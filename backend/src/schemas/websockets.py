@@ -102,7 +102,7 @@ Action = KickPlayerAction
 #################################### OTHER MESSAGES ####################################
 
 
-class ChatMessage(v.GeneralBaseModel):
+class Message(v.GeneralBaseModel):
     type_: Literal[WebSocketMessageTypeEnum.CHAT] = Field(
         default=WebSocketMessageTypeEnum.CHAT
     )
@@ -149,7 +149,7 @@ class ConnectionState(v.GeneralBaseModel):
 
 class WebSocketMessage(v.GeneralBaseModel):
     payload: (
-        ChatMessage
+        Message
         | GameState
         | LobbyState
         | RoomState

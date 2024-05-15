@@ -26,7 +26,7 @@ class ConnectionManager:
             raise ValueError('Player is not connected')
         self.pool.remove(player_id)
 
-    async def broadcast_chat_message(self, message: v.ChatMessage) -> None:
+    async def broadcast_chat_message(self, message: v.Message) -> None:
         room_players = self.pool.get_room_players(message.room_id)
         if room_players is None:
             raise ValueError('Room does not exist')
@@ -40,7 +40,7 @@ class ConnectionManager:
 
     async def send_chat_message(
         self,
-        message: v.ChatMessage,
+        message: v.Message,
         player_id: UUID,
     ) -> None:
         player = self.pool.get_player(player_id)

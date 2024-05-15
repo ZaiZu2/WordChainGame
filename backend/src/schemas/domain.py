@@ -161,10 +161,6 @@ class Room(DataclassMixin):
         }
         if depth > 0:
             result['owner'] = self.owner.to_dict(depth=depth - 1)
-            # result['players'] = {
-            #     player_id: player.to_dict(depth=depth - 1)
-            #     for player_id, player in self.players.items()
-            # }
         return result
 
 
@@ -258,8 +254,5 @@ LOBBY = Room(
     created_on=None,
     owner=ROOT,
     rules=None,
-    # rules=DeathmatchRules(
-    #     type_=GameTypeEnum.DEATHMATCH, round_time=60, start_score=0, penalty=0, reward=0
-    # ),
 )
 ROOT.room = LOBBY

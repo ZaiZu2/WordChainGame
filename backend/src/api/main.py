@@ -138,10 +138,8 @@ async def connect(
         select(db.Player).where(db.Player.id_ == player_id)
     )
     player = d.Player(**player_db.to_dict(), room=d.LOBBY, websocket=websocket)
-
     await accept_websocket_connection(player, websocket, db_session, conn_manager)
     await broadcast_full_lobby_state(conn_manager)
-    await db_session.commit()
 
     try:
         # Run as a separate task so blocking operations can coexist with future polling
