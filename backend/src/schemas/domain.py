@@ -24,8 +24,8 @@ class DataclassMixin:
                 # If the field is a dataclass, create a new instance of it
                 if is_dataclass(prev_dataclass):
                     setattr(self, key, prev_dataclass.__class__(**value))
-
-                setattr(self, key, value)
+                else:
+                    setattr(self, key, value)
 
     def to_dict(self) -> dict:
         return asdict(self)

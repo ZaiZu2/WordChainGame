@@ -341,7 +341,12 @@ async def broadcast_single_room_state(
     room: d.Room, conn_manager: ConnectionManager
 ) -> None:
     """Send `LobbyState` and `RoomState` broadcast for a single room state change."""
-    room_state = v.RoomState(**room.to_dict(), owner_name=room.owner.name)
+    room_players = conn_manager.pool.get_room_players(room.id_)
+    room_state = v.RoomState(
+        **room.to_dict(),
+        players={room_player.name: room_player for room_player in room_players},  # type: ignore
+        owner_name=room.owner.name,
+    )
     await conn_manager.broadcast_room_state(room.id_, room_state)
 
     room_out = v.RoomOut(

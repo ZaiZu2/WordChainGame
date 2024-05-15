@@ -29,6 +29,7 @@ from src.helpers import (
     get_current_stats,
     move_player_and_broadcast_message,
     run_game,
+    save_and_broadcast_message,
 )
 
 router = APIRouter(tags=[TagsEnum.ROOMS])
@@ -74,6 +75,7 @@ async def modify_room(
     room_in_modify: v.RoomInModify,
     room: Annotated[d.Room, Depends(get_room)],
     player: Annotated[d.Player, Depends(get_player)],
+    db_session: Annotated[AsyncSession, Depends(get_db_session)],
     conn_manager: Annotated[ConnectionManager, Depends(get_connection_manager)],
 ) -> v.RoomOut:
     if room_in_modify.capacity < len(room.players):
@@ -84,21 +86,23 @@ async def modify_room(
 
     room.update(**room_in_modify.model_dump())
 
-    room_state = v.RoomState(owner_name=room.owner.name, **room.to_dict())
-    await conn_manager.broadcast_room_state(room_state.id_, room_state)
+    room_players = conn_manager.pool.get_room_players(room.id_)
+    for room_player in room_players:
+        room_player.ready = False
 
-    room_conns = conn_manager.pool.get_room_players(room.id_)
-    room_out = v.RoomOut(
-        players_no=len(room_conns),
+    message_db = db.Message(
+        content='Game settings have been changed',
+        room_id=room.id_,
+        player_id=d.ROOT.id_,
+    )
+    await save_and_broadcast_message(message_db, db_session, conn_manager)
+
+    await broadcast_single_room_state(room, conn_manager)
+    return v.RoomOut(
+        players_no=len(room_players),
         owner_name=room.owner.name,
         **room.to_dict(),
     )
-    lobby_state = v.LobbyState(
-        rooms={room.id_: room_out}, stats=get_current_stats(conn_manager)
-    )
-    await conn_manager.broadcast_lobby_state(lobby_state)
-
-    return room_out
 
 
 @router.post('/rooms/{room_id}/join', status_code=status.HTTP_200_OK)
