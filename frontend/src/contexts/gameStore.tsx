@@ -5,8 +5,6 @@ import { DeathmatchRules, GamePlayer, GameState, Turn } from "@/types";
 export const initialGameStoreSlice = {
     gameId: undefined,
     setGameId: () => {},
-    gameStatus: undefined,
-    setGameStatus: () => {},
     gameRules: undefined,
     setGameRules: () => {},
     gamePlayers: undefined,
@@ -25,13 +23,8 @@ export default function GameStoreSlice(switchMode: (mode: "lobby" | "room" | "ga
         "STARTED" | "ENDED" | "WAITING" | "STARTED_TURN" | "ENDED_TURN" | undefined
     >(undefined);
     const [gameId, setGameId] = useState<number | undefined>(undefined);
-    const [gameStatus, setGameStatus] = useState<
-        "Starting" | "In progress" | "Finished" | undefined
-    >(undefined);
     const [gameRules, setGameRules] = useState<DeathmatchRules | undefined>(undefined);
-
     const [gamePlayers, setGamePlayers] = useState<GamePlayer[] | undefined>(undefined);
-
     const [currentTurn, setGameCurrentTurn] = useState<Turn | null | undefined>(undefined);
     const [gameTurns, setGameTurns] = useState<Turn[] | undefined>(undefined);
 
@@ -44,7 +37,6 @@ export default function GameStoreSlice(switchMode: (mode: "lobby" | "room" | "ga
                 switchMode("game");
 
                 setGameId(newGameState.id);
-                setGameStatus(newGameState.status);
                 setGameRules(newGameState.rules);
                 setGamePlayers(newGameState.players);
 
@@ -52,13 +44,11 @@ export default function GameStoreSlice(switchMode: (mode: "lobby" | "room" | "ga
                 setGameTurns([]);
                 break;
             case "ENDED":
-                setGameStatus("Finished");
                 break;
             case "WAITING":
                 setGameState(newGameState.state);
                 break;
             case "STARTED_TURN":
-                newGameState.status && setGameStatus(newGameState.status);
                 setGameCurrentTurn(newGameState.current_turn);
                 break;
             case "ENDED_TURN":
@@ -75,7 +65,6 @@ export default function GameStoreSlice(switchMode: (mode: "lobby" | "room" | "ga
 
     function resetGameState() {
         setGameId(undefined);
-        setGameStatus(undefined);
         setGameRules(undefined);
         setGamePlayers(undefined);
         setGameCurrentTurn(undefined);
@@ -85,8 +74,6 @@ export default function GameStoreSlice(switchMode: (mode: "lobby" | "room" | "ga
     return {
         gameId,
         setGameId,
-        gameStatus,
-        setGameStatus,
         gamePlayers,
         setGamePlayers,
         gameRules,

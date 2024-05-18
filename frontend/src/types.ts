@@ -80,7 +80,6 @@ export type Turn = {
 type StartGameState = {
     state: "STARTED";
     id: number;
-    status: "Starting";
     players: GamePlayer[];
     lost_players: GamePlayer[];
     rules: DeathmatchRules;
@@ -88,7 +87,6 @@ type StartGameState = {
 
 type EndGameState = {
     state: "ENDED";
-    status: "Finished";
 };
 
 type WaitState = {
@@ -98,7 +96,6 @@ type WaitState = {
 type StartTurnState = {
     state: "STARTED_TURN";
     current_turn: Turn;
-    status?: "In progress";
 };
 
 type EndTurnState = {

@@ -488,7 +488,6 @@ function CurrentPlayer() {
     const { gamePlayers, currentTurn, gameRules, gameState } = useStore() as {
         gamePlayers: GamePlayer[];
         currentTurn: Turn;
-        gameStatus: string;
         gameRules: DeathmatchRules;
         gameState: "STARTED" | "ENDED" | "WAITING" | "STARTED_TURN" | "ENDED_TURN";
     };
@@ -559,12 +558,10 @@ function WordList() {
         gameTurns: _gameTurns,
         isLoggedPlayersTurn: isLocalPlayersTurn,
         currentTurn: _currentTurn,
-        gameStatus: _gameStatus,
         gameState: _gameState,
     } = useStore();
     const gamePlayers = _gamePlayers as GamePlayer[];
     const gameTurns = _gameTurns as Turn[];
-    const gameStatus = _gameStatus as string;
     const currentTurn = _currentTurn as Turn;
     const gameState = _gameState as "STARTED" | "ENDED" | "WAITING" | "STARTED_TURN" | "ENDED_TURN";
 
@@ -660,7 +657,7 @@ function WordList() {
                         })}
                         <tr>
                             <td className="p-0 border-0 align-middle" style={{ height: "35px" }}>
-                                {gameStatus === "In progress"
+                                {["STARTED_TURN", "ENDED_TURN"].includes(gameState)
                                     ? gamePlayers[currentTurn?.player_idx as number].name
                                     : gamePlayers[0].name}
                             </td>
