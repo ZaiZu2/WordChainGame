@@ -35,6 +35,7 @@ from src.helpers import (
     handle_player_disconnect,
     listen_for_messages,
 )
+from src.misc import cache
 
 router = APIRouter(tags=[TagsEnum.MAIN])
 
@@ -107,6 +108,7 @@ async def update_player_name(
 
 
 @router.get('/stats', status_code=status.HTTP_200_OK)
+@cache.cache(ttl=30)
 async def get_stats(
     db_session: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> v.AllTimeStatistics:
@@ -115,9 +117,23 @@ async def get_stats(
             db.Game.status == d.GameStatusEnum.FINISHED
         )
     )
-    # TODO: Calculate the longest chain and the longest game time
+
+    results = await db_session.execute(
+        select(
+            func.count(db.Turn.word),
+            func.max(db.Game.ended_on - db.Game.created_on),
+        )
+        .join(db.Turn, db.Game.id_ == db.Turn.game_id)
+        .filter(db.Game.status == d.GameStatusEnum.FINISHED)
+        .group_by(db.Game.id_)
+        .order_by(func.count(db.Turn.word).desc())
+    )
+    longest_chain, longest_game = results.first() or (0, 0)
+
     return v.AllTimeStatistics(
-        longest_chain=10, longest_game_time=1234, total_games=total_games
+        longest_chain=longest_chain,
+        longest_game_time=longest_game,
+        total_games=total_games,  # type: ignore
     )
 
 
