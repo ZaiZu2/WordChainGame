@@ -5,7 +5,7 @@ from fastapi import WebSocket
 
 import src.schemas.domain as d
 import src.schemas.validation as v
-from src.error_handlers import PlayerAlreadyConnectedError
+from src.misc import PlayerAlreadyConnectedError
 from src.player_room_manager import PlayerRoomManager
 
 
@@ -13,11 +13,14 @@ class ConnectionManager:
     def __init__(self) -> None:
         self.pool = PlayerRoomManager()
 
-    def connect(self, player: d.Player, room_id: int):
-        if self.pool.get_player(player.id_):
+    def connect(self, player: d.Player, room_id: int) -> None:
+        try:  # If successfully gets the player, it means the player is already connected
+            self.pool.get_player(player.id_)
             raise PlayerAlreadyConnectedError(
                 'Player is already connected with another client.'
             )
+        except KeyError:
+            pass
 
         self.pool.add(player, room_id)
 

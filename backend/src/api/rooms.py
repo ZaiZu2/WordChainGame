@@ -91,7 +91,7 @@ async def modify_room(
         room_player.ready = False
 
     message_db = db.Message(
-        content='Game settings have been changed',
+        content='game settings have been changed',
         room_id=room.id_,
         player_id=d.ROOT.id_,
     )

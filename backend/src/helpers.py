@@ -13,9 +13,9 @@ import src.schemas.validation as v
 from config import get_config
 from src.connection_manager import ConnectionManager
 from src.database import init_db_session
-from src.error_handlers import PlayerAlreadyConnectedError
 from src.game.deathmatch import Deathmatch
 from src.game.game import GameManager
+from src.misc import PlayerAlreadyConnectedError
 
 
 class TagsEnum(str, Enum):

@@ -58,13 +58,14 @@ async def get_player(
             detail='Player is not authenticated',
         )
 
-    player = conn_manager.pool.get_player(player_id)  # type: ignore
-    if not player:
+    try:
+        player = conn_manager.pool.get_player(player_id)  # type: ignore
+    except KeyError:
         await set_auth_cookie('', response)
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail='Player is not authenticated',
-        )
+        ) from None
 
     # Extend cookie's expiration time, after each new, successful request
     await set_auth_cookie(player_id, response)
