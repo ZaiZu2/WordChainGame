@@ -1,20 +1,32 @@
 import httpx
 
-import src.schemas as s
+import src.schemas.domain as d
 from config import get_config
 
+client = httpx.Client()
 
-def check_word_correctness(word: str) -> s.Word:
-    client = httpx.Client()
-    response = client.get(f'{get_config().DICTIONARY_API_URL}{word}')
 
-    # TODO: Handle connection errors and other exceptions
-    if response.status_code == 404:
-        # TODO: Function does 2  things - unpacks response and returns False on failed validation
-        return s.Word(content=word, is_correct=False)
+def check_word_correctness(word: str) -> d.Word:
+    response = client.get(
+        get_config().DICTIONARY_API_URL.format(
+            word=word, api_key=get_config().DICTIONARY_API_KEY
+        )
+    )
 
-    definitions = {
-        meaning['partOfSpeech']: meaning['definitions'][0]['definition']
-        for meaning in response.json()[0]['meanings']
-    }
-    return s.Word(content=word, is_correct=True, description=definitions)
+    if response.status_code // 100 == 5:
+        raise Exception('Dictionary API is not available')
+
+    data = response.json()
+
+    # Mirriam-Webster returns a list of similar words if the word is not found
+    if any(isinstance(elem, str) for elem in data):
+        return d.Word(content=word, is_correct=False)
+
+    definitions = [definition for definition in data if definition.get('fl')]
+
+    description: list[tuple[str, str]] = [
+        (definition['fl'], definition['shortdef'][0])
+        for i, definition in enumerate(definitions)
+        if i < 3 and definition.get('fl')
+    ]
+    return d.Word(content=word, is_correct=True, description=description)

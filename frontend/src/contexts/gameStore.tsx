@@ -5,8 +5,6 @@ import { DeathmatchRules, GamePlayer, GameState, Turn } from "@/types";
 export const initialGameStoreSlice = {
     gameId: undefined,
     setGameId: () => {},
-    gameStatus: undefined,
-    setGameStatus: () => {},
     gameRules: undefined,
     setGameRules: () => {},
     gamePlayers: undefined,
@@ -22,16 +20,11 @@ export const initialGameStoreSlice = {
 
 export default function GameStoreSlice(switchMode: (mode: "lobby" | "room" | "game") => void) {
     const [gameState, setGameState] = useState<
-        "STARTING" | "ENDING" | "WAITING" | "START_TURN" | "END_TURN" | undefined
+        "STARTED" | "ENDED" | "WAITING" | "STARTED_TURN" | "ENDED_TURN" | undefined
     >(undefined);
     const [gameId, setGameId] = useState<number | undefined>(undefined);
-    const [gameStatus, setGameStatus] = useState<
-        "Starting" | "In progress" | "Finished" | undefined
-    >(undefined);
     const [gameRules, setGameRules] = useState<DeathmatchRules | undefined>(undefined);
-
     const [gamePlayers, setGamePlayers] = useState<GamePlayer[] | undefined>(undefined);
-
     const [currentTurn, setGameCurrentTurn] = useState<Turn | null | undefined>(undefined);
     const [gameTurns, setGameTurns] = useState<Turn[] | undefined>(undefined);
 
@@ -39,42 +32,39 @@ export default function GameStoreSlice(switchMode: (mode: "lobby" | "room" | "ga
         setGameState(newGameState.state);
 
         switch (newGameState.state) {
-            case "STARTING":
+            case "STARTED":
                 resetGameState();
                 switchMode("game");
 
                 setGameId(newGameState.id);
-                setGameStatus(newGameState.status);
                 setGameRules(newGameState.rules);
                 setGamePlayers(newGameState.players);
 
                 // Also initialize FE-only state
                 setGameTurns([]);
                 break;
-            case "ENDING":
-                setGameStatus("Finished");
-                switchMode("room");
+            case "ENDED":
                 break;
             case "WAITING":
                 setGameState(newGameState.state);
                 break;
-            case "START_TURN":
-                newGameState.status && setGameStatus(newGameState.status);
+            case "STARTED_TURN":
                 setGameCurrentTurn(newGameState.current_turn);
                 break;
-            case "END_TURN":
+            case "ENDED_TURN":
                 setGamePlayers(newGameState.players);
                 setGameTurns((prevGameTurns) => [
                     ...(prevGameTurns || []),
                     newGameState.current_turn,
                 ]);
                 break;
+            default:
+                console.log("Unknown game state", newGameState);
         }
     }
 
     function resetGameState() {
         setGameId(undefined);
-        setGameStatus(undefined);
         setGameRules(undefined);
         setGamePlayers(undefined);
         setGameCurrentTurn(undefined);
@@ -84,8 +74,6 @@ export default function GameStoreSlice(switchMode: (mode: "lobby" | "room" | "ga
     return {
         gameId,
         setGameId,
-        gameStatus,
-        setGameStatus,
         gamePlayers,
         setGamePlayers,
         gameRules,

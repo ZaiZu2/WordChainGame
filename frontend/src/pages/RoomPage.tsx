@@ -9,18 +9,13 @@ import apiClient from "../apiClient";
 import Bubble from "../components/Bubble";
 import CountdownTimer from "../components/CountdownTimer";
 import Icon from "../components/Icon";
-import {
-    GAME_START_DELAY,
-    TURN_START_DELAY,
-    WORD_LIST_LENGTH,
-    WORD_LIST_MAX_WORD_SIZE,
-} from "../config";
+import { WORD_LIST_LENGTH, WORD_LIST_MAX_WORD_SIZE } from "../config";
 import { useStore } from "../contexts/storeContext";
 import { useWebSocketContext } from "../contexts/WebsocketProvider";
 import { DeathmatchRules, GamePlayer, LobbyState, Player, RoomState, Turn, Word } from "../types";
 
 export default function RoomPage() {
-    const { mode } = useStore();
+    const { mode, gameState } = useStore();
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -46,12 +41,18 @@ export default function RoomPage() {
                     <ButtonBar />
                 </Stack>
             </Bubble>
-            {mode === "room" && <PlayerCard />}
+            {mode === "room" && <PlayerList />}
             {mode === "game" && (
                 <>
                     <ScoreCard />
-                    <CurrentPlayer />
-                    <WordList />
+                    {gameState !== "ENDED" ? (
+                        <>
+                            <CurrentPlayer />
+                            <WordList />
+                        </>
+                    ) : (
+                        <WordSummary />
+                    )}
                 </>
             )}
         </>
@@ -149,7 +150,7 @@ function Rules() {
 
 function ButtonBar() {
     const {
-        player: _player,
+        loggedPlayer: _player,
         roomState: _roomState,
         chatMessages,
         switchMode,
@@ -158,8 +159,8 @@ function ButtonBar() {
         isRoomOwner,
         toggleModal,
         updateLobbyState,
-        updateGameState,
-        resetGameState,
+        mode,
+        gameState,
     } = useStore();
     const player = _player as Player;
     const roomState = _roomState as RoomState;
@@ -208,6 +209,16 @@ function ButtonBar() {
         switchMode("game");
     }
 
+    async function returnToRoom(roomId: number) {
+        try {
+            await apiClient.post<null>(`/rooms/${roomId}/return`);
+        } catch (error) {
+            //TODO: Handle error
+            return;
+        }
+        switchMode("room");
+    }
+
     return (
         <Stack gap={2} direction="horizontal">
             <Button
@@ -218,70 +229,93 @@ function ButtonBar() {
             >
                 Leave
             </Button>
-            {isRoomOwner() ? (
-                <>
-                    <Button
-                        variant="primary"
-                        size="sm"
-                        onClick={() => toggleRoomStatus(roomState.id as number)}
-                        disabled={roomState.status === "In progress"}
-                    >
-                        {roomState.status === "Open" ? "Close" : "Open"}
-                    </Button>
-                    <Button
-                        variant="primary"
-                        size="sm"
-                        onClick={() => {
-                            toggleModal("roomRules", {
-                                disabledFields: ["name"],
-                                defaultValues: {
-                                    name: roomState.name,
-                                    capacity: roomState.capacity,
-                                    rules: {
-                                        type: roomState.rules.type,
-                                        penalty: roomState.rules.penalty,
-                                        reward: roomState.rules.reward,
-                                        start_score: roomState.rules.start_score,
-                                        round_time: roomState.rules.round_time,
+            {mode === "room" &&
+                (isRoomOwner() ? (
+                    <>
+                        <Button
+                            variant="primary"
+                            size="sm"
+                            onClick={() => toggleRoomStatus(roomState.id as number)}
+                            disabled={roomState.status === "In progress"}
+                        >
+                            {roomState.status === "Open" ? "Close" : "Open"}
+                        </Button>
+                        <Button
+                            variant="primary"
+                            size="sm"
+                            onClick={() => {
+                                toggleModal("roomRules", {
+                                    disabledFields: ["name"],
+                                    defaultValues: {
+                                        name: roomState.name,
+                                        capacity: roomState.capacity,
+                                        rules: {
+                                            type: roomState.rules.type,
+                                            penalty: roomState.rules.penalty,
+                                            reward: roomState.rules.reward,
+                                            start_score: roomState.rules.start_score,
+                                            round_time: roomState.rules.round_time,
+                                        },
                                     },
-                                },
-                                onSubmit: "PUT",
-                            });
-                        }}
-                        disabled={roomState.status === "In progress"}
-                    >
-                        Rules
-                    </Button>
+                                    onSubmit: "PUT",
+                                });
+                            }}
+                            disabled={roomState.status === "In progress"}
+                        >
+                            Rules
+                        </Button>
+                        <Button
+                            variant="primary"
+                            size="sm"
+                            onClick={() => startGame(roomState.id as number)}
+                            disabled={
+                                !Object.values(roomState.players)
+                                    .filter((p) => p.name !== player.name)
+                                    .every((p) => p.ready) || roomState.status === "In progress"
+                            }
+                        >
+                            Start
+                        </Button>
+                    </>
+                ) : (
                     <Button
                         variant="primary"
                         size="sm"
-                        onClick={() => startGame(roomState.id as number)}
-                        disabled={
-                            !Object.values(roomState.players)
-                                .filter((p) => p.name !== player.name)
-                                .every((p) => p.ready) || roomState.status === "In progress"
-                        }
+                        onClick={() => toggleReady(roomState.id as number)}
+                        disabled={roomState.status === "In progress"}
+                        hidden={roomState.status === "In progress"}
                     >
-                        Start
+                        {roomState.players[player.name].ready ? "Unready" : "Ready"}
                     </Button>
-                </>
-            ) : (
+                ))}
+            {mode === "game" && gameState === "ENDED" && (
                 <Button
                     variant="primary"
                     size="sm"
-                    onClick={() => toggleReady(roomState.id as number)}
+                    onClick={() => returnToRoom(roomState.id!)}
                     disabled={roomState.status === "In progress"}
                 >
-                    {roomState.players[player.name].ready ? "Unready" : "Ready"}
+                    Return to room
                 </Button>
             )}
         </Stack>
     );
 }
 
-function PlayerCard() {
-    const { mode, roomState: _roomState, isRoomOwner } = useStore();
+function PlayerList() {
+    const { roomState: _roomState, isRoomOwner, loggedPlayer } = useStore();
     const roomState = _roomState as RoomState;
+
+    function mutePlayer(playerName: string) {}
+
+    function kickPlayer(playerName: string) {
+        try {
+            apiClient.post(`/rooms/${roomState.id}/players/${playerName}/kick`);
+        } catch (error) {
+            //TODO: Handle error
+            return;
+        }
+    }
 
     return (
         <Bubble>
@@ -289,10 +323,14 @@ function PlayerCard() {
                 <thead className="border-bottom">
                     <tr>
                         <td>
-                            <Icon symbol="leaderboard" tooltip="Number" iconSize={4} />
+                            <Icon symbol="person" tooltip="Name" iconSize={4} />
                         </td>
                         <td>
-                            <Icon symbol="person" tooltip="Name" iconSize={4} />
+                            <Icon
+                                symbol="hand_gesture"
+                                tooltip="Player returned from the previous game"
+                                iconSize={4}
+                            />
                         </td>
                         <td>
                             <Icon symbol="light_mode" tooltip="Readiness" iconSize={4} />
@@ -303,20 +341,35 @@ function PlayerCard() {
 
                 <tbody>
                     <tr style={{ height: "0.5rem" }} />
-                    {Object.values(roomState.players).map((player, index) => {
+                    {Object.values(roomState.players).map((roomPlayer, index) => {
                         return (
-                            <tr key={player.name}>
-                                <td>{index + 1}</td>
-                                <td>{player.name}</td>
-
+                            <tr key={roomPlayer.name}>
+                                <td>{roomPlayer.name}</td>
                                 <td>
-                                    {isRoomOwner(player.name) ? (
+                                    {roomPlayer.in_game ? (
+                                        <Icon
+                                            symbol="close"
+                                            className="text-danger"
+                                            tooltip="Not available"
+                                            iconSize={4}
+                                        />
+                                    ) : (
+                                        <Icon
+                                            symbol="check"
+                                            className="text-success"
+                                            tooltip="Available"
+                                            iconSize={4}
+                                        />
+                                    )}
+                                </td>
+                                <td>
+                                    {isRoomOwner(roomPlayer.name) ? (
                                         <Icon
                                             symbol="manage_accounts"
                                             tooltip="Owner"
                                             iconSize={4}
                                         />
-                                    ) : player.ready ? (
+                                    ) : roomPlayer.ready ? (
                                         <Icon
                                             symbol="check"
                                             className="text-success"
@@ -331,6 +384,37 @@ function PlayerCard() {
                                             iconSize={4}
                                         />
                                     )}
+                                </td>
+                                <td>
+                                    <Stack
+                                        direction="horizontal"
+                                        gap={2}
+                                        className="justify-content-end"
+                                    >
+                                        {roomPlayer.name != loggedPlayer?.name && (
+                                            <Button
+                                                onClick={() => {
+                                                    mutePlayer(roomPlayer.name);
+                                                }}
+                                                variant="primary"
+                                                size="sm"
+                                                disabled
+                                            >
+                                                Mute
+                                            </Button>
+                                        )}
+                                        {isRoomOwner() && roomPlayer.name != loggedPlayer?.name && (
+                                            <Button
+                                                onClick={() => {
+                                                    kickPlayer(roomPlayer.name);
+                                                }}
+                                                variant="primary"
+                                                size="sm"
+                                            >
+                                                Kick
+                                            </Button>
+                                        )}
+                                    </Stack>
                                 </td>
                             </tr>
                         );
@@ -363,10 +447,10 @@ function ScoreCard() {
                             <Icon symbol="error" tooltip="Mistakes" iconSize={4} />
                         </td>
                     </tr>
-                    <tr style={{ height: "0.25rem" }} />
+                    <tr style={{ height: "0.5rem" }} />
                 </thead>
                 <tbody>
-                    <tr style={{ height: "0.25rem" }} />
+                    <tr style={{ height: "0.5rem" }} />
                     {[...gamePlayers]
                         .sort((a, b) => {
                             if (a.place !== null && b.place !== null) {
@@ -386,7 +470,7 @@ function ScoreCard() {
                         .map((player, index) => {
                             return (
                                 <tr key={player.name}>
-                                    <td>{player.place ? player.place : "-"}</td>
+                                    <td>{player.place ? player.place : index + 1}</td>
                                     <td>{player.name}</td>
 
                                     <td>{player.score}</td>
@@ -404,9 +488,8 @@ function CurrentPlayer() {
     const { gamePlayers, currentTurn, gameRules, gameState } = useStore() as {
         gamePlayers: GamePlayer[];
         currentTurn: Turn;
-        gameStatus: string;
         gameRules: DeathmatchRules;
-        gameState: "STARTING" | "ENDING" | "WAITING" | "START_TURN" | "END_TURN";
+        gameState: "STARTED" | "ENDED" | "WAITING" | "STARTED_TURN" | "ENDED_TURN";
     };
 
     let players;
@@ -447,19 +530,23 @@ function CurrentPlayer() {
                 })}
             </Stack>
 
-            <Stack direction="horizontal" gap={2} className="fs-4 justify-content-evenly">
-                {gameState === "STARTING" ? (
-                    <CountdownTimer time={GAME_START_DELAY} precisionDigit={0} />
+            <Container
+                className="d-flex justify-content-evenly align-items-center"
+                style={{ height: "35px" }}
+            >
+                {gameState === "STARTED" ? (
+                    <Spinner animation="border" size="sm" />
                 ) : gameState === "WAITING" ? (
-                    <CountdownTimer time={TURN_START_DELAY} precisionDigit={0} />
+                    <Spinner animation="border" size="sm" />
                 ) : (
                     <CountdownTimer
                         time={gameRules.round_time}
                         start_date={currentTurn.started_on}
                         precisionDigit={2}
+                        className="fs-4"
                     />
                 )}
-            </Stack>
+            </Container>
         </Bubble>
     );
 }
@@ -469,16 +556,14 @@ function WordList() {
         roomState,
         gamePlayers: _gamePlayers,
         gameTurns: _gameTurns,
-        isLocalPlayersTurn,
+        isLoggedPlayersTurn: isLocalPlayersTurn,
         currentTurn: _currentTurn,
-        gameStatus: _gameStatus,
         gameState: _gameState,
     } = useStore();
     const gamePlayers = _gamePlayers as GamePlayer[];
     const gameTurns = _gameTurns as Turn[];
-    const gameStatus = _gameStatus as string;
     const currentTurn = _currentTurn as Turn;
-    const gameState = _gameState as "STARTING" | "ENDING" | "WAITING" | "START_TURN" | "END_TURN";
+    const gameState = _gameState as "STARTED" | "ENDED" | "WAITING" | "STARTED_TURN" | "ENDED_TURN";
 
     const { sendWordInput } = useWebSocketContext();
     const wordRef = useRef<HTMLInputElement>(null);
@@ -503,17 +588,15 @@ function WordList() {
     const points = (word: Word | null) =>
         word?.is_correct ? "+" + roomState?.rules.reward : roomState?.rules.penalty;
     const color = (word: Word | null) => (word?.is_correct ? "text-success" : "text-danger"); // GREEN or RED
-    const tooltip = (word: Word | null) => {
-        if (word?.is_correct) {
+    const tooltip = (turn: Turn) => {
+        if (turn.word?.is_correct) {
             let tooltipText = "";
-            Object.entries(word.description as object).forEach(([partOfSpeech, description]) => {
-                tooltipText += `${
-                    partOfSpeech.charAt(0).toUpperCase() + partOfSpeech.slice(1).toLowerCase()
-                }: ${description}\n\n`;
+            turn.word.description!.forEach(([partOfSpeech, description]) => {
+                tooltipText += `${partOfSpeech}: ${description}\n\n`;
             });
             return tooltipText;
         } else {
-            return currentTurn.info as string;
+            return turn.info as string;
         }
     };
 
@@ -529,9 +612,9 @@ function WordList() {
                                 return;
                             }
 
-                            const word = gameTurns[turnIndex].word;
-                            const player_name = gamePlayers[gameTurns[turnIndex].player_idx].name;
-                            console.log(`Processing index: ${index}, turnIndex: ${turnIndex}`); // Log to check indices being processed
+                            const gameTurn = gameTurns[turnIndex];
+                            const word = gameTurn.word;
+                            const player_name = gamePlayers[gameTurn.player_idx].name;
                             return (
                                 <tr key={word ? word.content : index}>
                                     <td
@@ -556,7 +639,7 @@ function WordList() {
                                                     <Icon
                                                         symbol={symbol(word)}
                                                         color={color(word)}
-                                                        tooltip={tooltip(word)}
+                                                        tooltip={tooltip(gameTurn)}
                                                         iconSize={3}
                                                     />
                                                 )}
@@ -574,11 +657,11 @@ function WordList() {
                         })}
                         <tr>
                             <td className="p-0 border-0 align-middle" style={{ height: "35px" }}>
-                                {gameStatus === "In progress"
+                                {["STARTED_TURN", "ENDED_TURN"].includes(gameState)
                                     ? gamePlayers[currentTurn?.player_idx as number].name
                                     : gamePlayers[0].name}
                             </td>
-                            {gameState === "START_TURN" && isLocalPlayersTurn() ? (
+                            {gameState === "STARTED_TURN" && isLocalPlayersTurn() ? (
                                 <td
                                     className={`d-flex p-0 m-1 border-0 ${positionToSize[5]} justify-content-center`}
                                     style={{ height: "35px" }}
@@ -612,6 +695,85 @@ function WordList() {
                             )}
                             <td></td>
                         </tr>
+                    </tbody>
+                </Table>
+            </Container>
+        </Bubble>
+    );
+}
+
+function WordSummary() {
+    const { roomState, gamePlayers: _gamePlayers, gameTurns: _gameTurns } = useStore();
+    const gamePlayers = _gamePlayers as GamePlayer[];
+    const gameTurns = _gameTurns as Turn[];
+
+    const symbol = (word: Word) => (word.is_correct ? "check" : "close");
+    const points = (word: Word | null) =>
+        word?.is_correct ? "+" + roomState?.rules.reward : roomState?.rules.penalty;
+    const color = (word: Word | null) => (word?.is_correct ? "text-success" : "text-danger"); // GREEN or RED
+    const tooltip = (turn: Turn) => {
+        if (turn.word?.is_correct) {
+            let tooltipText = "";
+            turn.word.description!.forEach(([partOfSpeech, description]) => {
+                tooltipText += `${partOfSpeech}: ${description}\n\n`;
+            });
+            return tooltipText;
+        } else {
+            return turn.info as string;
+        }
+    };
+
+    return (
+        <Bubble>
+            <Container
+                className="px-2 p-0"
+                style={{
+                    maxHeight: `${WORD_LIST_LENGTH * 35}px`,
+                    overflowY: "auto",
+                }}
+            >
+                <Table borderless className="m-0 text-center">
+                    <tbody>
+                        {gameTurns.map((gameTurn, index) => {
+                            const word = gameTurn.word;
+                            const player_name = gamePlayers[gameTurn.player_idx].name;
+                            return (
+                                <tr key={index}>
+                                    <td
+                                        className="p-0 border-0 align-middle"
+                                        style={{ height: "35px" }}
+                                    >
+                                        {player_name}
+                                    </td>
+                                    <td
+                                        className="d-flex p-0 border-0 justify-content-center align-middle"
+                                        style={{ height: "35px" }}
+                                    >
+                                        <Stack direction="horizontal" gap={3}>
+                                            <div className={`p-0 border-0`}>
+                                                {word ? word.content : "-"}
+                                            </div>
+                                            <div>
+                                                {word && (
+                                                    <Icon
+                                                        symbol={symbol(word)}
+                                                        color={color(word)}
+                                                        tooltip={tooltip(gameTurn)}
+                                                        iconSize={3}
+                                                    />
+                                                )}
+                                            </div>
+                                        </Stack>
+                                    </td>
+                                    <td
+                                        className={`p-0 border-0 align-middle ${color(word)}`}
+                                        style={{ height: "35px" }}
+                                    >
+                                        {points(word)}
+                                    </td>
+                                </tr>
+                            );
+                        })}
                     </tbody>
                 </Table>
             </Container>

@@ -9,12 +9,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from config import LOGGING_CONFIG
 from src.api import main, rooms
 from src.database import create_root_objects, recreate_database
-from src.error_handlers import request_validation_handler
 from src.helpers import tags_metadata
+from src.misc import request_validation_handler
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # HACK: Temporary DB recreation logic for repeatable development environment
+    # Must be removed for a production environment
     await recreate_database()
     await create_root_objects()
     yield

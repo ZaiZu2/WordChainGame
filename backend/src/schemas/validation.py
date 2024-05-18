@@ -1,59 +1,125 @@
-from pydantic import Field
+from __future__ import annotations
 
-import src.database as d
-import src.schemas.domain as m
+from datetime import datetime, timedelta
+from typing import Annotated, Literal
+from uuid import UUID
+
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    ConfigDict,
+    Field,
+    PlainSerializer,
+)
+
+import src.schemas.domain as d
 
 # FILE STORING ONLY VALIDATION SCHEMAS USED AS RESTAPI INPUTS/OUTPUTS
 
 
-class CurrentStatistics(m.GeneralBaseModel):
+class GeneralBaseModel(BaseModel):
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+
+def is_date_utc(date: datetime) -> datetime:
+    if date.utcoffset() is not None and date.utcoffset() != timedelta(0):
+        raise ValueError('Only datetimes in a UTC zone are allowed')
+    date = date.replace(tzinfo=None)  # Cast to naive datetime after validation
+    return date
+
+
+# NOTE: Only UTC timestamps should be accepted by API server.
+# NOTE: Currently used only for APITriggers, as zulu datetime formating can potentially break Desktop
+UTCDatetime = Annotated[
+    datetime,
+    AfterValidator(is_date_utc),  # Validate if the date is in UTC zone (zulu format)
+    PlainSerializer(
+        lambda date: f'{date.isoformat()}Z', when_used='json'
+    ),  # Serialize Timestamps to zulu format
+]
+
+
+class CurrentStatistics(GeneralBaseModel):
     active_players: int
     active_rooms: int
 
 
-class AllTimeStatistics(m.GeneralBaseModel):
+class AllTimeStatistics(GeneralBaseModel):
     longest_chain: int
     longest_game_time: int
     total_games: int
 
 
-class TurnOut(m.GeneralBaseModel):
-    word: m.Word | None = None
-    started_on: m.UTCDatetime
-    ended_on: m.UTCDatetime | None = None
+class TurnOut(GeneralBaseModel):
+    word: d.Word | None = None
+    started_on: UTCDatetime
+    ended_on: UTCDatetime | None = None
     info: str | None = None
     player_idx: int
 
 
-class LobbyPlayerOut(m.GeneralBaseModel):
+class Player(GeneralBaseModel):
+    id_: UUID = Field(serialization_alias='id')
+    name: str
+    created_on: UTCDatetime
+
+
+class LobbyPlayerOut(GeneralBaseModel):
     """Player data sent as a part of LobbyState."""
 
     name: str
-    created_on: m.UTCDatetime
 
 
 class RoomPlayerOut(LobbyPlayerOut):
     """Player data sent as a part of RoomState."""
 
     ready: bool
+    in_game: bool
 
 
-class RoomOut(m.GeneralBaseModel):
+class GamePlayer(GeneralBaseModel):
+    name: str
+    in_game: bool = True
+    place: int | None = None
+    score: int
+    mistakes: int
+
+
+class Rules(GeneralBaseModel):
+    type_: d.GameTypeEnum = Field(serialization_alias='type')
+
+
+class DeathmatchRules(Rules):
+    type_: Literal[d.GameTypeEnum.DEATHMATCH] = Field(
+        d.GameTypeEnum.DEATHMATCH, serialization_alias='type'
+    )
+    round_time: int = Field(10, ge=3, le=30)
+    start_score: int = Field(0, ge=0, le=10)
+    penalty: int = Field(-5, ge=-10, le=0)  # If 0, player loses after a single mistake
+    reward: int = Field(2, ge=0, le=10)
+
+
+class RoomOut(GeneralBaseModel):
     id_: int = Field(serialization_alias='id')
     name: str
     players_no: int
     capacity: int
     status: d.RoomStatusEnum
-    rules: m.DeathmatchRules
+    rules: DeathmatchRules
     owner_name: str
 
 
-class RoomIn(m.GeneralBaseModel):
+class RoomIn(GeneralBaseModel):
     name: str = Field(..., max_length=10)
     capacity: int = Field(5, ge=1, le=10)
-    rules: m.DeathmatchRules
+    rules: DeathmatchRules
 
 
-class RoomInModify(m.GeneralBaseModel):
+class RoomInModify(GeneralBaseModel):
     capacity: int = Field(5, ge=1, le=10)
-    rules: m.DeathmatchRules
+    rules: DeathmatchRules
+
+
+# HACK: Avoid circular import issue between `validation.py` and `websockets.py` while
+# exposing websocket schemas under `validation.*` namespace
+from src.schemas.websockets import *  # noqa: E402, F403

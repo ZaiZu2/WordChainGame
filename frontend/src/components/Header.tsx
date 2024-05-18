@@ -5,7 +5,7 @@ import Navbar from "react-bootstrap/Navbar";
 import { useStore } from "../contexts/storeContext";
 
 export default function Header() {
-    const { player, logOut } = useStore();
+    const { loggedPlayer: player, logOut } = useStore();
 
     return (
         <>

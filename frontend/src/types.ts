@@ -19,11 +19,11 @@ export type RoomIn = {
 export type Player = {
     id?: UUID;
     name: string;
-    created_on: Date;
 };
 
 export type RoomPlayer = Player & {
     ready: boolean;
+    in_game: boolean;
 };
 
 export type RequestOptions = {
@@ -65,7 +65,7 @@ export type GamePlayer = {
 export type Word = {
     content: string;
     is_correct?: boolean;
-    description?: Record<string, string>;
+    description?: [string, string][];
 };
 
 export type Turn = {
@@ -78,17 +78,15 @@ export type Turn = {
 };
 
 type StartGameState = {
-    state: "STARTING";
+    state: "STARTED";
     id: number;
-    status: "Starting";
     players: GamePlayer[];
     lost_players: GamePlayer[];
     rules: DeathmatchRules;
 };
 
 type EndGameState = {
-    state: "ENDING";
-    status: "Finished";
+    state: "ENDED";
 };
 
 type WaitState = {
@@ -96,13 +94,12 @@ type WaitState = {
 };
 
 type StartTurnState = {
-    state: "START_TURN";
+    state: "STARTED_TURN";
     current_turn: Turn;
-    status?: "In progress";
 };
 
 type EndTurnState = {
-    state: "END_TURN";
+    state: "ENDED_TURN";
     players: GamePlayer[];
     lost_players: GamePlayer[];
     current_turn: Turn;
@@ -152,19 +149,32 @@ export type ConnectionState = {
     reason: string;
 };
 
+export type KickPlayerAction = {
+    action: "KICK_PLAYER";
+};
+
+export type Action = KickPlayerAction;
+
 export type WebSocketMessage =
     | { payload: ChatMessage & { type_: "chat" } }
     | { payload: GameState & { type_: "game_state" } }
-    | { payload: GameInput & { type_: "game_input" } }
     | { payload: LobbyState & { type_: "lobby_state" } }
     | { payload: RoomState & { type_: "room_state" } }
-    | { payload: ConnectionState & { type_: "connection_state" } };
+    | { payload: ConnectionState & { type_: "connection_state" } }
+    | { payload: GameInput & { type_: "game_input" } }
+    | { payload: Action & { type_: "action" } };
 
 export type ModalConfigs = {
-    roomRules?: RoomRulesConfig;
+    roomRules?: RoomRulesModalConfig;
+    generic?: GenericModalConfig;
 };
 
-export type RoomRulesConfig = {
+export type GenericModalConfig = {
+    title?: string;
+    body?: string;
+};
+
+export type RoomRulesModalConfig = {
     defaultValues?: RoomIn;
     disabledFields?: "name"[];
     onSubmit: "PUT" | "POST";

@@ -35,6 +35,7 @@ export default function Chat() {
                     minHeight: "100px",
                     maxHeight: "300px",
                     overflowY: "auto",
+                    wordBreak: "break-word", // Add this line to break long words
                 }}
             >
                 {chatMessages.map((message, index) => {
@@ -42,9 +43,13 @@ export default function Chat() {
                     return (
                         <div key={message.id} ref={isLastMessage ? lastMessageRef : null}>
                             {message.player_name !== "root" ? (
-                                <span className="fw-bold me-2">{message.player_name}</span>
-                            ) : null}
-                            {message.content}
+                                <>
+                                    <span className="fw-bold me-2">{message.player_name}</span>
+                                    {message.content}
+                                </>
+                            ) : (
+                                <span className="fst-italic">{message.content}</span>
+                            )}
                         </div>
                     );
                 })}

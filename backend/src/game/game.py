@@ -1,5 +1,6 @@
-import src.database as d
-import src.schemas as s
+from typing import Iterable
+
+import src.schemas.domain as d
 from src.game.deathmatch import Deathmatch
 
 
@@ -15,19 +16,17 @@ class GameManager:
     def get(self, game_id: int) -> Deathmatch:
         return self.games[game_id]
 
-    def create(self, game_db: d.Game) -> Deathmatch:
-        if game_db.rules['type_'] == s.GameTypeEnum.DEATHMATCH:
-            rules = s.DeathmatchRules(**game_db.rules)
-            game = self.games[game_db.id_] = Deathmatch(
-                game_db.id_, game_db.players, rules
-            )
+    def create(
+        self, game_id: int, rules: d.DeathmatchRules, players: Iterable[d.Player]
+    ) -> Deathmatch:
+        if rules.type_ == d.GameTypeEnum.DEATHMATCH:
+            game = self.games[game_id] = Deathmatch(game_id, players, rules)
             return game
         else:
             raise NotImplementedError('Unsupported game type')
 
     def end(self, game_id: int) -> Deathmatch:
         game = self.games[game_id]
-        game.status = d.GameStatusEnum.FINISHED
         del self.games[game_id]
         return game
 
@@ -35,7 +34,7 @@ class GameManager:
 # TODO: Build and use abstract interface when you figure out the interface
 # class Game(Protocol):
 #     id_: int
-#     status: d.GameStatusEnum
+#     status: db.GameStatusEnum
 #     turns: list[s.Turn]
 
 #     def __init__(self, rules: s.Rules):

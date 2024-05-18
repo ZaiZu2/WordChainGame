@@ -3,6 +3,7 @@ import Stack from "react-bootstrap/Stack";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
 import Chat from "./components/Chat";
+import GenericModal from "./components/GenericModal";
 import Header from "./components/Header";
 import { LoginModal } from "./components/NewPlayerModal";
 import RoomRulesModal from "./components/RoomRulesModal";
@@ -13,7 +14,7 @@ import LobbyPage from "./pages/LobbyPage";
 import RoomPage from "./pages/RoomPage";
 
 export default function App() {
-    const { player, modalConfigs } = useStore();
+    const { loggedPlayer: player, modalConfigs } = useStore();
 
     return (
         <BrowserRouter>
@@ -26,6 +27,12 @@ export default function App() {
                             disabledFields={modalConfigs.roomRules.disabledFields}
                             defaultValues={modalConfigs.roomRules.defaultValues}
                             onSubmit={modalConfigs.roomRules.onSubmit}
+                        />
+                    )}
+                    {modalConfigs.generic && (
+                        <GenericModal
+                            title={modalConfigs.generic.title}
+                            body={modalConfigs.generic.body}
                         />
                     )}
                     <Header />

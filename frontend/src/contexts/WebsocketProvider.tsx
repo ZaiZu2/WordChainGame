@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect } from "react";
 import useWebSocket from "react-use-websocket";
 
 import {
+    Action,
     ChatMessage,
     ConnectionState,
     GameState,
@@ -30,7 +31,7 @@ export function useWebSocketContext(): WebSocketContext {
 
 export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     const {
-        player,
+        loggedPlayer: player,
         roomState,
         logOut,
         updateChatMessages,
@@ -39,6 +40,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
         updateGameState,
         mode,
         gameId: _gameId,
+        executeAction,
     } = useStore();
     const gameId = _gameId as number;
     const { sendJsonMessage, lastJsonMessage } = useWebSocket(WEBSOCKET_URL, {});
@@ -49,6 +51,10 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
 
             const websocketMessage = JSON.parse(lastJsonMessage as string) as WebSocketMessage;
             switch (websocketMessage.payload.type_) {
+                case "action":
+                    executeAction(websocketMessage.payload as Action);
+                    console.log("action", websocketMessage.payload);
+                    break;
                 case "chat":
                     updateChatMessages([websocketMessage.payload as ChatMessage]);
                     console.log("chat", websocketMessage.payload);
@@ -73,6 +79,8 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
                     }
                     console.log("connection", websocketMessage.payload);
                     break;
+                default:
+                    console.log("Unknown websocket message received", websocketMessage.payload);
             }
         },
         [lastJsonMessage]
