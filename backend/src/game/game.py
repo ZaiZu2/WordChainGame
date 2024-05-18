@@ -27,7 +27,6 @@ class GameManager:
 
     def end(self, game_id: int) -> Deathmatch:
         game = self.games[game_id]
-        game.status = d.GameStatusEnum.FINISHED
         del self.games[game_id]
         return game
 

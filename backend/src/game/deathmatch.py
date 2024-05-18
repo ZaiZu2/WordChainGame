@@ -1,5 +1,4 @@
 import random
-from dataclasses import asdict
 from datetime import datetime
 from typing import Any, Iterable, cast
 
@@ -64,7 +63,6 @@ class Deathmatch:
         self, id_: int, players: Iterable[d.Player], rules: d.DeathmatchRules
     ) -> None:
         self.id_ = id_
-        self.status = d.GameStatusEnum.STARTED
         self.rules = rules
         self.state: d.GameStateEnum = d.GameStateEnum.CREATING
 
@@ -107,9 +105,8 @@ class Deathmatch:
 
         return v.StartGameState(
             id_=self.id_,
-            status=self.status,
             players=self.players,
-            rules=self.rules,
+            rules=self.rules,  # type: ignore
         )
 
     def wait(self) -> v.WaitState:
@@ -124,20 +121,20 @@ class Deathmatch:
         ]:
             raise ValueError(f'Turn cannot be started in the {self.state} game state')
         self.state = d.GameStateEnum.STARTED_TURN
-        self.status = d.GameStatusEnum.IN_PROGRESS
         self.events = []
 
         if self.turns:  # Don't iterate on the first turn
             self.players.next()
-        self._current_turn = d.Turn(
+
+        current_turn = d.Turn(
             started_on=datetime.utcnow(), player_id=self.players.current.id_
         )
+        self._current_turn = current_turn
 
         return v.StartTurnState(
             current_turn=v.TurnOut(
-                player_idx=self.players.current_idx, **asdict(self.current_turn)
+                player_idx=self.players.current_idx, **current_turn.to_dict()
             ),
-            status=self.status,
         )
 
     def end_turn_in_time(self, word: str) -> v.EndTurnState:
@@ -156,7 +153,7 @@ class Deathmatch:
             players=self.players,
             current_turn=v.TurnOut(
                 player_idx=self.players.current_idx,
-                **asdict(self.current_turn),
+                **current_turn.to_dict(),
             ),
         )
 
@@ -184,14 +181,13 @@ class Deathmatch:
             players=self.players,
             current_turn=v.TurnOut(
                 player_idx=self.players.current_idx,
-                **asdict(self.current_turn),
+                **current_turn.to_dict(),
             ),
         )
 
     def end(self) -> v.EndGameState:
-        self.status = d.GameStatusEnum.FINISHED
         self.events.append(d.GameFinishedEvent())
-        return v.EndGameState(status=self.status)
+        return v.EndGameState()
 
     def is_finished(self) -> bool:
         # Handle case with just 1 player playing
@@ -230,10 +226,11 @@ class Deathmatch:
 
         # Find the last turn in which the word was passed
         for i in range(len(self.turns) - 1, -1, -1):
-            if not self.turns[i].word:
+            turn = self.turns[i]
+            if not turn.word:
                 continue
 
-            previous_word = self.turns[i].word.content
+            previous_word = turn.word.content
             if word.startswith(previous_word[-1]):
                 return True
             break
@@ -243,9 +240,11 @@ class Deathmatch:
     def _evaluate_turn(self) -> None:
         current_turn = cast(d.Turn, self._current_turn)
 
-        # TODO: Deal with edge cases like penalty == 0 . Maybe figure out a better way to handle this
-        did_turn_timed_out = not current_turn.word
-        if did_turn_timed_out or not current_turn.word.is_correct:
+        # TODO: Deal with edge cases like penalty == 0 . Maybe figure out a better way
+        # to handle this
+
+        # If player didn't pass a word or the word is incorrect, give him a penalty
+        if not current_turn.word or not current_turn.word.is_correct:
             self.players.current.mistakes += 1
             self.players.current.score += self.rules.penalty
         else:

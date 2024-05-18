@@ -4,7 +4,7 @@ from collections import defaultdict
 from datetime import datetime
 from typing import Any, Callable
 
-from fastapi import Response, status
+from fastapi import Request, Response, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
@@ -14,7 +14,7 @@ class PlayerAlreadyConnectedError(Exception):
 
 
 async def request_validation_handler(
-    response: Response, exc: RequestValidationError
+    request: Request, exc: RequestValidationError
 ) -> Response:
     """
     Exception body template.
@@ -46,13 +46,13 @@ async def request_validation_handler(
             body[loc][field].append(error.get('msg'))
 
     headers = getattr(exc, 'headers', None)
-    cookies = getattr(exc, 'cookies', None)
+    # cookies = getattr(exc, 'cookies', None)
     if headers:
         return JSONResponse(
             body,
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             headers=headers,
-            cookies=cookies,
+            # cookies=cookies, # TODO: Not possible to pass cookies into JSONResponse
         )
     else:
         return JSONResponse(body, status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)

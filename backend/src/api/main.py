@@ -1,5 +1,5 @@
 import asyncio
-from typing import Annotated, Literal
+from typing import Annotated, Literal, cast
 from uuid import UUID
 
 from fastapi import (
@@ -113,26 +113,29 @@ async def get_stats(
     db_session: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> v.AllTimeStatistics:
     total_games = await db_session.scalar(
-        select(func.count(db.Game.id_)).where(
-            db.Game.status == d.GameStatusEnum.FINISHED
-        )
+        select(func.count(db.Game.id_)).where(db.Game.status == db.GameStatusEnum.ENDED)
     )
 
-    results = await db_session.execute(
-        select(
-            func.count(db.Turn.word),
-            func.max(db.Game.ended_on - db.Game.created_on),
+    results = (
+        await db_session.execute(
+            select(
+                func.count(db.Turn.word),
+                func.max(db.Game.ended_on - db.Game.created_on),
+            )
+            .join(db.Turn, db.Game.id_ == db.Turn.game_id)
+            .filter(db.Game.status == db.GameStatusEnum.ENDED)
+            .group_by(db.Game.id_)
+            .order_by(func.count(db.Turn.word).desc())
         )
-        .join(db.Turn, db.Game.id_ == db.Turn.game_id)
-        .filter(db.Game.status == d.GameStatusEnum.FINISHED)
-        .group_by(db.Game.id_)
-        .order_by(func.count(db.Turn.word).desc())
-    )
-    longest_chain, longest_game = results.first() or (0, 0)
+    ).first()
+    if results:
+        longest_chain, longest_game_time = results[0], results[1].seconds
+    else:
+        longest_chain, longest_game_time = 0, 0
 
     return v.AllTimeStatistics(
         longest_chain=longest_chain,
-        longest_game_time=longest_game,
+        longest_game_time=longest_game_time,
         total_games=total_games,  # type: ignore
     )
 
@@ -150,8 +153,9 @@ async def connect(
             status_code=status.HTTP_403_FORBIDDEN,
             detail='Player is not authenticated',
         )
-    player_db = await db_session.scalar(
-        select(db.Player).where(db.Player.id_ == player_id)
+    player_db = cast(
+        db.Player,
+        await db_session.scalar(select(db.Player).where(db.Player.id_ == player_id)),
     )
     player = d.Player(**player_db.to_dict(), room=d.LOBBY, websocket=websocket)
     await accept_websocket_connection(player, websocket, db_session, conn_manager)

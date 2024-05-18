@@ -167,12 +167,6 @@ class Room(DataclassMixin):
 ##### GAME #####
 
 
-class GameStatusEnum(str, Enum):
-    STARTED = 'STARTED'
-    IN_PROGRESS = 'IN PROGRESS'
-    FINISHED = 'FINISHED'
-
-
 class GameTypeEnum(str, Enum):
     DEATHMATCH = 'deathmatch'
 
@@ -188,7 +182,7 @@ class GameStateEnum(str, Enum):
 
 @dataclass(kw_only=True)
 class Word:
-    content: str | None = None
+    content: str
     description: list[tuple[str, str]] | None = None
     is_correct: bool | None = None
 
@@ -202,7 +196,7 @@ class Word:
 
 
 @dataclass(kw_only=True)
-class Turn:
+class Turn(DataclassMixin):
     word: Word | None = None
     started_on: datetime
     ended_on: datetime | None = None
@@ -242,17 +236,17 @@ class GameFinishedEvent(GameEvent):
 ROOT = Player(
     id_=get_config().ROOT_ID,
     name=get_config().ROOT_NAME,
-    created_on=None,
-    websocket=None,
-    room=None,
+    created_on=datetime.now(),
+    websocket=None,  # type: ignore
+    room=None,  # type: ignore
 )
 LOBBY = Room(
     id_=get_config().LOBBY_ID,
     name=get_config().LOBBY_NAME,
     status=RoomStatusEnum.OPEN,
-    capacity=None,
-    created_on=None,
+    capacity=0,
+    created_on=datetime.now(),
     owner=ROOT,
-    rules=None,
+    rules=DeathmatchRules(round_time=0, start_score=0, penalty=0, reward=0),
 )
 ROOT.room = LOBBY

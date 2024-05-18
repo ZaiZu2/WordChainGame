@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from enum import Enum
 from uuid import UUID, uuid4
 
 import sqlalchemy as sa
@@ -66,26 +67,25 @@ class Room(Base):
 
     id_: so.Mapped[int] = so.mapped_column('id', primary_key=True)
     name: so.Mapped[str] = so.mapped_column(sa.String(10), unique=True)
-    # status: so.Mapped[RoomStatusEnum] = so.mapped_column(
-    #     default=RoomStatusEnum.OPEN, nullable=False
-    # )
-    # capacity: so.Mapped[int] = so.mapped_column(nullable=False)
     created_on: so.Mapped[datetime] = so.mapped_column(default=sa.func.now())
     ended_on: so.Mapped[datetime | None] = so.mapped_column()
-    # rules: so.Mapped[dict] = so.mapped_column(sa.JSON, nullable=False)
-
-    # owner_id: so.Mapped[UUID] = so.mapped_column(sa.ForeignKey('players.id'))
-    # owner: so.Mapped[Player] = so.relationship(foreign_keys=[owner_id])
 
     games: so.Mapped[list[Game]] = so.relationship(back_populates='room')
     messages: so.Mapped[list[Message]] = so.relationship(back_populates='room')
+
+
+class GameStatusEnum(str, Enum):
+    """DB-specific enum, subsetting the domain enum."""
+
+    STARTED = d.GameStateEnum.STARTED
+    ENDED = d.GameStateEnum.ENDED
 
 
 class Game(Base):
     __tablename__ = 'games'
 
     id_: so.Mapped[int] = so.mapped_column('id', primary_key=True)
-    status: so.Mapped[d.GameStatusEnum] = so.mapped_column(nullable=False)
+    status: so.Mapped[GameStatusEnum] = so.mapped_column(nullable=False)
     created_on: so.Mapped[datetime] = so.mapped_column(default=sa.func.now())
     ended_on: so.Mapped[datetime | None] = so.mapped_column()
     rules: so.Mapped[dict] = so.mapped_column(sa.JSON)  # TODO: Add TypedDict for rules

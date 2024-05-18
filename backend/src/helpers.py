@@ -294,7 +294,7 @@ async def broadcast_full_lobby_state(conn_manager: ConnectionManager) -> None:
 
     rooms_out = {
         room.id_: v.RoomOut(
-            players_no=len(lobby_players),
+            players_no=len(room.players),
             owner_name=room.owner.name,
             **room.to_dict(),
         )
@@ -308,9 +308,11 @@ async def broadcast_full_lobby_state(conn_manager: ConnectionManager) -> None:
 
 async def export_and_persist_game(game: Deathmatch, db_session: AsyncSession) -> None:
     """Gather game data designated to be persisted and issue a bulk insert."""
-    game_db = await db_session.scalar(select(db.Game).where(db.Game.id_ == game.id_))
+    game_db = cast(
+        db.Game, await db_session.scalar(select(db.Game).where(db.Game.id_ == game.id_))
+    )
     game_db.ended_on = datetime.utcnow()
-    game_db.status = d.GameStatusEnum.FINISHED
+    game_db.status = db.GameStatusEnum.ENDED
     db_session.add(game_db)
 
     turn_db_dicts = []

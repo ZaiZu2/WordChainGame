@@ -367,7 +367,7 @@ async def start_game(
     room.status = d.RoomStatusEnum.IN_PROGRESS
     # Create game placeholder in the database to assign the ID
     game_db = db.Game(
-        status=d.GameStatusEnum.IN_PROGRESS,
+        status=db.GameStatusEnum.STARTED,
         rules=room.rules.to_dict(),
         room_id=room.id_,
     )

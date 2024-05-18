@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Annotated, Literal
+from typing import Annotated, Literal, Mapping
 
 from pydantic import Field
 
@@ -51,14 +51,12 @@ class _GameState(v.GeneralBaseModel):
 class StartGameState(_GameState, v.GeneralBaseModel):
     state: Literal[d.GameStateEnum.STARTED] = d.GameStateEnum.STARTED
     id_: int = Field(serialization_alias='id')
-    status: d.GameStatusEnum
     players: list[v.GamePlayer]
     rules: v.DeathmatchRules
 
 
 class EndGameState(_GameState, v.GeneralBaseModel):
     state: Literal[d.GameStateEnum.ENDED] = d.GameStateEnum.ENDED
-    status: d.GameStatusEnum
 
 
 class WaitState(_GameState, v.GeneralBaseModel):
@@ -68,7 +66,7 @@ class WaitState(_GameState, v.GeneralBaseModel):
 class StartTurnState(_GameState, v.GeneralBaseModel):
     state: Literal[d.GameStateEnum.STARTED_TURN] = d.GameStateEnum.STARTED_TURN
     current_turn: v.TurnOut
-    status: d.GameStatusEnum | None = None
+    # status: d.GameStatusEnum | None = None
 
 
 class EndTurnState(_GameState, v.GeneralBaseModel):
@@ -117,8 +115,8 @@ class LobbyState(v.GeneralBaseModel):
     type_: Literal[WebSocketMessageTypeEnum.LOBBY_STATE] = Field(
         default=WebSocketMessageTypeEnum.LOBBY_STATE
     )
-    rooms: dict[int, v.RoomOut | None] | None = None  # room_id: room
-    players: dict[str, v.LobbyPlayerOut | None] | None = None  # player_name: player
+    rooms: Mapping[int, v.RoomOut | None] | None = None  # room_id: room
+    players: Mapping[str, v.LobbyPlayerOut | None] | None = None  # player_name: player
     stats: v.CurrentStatistics | None = None
 
 
@@ -132,7 +130,7 @@ class RoomState(v.GeneralBaseModel):
     status: d.RoomStatusEnum
     rules: v.DeathmatchRules
     owner_name: str
-    players: dict[str, v.RoomPlayerOut | None] | None = None  # player_name: player
+    players: Mapping[str, v.RoomPlayerOut | None] | None = None  # player_name: player
 
 
 class CustomWebsocketCodeEnum(int, Enum):
