@@ -286,20 +286,32 @@ async def run_game(
         await export_and_persist_game(game, db)
 
 
-async def broadcast_full_lobby_state(conn_manager: ConnectionManager) -> None:
+async def broadcast_full_lobby_state(
+    conn_manager: ConnectionManager,
+    removed_player_names: Iterable[str] | None = None,
+    removed_room_ids: Iterable[int] | None = None,
+) -> None:
     lobby_players = conn_manager.pool.get_room_players(d.LOBBY.id_)
+    # Merge the players and the removed players to create a full state update
     players_out = {
-        lobby_player.name: v.LobbyPlayerOut.model_validate(lobby_player)
-        for lobby_player in lobby_players
+        **{
+            lobby_player.name: v.LobbyPlayerOut.model_validate(lobby_player)
+            for lobby_player in lobby_players
+        },
+        **{player_name: None for player_name in removed_player_names or []},
     }
 
+    # Merge the rooms and the removed rooms to create a full state update
     rooms_out = {
-        room.id_: v.RoomOut(
-            players_no=len(room.players),
-            owner_name=room.owner.name,
-            **room.to_dict(),
-        )
-        for room in conn_manager.pool.get_rooms()
+        **{
+            room.id_: v.RoomOut(
+                players_no=len(room.players),
+                owner_name=room.owner.name,
+                **room.to_dict(),
+            )
+            for room in conn_manager.pool.get_rooms()
+        },
+        **{room_id: None for room_id in removed_room_ids or []},
     }
     lobby_state = v.LobbyState(
         rooms=rooms_out, players=players_out, stats=get_current_stats(conn_manager)
@@ -370,7 +382,8 @@ async def expire_inactive_rooms(conn_manager: ConnectionManager):
             )
         )
 
-        expired_count = 0
+        current_date = datetime.utcnow()
+        expired_rooms = []
         for db_room in db_rooms:
             try:
                 room = conn_manager.pool.get_room(room_id=db_room.id_)
@@ -378,27 +391,27 @@ async def expire_inactive_rooms(conn_manager: ConnectionManager):
                 # If the room is no longer in the pool, it probably means it was lost
                 # due to a server crash or other error. It should be marked as finished
                 # in the DB.
-                db_room.ended_on = datetime.utcnow()
+                db_room.ended_on = current_date
                 db_session.add(db_room)
-                expired_count += 1
+                expired_rooms.append(db_room.id_)
                 continue
 
-            last_active_period = (room.last_active_on - datetime.utcnow()).seconds
+            time_since_last_active = (current_date - room.last_active_on).seconds
             if (
                 not room.players
-                and last_active_period > get_config().ROOM_DELETION_DELAY
+                and time_since_last_active > get_config().ROOM_DELETION_DELAY
             ):
                 conn_manager.pool.remove_room(room.id_)
-                db_room.ended_on = datetime.utcnow()
+                db_room.ended_on = current_date
                 db_session.add(db_room)
-                expired_count += 1
+                expired_rooms.append(db_room.id_)
 
         await db_session.commit()
-        await broadcast_full_lobby_state(conn_manager)
+        await broadcast_full_lobby_state(conn_manager, removed_room_ids=expired_rooms)
 
         logger = getLogger('uvicorn')
-        if expired_count:
-            logger.info(f'Expired {expired_count} rooms')
+        if len(expired_rooms) > 0:
+            logger.info(f'Expired {len(expired_rooms)} rooms')
         else:
             logger.info('No rooms expired')
 

@@ -50,17 +50,17 @@
   },
   "loggers": {
     "uvicorn.access": {
-      "handlers": ["requests_to_file"],
+      "handlers": ["requests_to_file", "requests_to_stream"],
       "level": "INFO",
       "propagate": false
     },
     "uvicorn": {
-      "handlers": ["errors_to_file"],
+      "handlers": ["errors_to_file", "errors_to_stream"],
       "level": "INFO",
       "propagate": false
     },
     "uvicorn.error": {
-      "handlers": ["errors_to_file"],
+      "handlers": ["errors_to_file", "errors_to_stream"],
       "level": "INFO",
       "propagate": false
     }
