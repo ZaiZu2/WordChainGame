@@ -1,4 +1,5 @@
 from functools import lru_cache
+from pathlib import Path
 from uuid import UUID
 
 from pydantic_settings import BaseSettings
@@ -6,7 +7,7 @@ from pydantic_settings import BaseSettings
 
 class Config(BaseSettings):
     class Config:
-        env_file = '.env'
+        env_file = Path(__file__).parent.resolve() / '.env'
         env_file_encoding = 'utf-8'
 
     SECRET_KEY: str
@@ -21,6 +22,9 @@ class Config(BaseSettings):
     GAME_START_DELAY: int = 1  # seconds, Delay game start to prime the players
     TURN_START_DELAY: int = 1  # seconds, Delay each turn start to prime the players
     MAX_TURN_TIME_DEVIATION: float = 0.1  # seconds
+
+    ROOM_DELETION_INTERVAL: int = 10  # seconds
+    ROOM_DELETION_DELAY: int = 300  # seconds
 
     ROOT_ID: UUID
     ROOT_NAME: str = 'root'
@@ -85,17 +89,21 @@ LOGGING_CONFIG = {
     },
     'loggers': {
         'uvicorn.access': {
-            'handlers': ['requests_to_file', 'requests_to_stream'],
+            'handlers': ['requests_to_file'],
             'level': 'INFO',
             'propagate': False,
         },
         'uvicorn': {
-            'handlers': ['errors_to_file', 'errors_to_stream'],
+            'handlers': [
+                'errors_to_file',
+            ],
             'level': 'INFO',
             'propagate': False,
         },
         'uvicorn.error': {
-            'handlers': ['errors_to_file', 'errors_to_stream'],
+            'handlers': [
+                'errors_to_file',
+            ],
             'level': 'INFO',
             'propagate': False,
         },

@@ -1,10 +1,11 @@
 import asyncio
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import Enum
-from typing import cast
+from logging import getLogger
+from typing import Any, Callable, Iterable, Mapping, cast
 
 from fastapi import WebSocket, WebSocketDisconnect, WebSocketException
-from sqlalchemy import insert, select
+from sqlalchemy import and_, insert, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import src.schemas.database as db
@@ -359,3 +360,88 @@ def get_current_stats(conn_manager: ConnectionManager) -> v.CurrentStatistics:
         active_players=conn_manager.pool.active_players,
         active_rooms=conn_manager.pool.active_rooms,
     )
+
+
+async def expire_inactive_rooms(conn_manager: ConnectionManager):
+    async with init_db_session() as db_session:
+        db_rooms = await db_session.scalars(
+            select(db.Room).where(
+                and_(db.Room.ended_on == None, db.Room.id_ != d.LOBBY.id_)  # noqa: E711
+            )
+        )
+
+        expired_count = 0
+        for db_room in db_rooms:
+            try:
+                room = conn_manager.pool.get_room(room_id=db_room.id_)
+            except KeyError:
+                # If the room is no longer in the pool, it probably means it was lost
+                # due to a server crash or other error. It should be marked as finished
+                # in the DB.
+                db_room.ended_on = datetime.utcnow()
+                db_session.add(db_room)
+                expired_count += 1
+                continue
+
+            last_active_period = (room.last_active_on - datetime.utcnow()).seconds
+            if (
+                not room.players
+                and last_active_period > get_config().ROOM_DELETION_DELAY
+            ):
+                conn_manager.pool.remove_room(room.id_)
+                db_room.ended_on = datetime.utcnow()
+                db_session.add(db_room)
+                expired_count += 1
+
+        await db_session.commit()
+        await broadcast_full_lobby_state(conn_manager)
+
+        logger = getLogger('uvicorn')
+        if expired_count:
+            logger.info(f'Expired {expired_count} rooms')
+        else:
+            logger.info('No rooms expired')
+
+
+def schedule_recurring_task(
+    started_on: datetime,
+    interval: int,
+    coro_func: Callable,
+    args: Iterable[Any] | None = None,
+    kwargs: Mapping[str, Any] | None = None,
+):
+    """
+    Schedule a recurring task to be executed at a fixed interval from a start time. This
+    avoids the drift in the execution time due to the time taken by the coroutine
+    function.
+    """
+    args = args or []
+    kwargs = kwargs or {}
+
+    async def _recurring_task():
+        last_scheduled_on = started_on
+        while True:
+            current_time = datetime.utcnow()
+            time_diff = (current_time - last_scheduled_on).total_seconds()
+            interval_count_since_last_execution = time_diff // interval
+            time_until_next_run = interval - time_diff % interval
+
+            last_scheduled_on += timedelta(
+                seconds=interval_count_since_last_execution * interval
+            )
+
+            logger = getLogger('uvicorn')
+            logger.debug(
+                f'Executing recurring "{coro_func.__name__}", started on {started_on} every {interval}s\n'
+                f'Current time: {current_time}\n'
+                f'Last scheduled on: {last_scheduled_on}\n'
+                f'Waiting for: {time_until_next_run}\n'
+            )
+            await asyncio.sleep(time_until_next_run)
+
+            # Execute only if time difference is divisible by the polling interval with a 1
+            # second upper tolerance.
+            if time_diff % interval < 1:
+                await coro_func(*args, **kwargs)
+
+    return asyncio.create_task(_recurring_task())

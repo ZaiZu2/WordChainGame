@@ -6,12 +6,12 @@ from fastapi import WebSocket
 import src.schemas.domain as d
 import src.schemas.validation as v
 from src.misc import PlayerAlreadyConnectedError
-from src.player_room_manager import PlayerRoomManager
+from src.player_room_manager import PlayerRoomPool
 
 
 class ConnectionManager:
-    def __init__(self) -> None:
-        self.pool = PlayerRoomManager()
+    def __init__(self, pool: PlayerRoomPool) -> None:
+        self.pool = pool
 
     def connect(self, player: d.Player, room_id: int) -> None:
         try:  # If successfully gets the player, it means the player is already connected
@@ -22,12 +22,12 @@ class ConnectionManager:
         except KeyError:
             pass
 
-        self.pool.add(player, room_id)
+        self.pool.add_player(player, room_id)
 
     def disconnect(self, player_id: UUID):
         if not self.pool.get_player(player_id):
             raise ValueError('Player is not connected')
-        self.pool.remove(player_id)
+        self.pool.remove_player(player_id)
 
     async def broadcast_chat_message(self, message: v.Message) -> None:
         room_players = self.pool.get_room_players(message.room_id)
@@ -137,10 +137,10 @@ class ConnectionManager:
             raise ValueError('Room to move the player to does not exist')
 
         player = self.pool.get_player(player_id)
-        self.pool.remove(player_id)
+        self.pool.remove_player(player_id)
         player.ready = False
         player.in_game = False
-        self.pool.add(player, to_room_id)
+        self.pool.add_player(player, to_room_id)
 
     async def send_action(self, action: v.Action, player_id: UUID) -> None:
         player = self.pool.get_player(player_id)

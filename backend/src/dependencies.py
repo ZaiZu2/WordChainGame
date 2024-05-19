@@ -1,3 +1,4 @@
+from datetime import datetime
 from functools import lru_cache
 from typing import Annotated, AsyncGenerator, Literal
 from uuid import UUID
@@ -16,6 +17,7 @@ from config import Config, get_config
 from src.connection_manager import ConnectionManager
 from src.database import async_session
 from src.game.game import GameManager
+from src.player_room_manager import player_room_pool
 
 
 async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
@@ -38,7 +40,7 @@ async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
 @lru_cache
 def get_connection_manager() -> ConnectionManager:
     """FastAPI dependency injection function to pass a ConnectionManager instance into endpoints."""
-    return ConnectionManager()
+    return ConnectionManager(pool=player_room_pool)
 
 
 @lru_cache
@@ -74,9 +76,15 @@ async def get_player(
 
 async def get_room(
     room_id: int,
+    player: Annotated[d.Player, Depends(get_player)],
     conn_manager: Annotated[ConnectionManager, Depends(get_connection_manager)],
 ) -> d.Room:
     room = conn_manager.pool.get_room(room_id=room_id)
+
+    # Any room endpoint accessed by the owner should refresh room's `last_active_on`
+    if room.owner.id_ == player.id_:
+        room.last_active_on = datetime.utcnow()
+
     if room is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail='Room not found'

@@ -130,6 +130,7 @@ class Room(DataclassMixin):
     status: RoomStatusEnum = RoomStatusEnum.OPEN
     capacity: int
     created_on: datetime
+    last_active_on: datetime = field(default_factory=datetime.utcnow)
     ended_on: datetime | None = None  # Unecessary, this info is persisted in ORM model
     owner: Player
     rules: DeathmatchRules
@@ -236,7 +237,7 @@ class GameFinishedEvent(GameEvent):
 ROOT = Player(
     id_=get_config().ROOT_ID,
     name=get_config().ROOT_NAME,
-    created_on=datetime.now(),
+    created_on=datetime.utcnow(),
     websocket=None,  # type: ignore
     room=None,  # type: ignore
 )
@@ -245,7 +246,7 @@ LOBBY = Room(
     name=get_config().LOBBY_NAME,
     status=RoomStatusEnum.OPEN,
     capacity=0,
-    created_on=datetime.now(),
+    created_on=datetime.utcnow(),
     owner=ROOT,
     rules=DeathmatchRules(round_time=0, start_score=0, penalty=0, reward=0),
 )

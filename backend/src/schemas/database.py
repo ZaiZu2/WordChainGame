@@ -68,6 +68,7 @@ class Room(Base):
     id_: so.Mapped[int] = so.mapped_column('id', primary_key=True)
     name: so.Mapped[str] = so.mapped_column(sa.String(10), unique=True)
     created_on: so.Mapped[datetime] = so.mapped_column(default=sa.func.now())
+    last_active_on: so.Mapped[datetime] = so.mapped_column(default=sa.func.now())
     ended_on: so.Mapped[datetime | None] = so.mapped_column()
 
     games: so.Mapped[list[Game]] = so.relationship(back_populates='room')
