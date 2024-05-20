@@ -4,7 +4,7 @@ import asyncio
 from dataclasses import asdict, dataclass, field, fields, is_dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Any, Literal, Protocol
+from typing import Any, Literal
 from uuid import UUID
 
 from fastapi import WebSocket
@@ -217,20 +217,23 @@ class DeathmatchRules(DataclassMixin):
 ##### MESSAGE #####
 
 
-@dataclass(kw_only=True)
-class GameEvent(Protocol):
-    type_: Literal['GameFinished', 'PlayerLost', 'IncorrectWord', 'CorrectWord']
+class GameEvent:
+    pass
 
 
 @dataclass(kw_only=True)
 class PlayerLostEvent(GameEvent):
-    type_: Literal['PlayerLost'] = 'PlayerLost'
+    player_name: str
+
+
+@dataclass(kw_only=True)
+class PlayerWonEvent(GameEvent):
     player_name: str
 
 
 @dataclass(kw_only=True)
 class GameFinishedEvent(GameEvent):
-    type_: Literal['GameFinished'] = 'GameFinished'
+    pass
 
 
 # Global root domain models representing server room & user, accessible to all components of the application

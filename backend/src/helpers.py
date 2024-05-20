@@ -246,9 +246,6 @@ async def listen_for_messages(
 async def run_game(
     game: Deathmatch, room: d.Room, conn_manager: ConnectionManager
 ) -> None:
-    room_info = cast(d.Room, conn_manager.pool.get_room(room_id=room.id_))
-    word_input_buffer = room_info.word_input_buffer
-
     start_game_state = game.start()
     await conn_manager.broadcast_game_state(room.id_, start_game_state)
 
@@ -262,13 +259,14 @@ async def run_game(
 
         try:
             word_input = await asyncio.wait_for(
-                word_input_buffer.get(), game.time_left_in_turn
+                room.word_input_buffer.get(), game.time_left_in_turn
             )
         except asyncio.TimeoutError:
             end_turn_state = game.end_turn_timed_out()
         else:
             end_turn_state = game.end_turn_in_time(word_input.word)
         await conn_manager.broadcast_game_state(room.id_, end_turn_state)
+        await consume_game_events(game, conn_manager)
 
         if game.is_finished():
             break
@@ -278,12 +276,13 @@ async def run_game(
         await asyncio.sleep(get_config().TURN_START_DELAY)
 
     end_game_state = game.end()
+    await consume_game_events(game, conn_manager)
     await conn_manager.broadcast_game_state(room.id_, end_game_state)
+
     room.status = d.RoomStatusEnum.OPEN
     await broadcast_single_room_state(room, conn_manager)
 
-    async with init_db_session() as db:
-        await export_and_persist_game(game, db)
+    await export_and_persist_game(game)
 
 
 async def broadcast_full_lobby_state(
@@ -319,29 +318,31 @@ async def broadcast_full_lobby_state(
     await conn_manager.broadcast_lobby_state(lobby_state)
 
 
-async def export_and_persist_game(game: Deathmatch, db_session: AsyncSession) -> None:
+async def export_and_persist_game(game: Deathmatch) -> None:
     """Gather game data designated to be persisted and issue a bulk insert."""
-    game_db = cast(
-        db.Game, await db_session.scalar(select(db.Game).where(db.Game.id_ == game.id_))
-    )
-    game_db.ended_on = datetime.utcnow()
-    game_db.status = db.GameStatusEnum.ENDED
-    db_session.add(game_db)
-
-    turn_db_dicts = []
-    for turn in game.turns:
-        turn_db_dict = dict(
-            word=turn.word.content if turn.word else None,
-            is_correct=turn.word.is_correct if turn.word else None,
-            started_on=turn.started_on,
-            ended_on=turn.ended_on,
-            player_id=turn.player_id,
-            game_id=game.id_,
+    async with init_db_session() as db_session:
+        game_db = cast(
+            db.Game,
+            await db_session.scalar(select(db.Game).where(db.Game.id_ == game.id_)),
         )
-        turn_db_dicts.append(turn_db_dict)
+        game_db.ended_on = datetime.utcnow()
+        game_db.status = db.GameStatusEnum.ENDED
+        db_session.add(game_db)
 
-    # Bulk insert
-    await db_session.execute(insert(db.Turn), turn_db_dicts)
+        turn_db_dicts = []
+        for turn in game.turns:
+            turn_db_dict = dict(
+                word=turn.word.content if turn.word else None,
+                is_correct=turn.word.is_correct if turn.word else None,
+                started_on=turn.started_on,
+                ended_on=turn.ended_on,
+                player_id=turn.player_id,
+                game_id=game.id_,
+            )
+            turn_db_dicts.append(turn_db_dict)
+
+        # Bulk insert
+        await db_session.execute(insert(db.Turn), turn_db_dicts)
 
 
 async def broadcast_single_room_state(
@@ -411,9 +412,9 @@ async def expire_inactive_rooms(conn_manager: ConnectionManager):
 
         logger = getLogger('uvicorn')
         if len(expired_rooms) > 0:
-            logger.info(f'Expired {len(expired_rooms)} rooms')
+            logger.info(f'RECURRING ROOM CLEANUP: Expired {len(expired_rooms)} rooms')
         else:
-            logger.info('No rooms expired')
+            logger.info('RECURRING ROOM CLEANUP: No rooms expired')
 
 
 def schedule_recurring_task(
@@ -458,3 +459,33 @@ def schedule_recurring_task(
                 await coro_func(*args, **kwargs)
 
     return asyncio.create_task(_recurring_task())
+
+
+async def consume_game_events(
+    game: Deathmatch, conn_manager: ConnectionManager
+) -> None:
+    async with init_db_session() as db_session:
+        for event in game.events:
+            if isinstance(event, d.PlayerLostEvent):
+                message = db.Message(
+                    content=f'{event.player_name} lost the game',
+                    room_id=game.room_id,
+                    player_id=d.ROOT.id_,
+                )
+                await save_and_broadcast_message(message, db_session, conn_manager)
+            elif isinstance(event, d.PlayerWonEvent):
+                message = db.Message(
+                    content=f'{event.player_name} won the game',
+                    room_id=game.room_id,
+                    player_id=d.ROOT.id_,
+                )
+                await save_and_broadcast_message(message, db_session, conn_manager)
+            elif isinstance(event, d.GameFinishedEvent):
+                message = db.Message(
+                    content='game has finished',
+                    room_id=game.room_id,
+                    player_id=d.ROOT.id_,
+                )
+                await save_and_broadcast_message(message, db_session, conn_manager)
+            else:
+                raise NotImplementedError('Unsupported event type')

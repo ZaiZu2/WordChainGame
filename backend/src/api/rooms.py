@@ -383,7 +383,7 @@ async def start_game(
     )
     await broadcast_single_room_state(room, conn_manager)
 
-    game = game_manager.create(game_db.id_, room.rules, room.players.values())
+    game = game_manager.create(game_db.id_, room.id_, room.rules, room.players.values())
     asyncio.create_task(run_game(game, room, conn_manager))
 
     players_out = {}
