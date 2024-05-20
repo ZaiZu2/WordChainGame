@@ -11,7 +11,7 @@ In the Word Chain Game, players take turns adding a word to a growing chain, wit
   - [x] Kick troublesome players from your room
   - [x] Play a game
   - [X] Go over the game progress after it finishes
-  - [ ] Run a recurring job, periodically cleaning abandoned room from the lobby
+  - [x] Run a recurring job, periodically cleaning abandoned room from the lobby
   - [ ] Introduce mute/ownership buttons
   - [ ] Check the leaderboards and your game history
   - [ ] Deploy fully containerized on AWS using Nginx & Uvicorn
@@ -34,9 +34,9 @@ Actions sent by a client and those which are 'singular' by design, utilize HTTP 
 #### 3. Asynchronous web server
 The webserver is built with FastAPI and features a fully asynchronous code.
 #### 4. Persistance
-Application stores transient, game-related state in memory - meaning that currently open rooms, active games and player sessions are not persisted. Nonetheless, the history of chat messages, past games (alongside all data to recreate their progress) and players are persisted using SQLAlchemy with a PostgreSQL database. 
+Application stores transient, game-related state in memory - meaning that currently open rooms, active games and player sessions are not persisted. Nonetheless, the history of chat messages, past games (alongside all data to recreate their progress) and players are persisted using SQLAlchemy with a PostgreSQL database.
 #### 5. Validation
-Virtually all inputs and outputs are modeled and validated using Pydantic. 
+Virtually all inputs and outputs are modeled and validated using Pydantic.
 
 ### ***Frontend***
 #### 1. Typescript & Javascript
