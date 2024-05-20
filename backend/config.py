@@ -24,8 +24,8 @@ class Config(BaseSettings):
     TURN_START_DELAY: int = 1  # seconds, Delay each turn start to prime the players
     MAX_TURN_TIME_DEVIATION: float = 0.1  # seconds
 
-    ROOM_DELETION_INTERVAL: int = 10  # seconds
-    ROOM_DELETION_DELAY: int = 30  # seconds
+    ROOM_DELETION_INTERVAL: int = 60  # seconds
+    ROOM_DELETION_DELAY: int = 180  # seconds
 
     ROOT_ID: UUID
     ROOT_NAME: str = 'root'
