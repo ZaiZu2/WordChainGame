@@ -17,10 +17,14 @@ class GameManager:
         return self.games[game_id]
 
     def create(
-        self, game_id: int, rules: d.DeathmatchRules, players: Iterable[d.Player]
+        self,
+        game_id: int,
+        room_id: int,
+        rules: d.DeathmatchRules,
+        players: Iterable[d.Player],
     ) -> Deathmatch:
         if rules.type_ == d.GameTypeEnum.DEATHMATCH:
-            game = self.games[game_id] = Deathmatch(game_id, players, rules)
+            game = self.games[game_id] = Deathmatch(game_id, room_id, players, rules)
             return game
         else:
             raise NotImplementedError('Unsupported game type')

@@ -60,9 +60,14 @@ class OrderedPlayers(list):
 
 class Deathmatch:
     def __init__(
-        self, id_: int, players: Iterable[d.Player], rules: d.DeathmatchRules
+        self,
+        id_: int,
+        room_id: int,
+        players: Iterable[d.Player],
+        rules: d.DeathmatchRules,
     ) -> None:
         self.id_ = id_
+        self.room_id = room_id
         self.rules = rules
         self.state: d.GameStateEnum = d.GameStateEnum.CREATING
 
@@ -101,6 +106,8 @@ class Deathmatch:
         return self.rules.round_time - time_elapsed.total_seconds()
 
     def start(self) -> v.StartGameState:
+        if self.state != d.GameStateEnum.CREATING:
+            raise ValueError(f'Game cannot be started in the {self.state} game state')
         self.state = d.GameStateEnum.STARTED
 
         return v.StartGameState(
@@ -114,14 +121,10 @@ class Deathmatch:
         return v.WaitState()
 
     def start_turn(self) -> v.StartTurnState:
-        if self.state not in [
-            d.GameStateEnum.CREATING,
-            d.GameStateEnum.WAITING,
-            d.GameStateEnum.ENDED_TURN,
-        ]:
+        if self.state not in [d.GameStateEnum.CREATING, d.GameStateEnum.WAITING]:
             raise ValueError(f'Turn cannot be started in the {self.state} game state')
         self.state = d.GameStateEnum.STARTED_TURN
-        self.events = []
+        self.events.clear()
 
         if self.turns:  # Don't iterate on the first turn
             self.players.next()
@@ -139,7 +142,7 @@ class Deathmatch:
 
     def end_turn_in_time(self, word: str) -> v.EndTurnState:
         if self.state != d.GameStateEnum.STARTED_TURN:
-            raise ValueError(f'Turn cannot be started in the {self.state} game state')
+            raise ValueError(f'Turn cannot be ended in the {self.state} game state')
         self.state = d.GameStateEnum.ENDED_TURN
 
         current_turn = cast(d.Turn, self.current_turn)
@@ -159,7 +162,7 @@ class Deathmatch:
 
     def end_turn_timed_out(self) -> v.EndTurnState:
         if self.state != d.GameStateEnum.STARTED_TURN:
-            raise ValueError(f'Turn cannot be started in the {self.state} game state')
+            raise ValueError(f'Turn cannot be ended in the {self.state} game state')
         self.state = d.GameStateEnum.ENDED_TURN
 
         current_turn = cast(d.Turn, self.current_turn)
@@ -175,7 +178,6 @@ class Deathmatch:
 
         self._evaluate_turn()
         self.turns.append(current_turn)
-        self.state = d.GameStateEnum.ENDED
 
         return v.EndTurnState(
             players=self.players,
@@ -186,7 +188,18 @@ class Deathmatch:
         )
 
     def end(self) -> v.EndGameState:
-        self.events.append(d.GameFinishedEvent())
+        if self.state != d.GameStateEnum.ENDED_TURN:
+            raise ValueError(f'Game cannot be ended in the {self.state} game state')
+
+        self.events.clear()  # Clear events from the previous turn
+        if len(self.players) == 1:
+            self.events.append(d.GameFinishedEvent())
+        else:
+            winner: d.GamePlayer = next(
+                game_player for game_player in self.players if game_player.in_game
+            )
+            self.events.append(d.PlayerWonEvent(player_name=winner.name))
+            self.events.append(d.GameFinishedEvent())
         return v.EndGameState()
 
     def is_finished(self) -> bool:
@@ -196,7 +209,7 @@ class Deathmatch:
 
         # Handle case with more than 1 player playing
         players_in_game = len([player for player in self.players if player.in_game])
-        if len(self.players) > 1 and players_in_game <= 1:
+        if len(self.players) > 1 and players_in_game == 1:
             return True
 
         return False
@@ -253,4 +266,8 @@ class Deathmatch:
         # Player lost
         if self.players.current.score <= 0:
             self.players.remove_current()
-            self.events.append(d.PlayerLostEvent(player_name=self.players.current.name))
+
+            if len(self.players) != 1:
+                self.events.append(
+                    d.PlayerLostEvent(player_name=self.players.current.name)
+                )
