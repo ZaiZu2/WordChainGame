@@ -45,13 +45,13 @@ export default function App() {
                                     </div>
                                     <div className="text-center mt-2 fs-5">{player?.id}</div>
                                 </Container>
+                                <RulesDescription />
                                 <Routes>
                                     <Route path="/" element={<LobbyPage />} />
                                     <Route path="/room" element={<RoomPage />} />
                                     <Route path="*" element={<Navigate to="/" />} />
                                 </Routes>
                                 <Chat />
-                                <RulesDescription />
                             </Stack>
                         </WebSocketProvider>
                     </Container>

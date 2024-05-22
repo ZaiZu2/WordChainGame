@@ -10,6 +10,7 @@ type IconProps = {
     iconSize?: 1 | 2 | 3 | 4 | 5 | 6;
     textSize?: 1 | 2 | 3 | 4 | 5 | 6;
     gap?: number;
+    inline?: boolean;
     placement?: "top" | "bottom" | "left" | "right";
     className?: string;
 };
@@ -22,11 +23,16 @@ export default function Icon({
     iconSize = 2,
     textSize = 5,
     gap = 3,
+    inline = false,
     placement = "bottom",
     className = "",
 }: IconProps) {
     return (
-        <Stack direction="horizontal" gap={gap} className={className}>
+        <Stack
+            direction="horizontal"
+            gap={gap}
+            className={`${inline ? "d-inline-flex" : ""} ${className}`}
+        >
             {tooltip !== undefined ? (
                 <Tooltip content={tooltip} placement={placement}>
                     <span className={`material-symbols-outlined fs-${iconSize} ${color}`}>
