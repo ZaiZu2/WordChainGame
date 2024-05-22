@@ -482,7 +482,7 @@ async def consume_game_events(
                 await save_and_broadcast_message(message, db_session, conn_manager)
             elif isinstance(event, d.GameFinishedEvent):
                 message = db.Message(
-                    content='game has finished',
+                    content=f'game has finished - you created a word chain consisting of {event.chain_length} words',
                     room_id=game.room_id,
                     player_id=d.ROOT.id_,
                 )

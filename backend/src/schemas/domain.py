@@ -233,7 +233,7 @@ class PlayerWonEvent(GameEvent):
 
 @dataclass(kw_only=True)
 class GameFinishedEvent(GameEvent):
-    pass
+    chain_length: int
 
 
 # Global root domain models representing server room & user, accessible to all components of the application
