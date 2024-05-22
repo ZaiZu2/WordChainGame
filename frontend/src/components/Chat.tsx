@@ -17,6 +17,7 @@ export default function Chat() {
         const message = messageInputRef.current?.value;
         if (message) {
             sendChatMessage(message);
+            messageInputRef.current!.value = "";
         }
     };
 

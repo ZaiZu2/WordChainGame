@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Button, Stack } from "react-bootstrap";
 import Spinner from "react-bootstrap/Spinner";
 import Table from "react-bootstrap/Table";
@@ -6,9 +7,11 @@ import { useNavigate } from "react-router-dom";
 import apiClient from "../apiClient";
 import Bubble from "../components/Bubble";
 import Icon from "../components/Icon";
-import Statistics from "../components/Statistics";
+import IconBar from "../components/IconBar";
 import { useStore } from "../contexts/storeContext";
 import { RoomOut, RoomState } from "../types";
+import { AllTimeStatistics, LobbyState } from "../types";
+import { castToMinutes } from "../utils";
 
 export default function LobbyPage() {
     const { toggleModal } = useStore();
@@ -32,6 +35,64 @@ export default function LobbyPage() {
             </Bubble>
             <RoomList />
         </>
+    );
+}
+
+export function Statistics() {
+    const {
+        lobbyState: _lobbyState,
+        allTimeStatistics: _allTimeStatistics,
+        setAllTimeStatistics,
+    } = useStore();
+    const lobbyState = _lobbyState as LobbyState;
+    const allTimeStatistics = _allTimeStatistics as AllTimeStatistics;
+
+    const elements = [
+        {
+            symbol: "groups",
+            value: lobbyState?.stats.active_players,
+            tooltip: "Number of players currently online",
+        },
+        {
+            symbol: "holiday_village",
+            value: lobbyState?.stats.active_rooms,
+            tooltip: "Number of rooms currently active",
+        },
+        {
+            symbol: "link",
+            value: allTimeStatistics?.longest_chain,
+            tooltip: "The longest chain of words built in a single game",
+        },
+        {
+            symbol: "history",
+            value: castToMinutes(allTimeStatistics?.longest_game_time),
+            tooltip: "The longest time a game was played",
+        },
+        {
+            symbol: "joystick",
+            value: allTimeStatistics?.total_games,
+            tooltip: "Number of Word Chain games ever played",
+        },
+    ];
+
+    useEffect(() => {
+        const fetchStats = async () => {
+            const allTimeStatistics = (await apiClient.get<AllTimeStatistics>("/stats")).body;
+            setAllTimeStatistics(allTimeStatistics);
+        };
+
+        // Fetch stats immediately and then every 60 seconds
+        fetchStats();
+        const intervalId = setInterval(fetchStats, 60 * 1000);
+
+        // Clean up the interval on unmount
+        return () => clearInterval(intervalId);
+    }, []);
+
+    return (
+        <Bubble>
+            <IconBar elements={elements} />
+        </Bubble>
     );
 }
 
@@ -89,7 +150,7 @@ function RoomList() {
                     {rooms !== undefined && Object.values(rooms).length === 0 && (
                         <tr>
                             <td colSpan={4} className="p-1 ms-auto text-center">
-                                No games available
+                                No rooms available
                             </td>
                         </tr>
                     )}

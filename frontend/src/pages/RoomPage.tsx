@@ -9,6 +9,7 @@ import apiClient from "../apiClient";
 import Bubble from "../components/Bubble";
 import CountdownTimer from "../components/CountdownTimer";
 import Icon from "../components/Icon";
+import IconBar from "../components/IconBar";
 import { WORD_LIST_LENGTH, WORD_LIST_MAX_WORD_SIZE } from "../config";
 import { useStore } from "../contexts/storeContext";
 import { useWebSocketContext } from "../contexts/WebsocketProvider";
@@ -16,6 +17,7 @@ import { DeathmatchRules, GamePlayer, LobbyState, Player, RoomState, Turn, Word 
 
 export default function RoomPage() {
     const { mode, gameState } = useStore();
+
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -108,7 +110,7 @@ function Rules() {
     const { roomState: _roomState } = useStore();
     const roomState = _roomState as RoomState;
 
-    const icons = [
+    const elements = [
         {
             symbol: "skull",
             value: roomState.rules.type === "deathmatch" ? "Deathmatch" : "Error",
@@ -136,16 +138,7 @@ function Rules() {
         },
     ];
 
-    return (
-        <Stack direction="horizontal" gap={2} className="justify-content-evenly">
-            {icons.map((icon, index) => (
-                <React.Fragment key={index}>
-                    {index !== 0 && <div className="vr" />}
-                    <Icon {...icon} />
-                </React.Fragment>
-            ))}
-        </Stack>
-    );
+    return <IconBar elements={elements} />;
 }
 
 function ButtonBar() {
