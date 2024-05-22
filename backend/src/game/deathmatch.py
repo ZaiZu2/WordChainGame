@@ -80,7 +80,7 @@ class Deathmatch:
         self._turns: list[d.Turn] = []
         self._current_turn: d.Turn | None = None
 
-        self.words: set[d.Word] = set()
+        self.words: set[str] = set()  # Quick lookup for used words
         self.events: list[d.GameEvent] = []  # Must be emptied after each turn
 
     @property
@@ -193,13 +193,13 @@ class Deathmatch:
 
         self.events.clear()  # Clear events from the previous turn
         if len(self.players) == 1:
-            self.events.append(d.GameFinishedEvent())
+            self.events.append(d.GameFinishedEvent(chain_length=len(self.words)))
         else:
             winner: d.GamePlayer = next(
                 game_player for game_player in self.players if game_player.in_game
             )
             self.events.append(d.PlayerWonEvent(player_name=winner.name))
-            self.events.append(d.GameFinishedEvent())
+            self.events.append(d.GameFinishedEvent(chain_length=len(self.words)))
         return v.EndGameState()
 
     def is_finished(self) -> bool:
@@ -222,14 +222,14 @@ class Deathmatch:
                 'Word does not start with the last letter of the previous word',
             )
 
-        if word in self.words:
-            return d.Word(content=word, is_correct=False), 'Word has already been used'
-
         word_obj = check_word_correctness(word)
         if not word_obj.is_correct:
             return word_obj, 'Word does not exist'
 
-        self.words.add(word_obj)
+        if word in self.words:
+            return d.Word(content=word, is_correct=False), 'Word has already been used'
+
+        self.words.add(word)
         return word_obj, 'Word is correct'
 
     def _is_compatible_with_previous_word(self, word: str) -> bool:
