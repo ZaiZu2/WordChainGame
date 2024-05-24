@@ -1,5 +1,5 @@
 import { UUID } from "crypto";
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useState } from "react";
 
 import {
     Action as Action,
@@ -31,11 +31,13 @@ export type StoreContext = {
     updateRoomState: (newRoomState: RoomState | null) => void;
     updateGameState: (newGameState: GameState) => void;
     setAllTimeStatistics: (newAllTimeStatistics: AllTimeStatistics) => void;
+    checkPlayerSessionCookie: () => void;
     logIn: (id: UUID) => void;
     logOut: () => void;
     executeAction: (newActionMessage: Action) => void;
     isRoomOwner: (playerName?: string) => boolean;
     isLoggedPlayersTurn: () => boolean;
+    setLoggedPlayer: (player: null) => void;
 
     modalConfigs: ModalConfigs;
     toggleModal: <K extends keyof ModalConfigs>(
@@ -45,7 +47,7 @@ export type StoreContext = {
     ) => void;
 } & ReturnType<typeof GameStoreSlice>;
 
-const StoreContextObject = createContext<StoreContext>({
+export const StoreContextObject = createContext<StoreContext>({
     chatMessages: [],
     lobbyState: null,
     roomState: null,
@@ -58,11 +60,13 @@ const StoreContextObject = createContext<StoreContext>({
     updateLobbyState: (newLobbyState: LobbyState | null) => {},
     updateRoomState: (newRoomState: RoomState | null) => {},
     setAllTimeStatistics: (newAllTimeStatistics: AllTimeStatistics) => {},
+    checkPlayerSessionCookie: () => {},
     logIn: () => {},
     logOut: () => {},
     executeAction: (newActionMessage: Action) => {},
     isRoomOwner: (playerName?: string) => false,
     isLoggedPlayersTurn: () => true,
+    setLoggedPlayer: () => {},
 
     modalConfigs: {},
     toggleModal: <K extends keyof ModalConfigs>(
@@ -80,7 +84,7 @@ export function useStore() {
 
 export default function StoreProvider({ children }: { children: React.ReactNode }) {
     const [mode, setMode] = useState<"lobby" | "room" | "game">("lobby");
-    const [loggedPlayer, setLoggedPlayer] = useState<Player | null | undefined>();
+    const [loggedPlayer, setLoggedPlayer] = useState<Player | null>(null);
     const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
     const [lobbyState, setLobbyState] = useState<LobbyState | null>(null);
     const [roomState, setRoomState] = useState<RoomState | null>(null);
@@ -91,7 +95,7 @@ export default function StoreProvider({ children }: { children: React.ReactNode 
 
     const [modalConfigs, setModalConfig] = useState<ModalConfigs>({});
 
-    useEffect(function checkPlayerSessionCookie() {
+    async function checkPlayerSessionCookie() {
         // If HTTP-only cookie is set and still valid, the player will get immediately
         // logged in
         (async () => {
@@ -104,7 +108,7 @@ export default function StoreProvider({ children }: { children: React.ReactNode 
                 }
             }
         })();
-    }, []);
+    }
 
     async function logIn(id: UUID) {
         const body = id === undefined ? { id: loggedPlayer?.id } : { id: id };
@@ -115,6 +119,9 @@ export default function StoreProvider({ children }: { children: React.ReactNode 
     async function logOut() {
         await apiClient.post<null>("/players/logout", { body: { id: loggedPlayer?.id } });
         setLoggedPlayer(null);
+        setChatMessages([]);
+        setLobbyState(null);
+        setRoomState(null);
     }
 
     function executeAction(newActionMessage: Action) {
@@ -260,11 +267,13 @@ export default function StoreProvider({ children }: { children: React.ReactNode 
                 updateLobbyState,
                 updateRoomState,
                 setAllTimeStatistics,
+                checkPlayerSessionCookie,
                 logIn,
                 logOut,
                 executeAction,
                 isRoomOwner,
                 isLoggedPlayersTurn: isLoggedPlayersTurn,
+                setLoggedPlayer,
                 modalConfigs,
                 toggleModal,
                 ...gameStoreSlice,
