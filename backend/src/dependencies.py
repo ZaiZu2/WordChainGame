@@ -1,6 +1,6 @@
 from datetime import datetime
 from functools import lru_cache
-from typing import Annotated, AsyncGenerator, Literal
+from typing import Annotated, AsyncGenerator, Literal, cast
 from uuid import UUID
 
 from fastapi import (
@@ -10,8 +10,10 @@ from fastapi import (
     Response,
     status,
 )
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import src.schemas.database as db
 import src.schemas.domain as d
 from config import Config, get_config
 from src.connection_manager import ConnectionManager
@@ -49,11 +51,32 @@ def get_game_manager() -> GameManager:
     return GameManager()
 
 
+async def get_player_db(
+    db_session: Annotated[AsyncSession, Depends(get_db_session)],
+    player_id: Annotated[UUID | Literal[''] | None, Cookie()] = None,
+) -> db.Player:
+    """Get the persisted player from the database, using auth cookie."""
+    if player_id is None or player_id == '':
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail='Player is not authenticated',
+        )
+    player_db = cast(
+        db.Player,
+        await db_session.scalar(select(db.Player).where(db.Player.id_ == player_id)),
+    )
+    if player_db is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail='Player not found')
+
+    return player_db
+
+
 async def get_player(
     response: Response,
     conn_manager: Annotated[ConnectionManager, Depends(get_connection_manager)],
     player_id: Annotated[UUID | Literal[''] | None, Cookie()] = None,
 ) -> d.Player:
+    """Get the currently active player from the connection manager, using auth cookie."""
     if player_id is None or player_id == '':
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -66,7 +89,7 @@ async def get_player(
         await set_auth_cookie('', response)
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail='Player is not authenticated',
+            detail='Player is not connected ',
         ) from None
 
     # Extend cookie's expiration time, after each new, successful request

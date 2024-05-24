@@ -152,50 +152,48 @@ async def handle_player_disconnect(
     conn_manager.disconnect(player.id_)
 
     is_player_in_lobby = room.id_ == d.LOBBY.id_
-    if not is_player_in_lobby:
-        pass
-
-        # TODO: Rewrite without db operations
-        # if not active_game_with_player:
-        #     # If disconnected while in a game room, throw the player into the lobby
-        #     # player.room_id = d.LOBBY.id_
-        #     # db.add(player)
-        #     # await db.flush([player])
-        #     room = await db_session.scalar(
-        #         select(db.Room)
-        #         .where(db.Room.id_ == room_id)
-        #         .options(joinedload(db.Room.owner))
-        #     )
-        #     room_state = v.RoomState(
-        #         **room.to_dict(),
-        #         owner_name=room.owner.name,
-        #         players={player.name: None},
-        #     )
-        #     await conn_manager.broadcast_room_state(room.id_, room_state)
-
-        #     message = db.Message(
-        #         content=f'{player.name} disconnected from the room',
-        #         room_id=room.id_,
-        #         player_id=d.ROOT.id_,
-        #     )
-        #     await save_and_broadcast_message(message, db_session, conn_manager)
-        #     return
-        # else:
-        #     # TODO: If disconnected during the game, keep him in a room and the game for
-        #     # a time being - to be decided
-        #     pass
-    else:
+    if is_player_in_lobby:
         lobby_state = v.LobbyState(
             players={player.name: None}, stats=get_current_stats(conn_manager)
         )
         await conn_manager.broadcast_lobby_state(lobby_state)
 
         message = db.Message(
-            content=f'{player.name} disconnected from the room',
+            content=f'{player.name} disconnected from the lobby',
             room_id=room.id_,
             player_id=d.ROOT.id_,
         )
         await save_and_broadcast_message(message, db_session, conn_manager)
+
+    # TODO: Rewrite without db operations
+    # if not active_game_with_player:
+    #     # If disconnected while in a game room, throw the player into the lobby
+    #     # player.room_id = d.LOBBY.id_
+    #     # db.add(player)
+    #     # await db.flush([player])
+    #     room = await db_session.scalar(
+    #         select(db.Room)
+    #         .where(db.Room.id_ == room_id)
+    #         .options(joinedload(db.Room.owner))
+    #     )
+    #     room_state = v.RoomState(
+    #         **room.to_dict(),
+    #         owner_name=room.owner.name,
+    #         players={player.name: None},
+    #     )
+    #     await conn_manager.broadcast_room_state(room.id_, room_state)
+
+    #     message = db.Message(
+    #         content=f'{player.name} disconnected from the room',
+    #         room_id=room.id_,
+    #         player_id=d.ROOT.id_,
+    #     )
+    #     await save_and_broadcast_message(message, db_session, conn_manager)
+    #     return
+    # else:
+    #     # TODO: If disconnected during the game, keep him in a room and the game for
+    #     # a time being - to be decided
+    #     pass
 
 
 async def listen_for_messages(

@@ -1,11 +1,10 @@
 import asyncio
-from typing import Annotated, Literal, cast
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import (
     APIRouter,
     Body,
-    Cookie,
     Depends,
     HTTPException,
     Response,
@@ -25,6 +24,7 @@ from src.dependencies import (
     get_db_session,
     get_game_manager,
     get_player,
+    get_player_db,
     set_auth_cookie,
 )
 from src.game.game import GameManager
@@ -42,9 +42,9 @@ router = APIRouter(tags=[TagsEnum.MAIN])
 
 @router.get('/players/me', status_code=status.HTTP_200_OK)
 async def get_client_player(
-    player: Annotated[d.Player, Depends(get_player)],
+    player_db: Annotated[db.Player, Depends(get_player_db)],
 ) -> v.Player:
-    return v.Player.model_validate(player)
+    return v.Player(**player_db.to_dict())
 
 
 @router.post('/players', status_code=status.HTTP_201_CREATED)
@@ -142,21 +142,12 @@ async def get_stats(
 
 @router.websocket('/connect')
 async def connect(
+    player_db: Annotated[db.Player, Depends(get_player_db)],
     websocket: WebSocket,
     db_session: Annotated[AsyncSession, Depends(get_db_session)],
     conn_manager: Annotated[ConnectionManager, Depends(get_connection_manager)],
     game_manager: Annotated[GameManager, Depends(get_game_manager)],
-    player_id: Annotated[UUID | Literal[''] | None, Cookie()] = None,
 ) -> None:
-    if player_id is None or player_id == '':
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail='Player is not authenticated',
-        )
-    player_db = cast(
-        db.Player,
-        await db_session.scalar(select(db.Player).where(db.Player.id_ == player_id)),
-    )
     player = d.Player(**player_db.to_dict(), room=d.LOBBY, websocket=websocket)
     await accept_websocket_connection(player, websocket, db_session, conn_manager)
     await broadcast_full_lobby_state(conn_manager)
