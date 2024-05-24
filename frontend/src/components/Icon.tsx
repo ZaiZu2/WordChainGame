@@ -13,6 +13,7 @@ type IconProps = {
     inline?: boolean;
     placement?: "top" | "bottom" | "left" | "right";
     className?: string;
+    style?: React.CSSProperties;
 };
 
 export default function Icon({
@@ -26,12 +27,14 @@ export default function Icon({
     inline = false,
     placement = "bottom",
     className = "",
+    style = {},
 }: IconProps) {
     return (
         <Stack
             direction="horizontal"
             gap={gap}
             className={`${inline ? "d-inline-flex" : ""} ${className}`}
+            style={style}
         >
             {tooltip !== undefined ? (
                 <Tooltip content={tooltip} placement={placement}>

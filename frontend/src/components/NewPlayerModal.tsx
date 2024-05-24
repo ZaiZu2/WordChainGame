@@ -1,5 +1,5 @@
 import { UUID } from "crypto";
-import { RefObject, useRef, useState } from "react";
+import { RefObject, useEffect, useRef, useState } from "react";
 import { Button } from "react-bootstrap";
 import Form from "react-bootstrap/Form";
 import Modal from "react-bootstrap/Modal";
@@ -12,7 +12,11 @@ import { useStore } from "../contexts/storeContext";
 import { ApiError, AuthError } from "../errors";
 
 export function LoginModal() {
-    const { logIn } = useStore();
+    const { logIn, checkPlayerSessionCookie } = useStore();
+
+    useEffect(() => {
+        (async () => await checkPlayerSessionCookie())();
+    }, []);
 
     const [playerErrors, setPlayerErrors] = useState<string[]>();
     const playerRef = useRef<HTMLInputElement>(null);
