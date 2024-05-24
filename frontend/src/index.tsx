@@ -5,18 +5,15 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 
 import App from "./App";
-import { ConnectionErrorBoundary } from "./components/ErrorBoundaries";
 import StoreProvider from "./contexts/storeContext";
 import reportWebVitals from "./reportWebVitals";
 
 const root = ReactDOM.createRoot(document.getElementById("root") as HTMLElement);
 root.render(
     <React.StrictMode>
-        <ConnectionErrorBoundary>
-            <StoreProvider>
-                <App />
-            </StoreProvider>
-        </ConnectionErrorBoundary>
+        <StoreProvider>
+            <App />
+        </StoreProvider>
     </React.StrictMode>
 );
 
