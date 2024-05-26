@@ -39,8 +39,8 @@
         "word_chain_game:app",
         "--reload",
         // "--log-config=${workspaceFolder}/backend/logging_config.json",
-        "--ssl-keyfile=${workspaceFolder}/backend/certs/localhost-key.pem",
-        "--ssl-certfile=${workspaceFolder}/backend/certs/localhost.pem"
+        "--ssl-keyfile=${workspaceFolder}/deployment/certs/localhost-key.pem",
+        "--ssl-certfile=${workspaceFolder}/deployment/certs/localhost.pem"
       ],
       "cwd": "${workspaceFolder}/backend",
       "jinja": true,
