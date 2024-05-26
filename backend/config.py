@@ -11,7 +11,6 @@ class Config(BaseSettings):
         env_file = Path(__file__).parent.resolve() / '.env'
         env_file_encoding = 'utf-8'
 
-    SECRET_KEY: str
     DATABASE_URI: str
 
     AUTH_COOKIE_NAME: str = 'player_id'

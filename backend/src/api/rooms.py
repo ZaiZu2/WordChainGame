@@ -32,10 +32,10 @@ from src.helpers import (
     save_and_broadcast_message,
 )
 
-router = APIRouter(tags=[TagsEnum.ROOMS])
+router = APIRouter(prefix='/rooms', tags=[TagsEnum.ROOMS])
 
 
-@router.post('/rooms', status_code=status.HTTP_201_CREATED)
+@router.post('/', status_code=status.HTTP_201_CREATED)
 async def create_room(
     room_in: v.RoomIn,
     player: Annotated[d.Player, Depends(get_player)],
@@ -70,7 +70,7 @@ async def create_room(
     return room_out
 
 
-@router.put('/rooms/{room_id}', status_code=status.HTTP_200_OK)
+@router.put('/{room_id}', status_code=status.HTTP_200_OK)
 async def modify_room(
     room_in_modify: v.RoomInModify,
     room: Annotated[d.Room, Depends(get_room)],
@@ -105,7 +105,7 @@ async def modify_room(
     )
 
 
-@router.post('/rooms/{room_id}/join', status_code=status.HTTP_200_OK)
+@router.post('/{room_id}/join', status_code=status.HTTP_200_OK)
 async def join_room(
     room: Annotated[d.Room, Depends(get_room)],
     player: Annotated[d.Player, Depends(get_player)],
@@ -156,7 +156,7 @@ async def join_room(
     return room_state
 
 
-@router.post('/rooms/{room_id}/leave', status_code=status.HTTP_200_OK)
+@router.post('/{room_id}/leave', status_code=status.HTTP_200_OK)
 async def leave_room(
     room: Annotated[d.Room, Depends(get_room)],
     player: Annotated[d.Player, Depends(get_player)],
@@ -206,7 +206,7 @@ async def leave_room(
     return lobby_state
 
 
-@router.post('/rooms/{room_id}/status', status_code=status.HTTP_200_OK)
+@router.post('/{room_id}/status', status_code=status.HTTP_200_OK)
 async def toggle_room_status(
     room: Annotated[d.Room, Depends(get_room)],
     player: Annotated[d.Player, Depends(get_player)],
@@ -243,7 +243,7 @@ async def toggle_room_status(
     await conn_manager.broadcast_lobby_state(lobby_state)
 
 
-@router.post('/rooms/{room_id}/ready', status_code=status.HTTP_200_OK)
+@router.post('/{room_id}/ready', status_code=status.HTTP_200_OK)
 async def toggle_player_readiness(
     room: Annotated[d.Room, Depends(get_room)],
     player: Annotated[d.Player, Depends(get_player)],
@@ -259,7 +259,7 @@ async def toggle_player_readiness(
     await conn_manager.broadcast_room_state(room.id_, room_state)
 
 
-@router.post('/rooms/{room_id}/return', status_code=status.HTTP_200_OK)
+@router.post('/{room_id}/return', status_code=status.HTTP_200_OK)
 async def return_from_game(
     room: Annotated[d.Room, Depends(get_room)],
     player: Annotated[d.Player, Depends(get_player)],
@@ -278,9 +278,7 @@ async def return_from_game(
 
 # TODO: Probably implement UUID as a player `password` and normal INT PK as
 # identifier which can be shared with the client. This is getting really messy.
-@router.post(
-    '/rooms/{room_id}/players/{player_name}/kick', status_code=status.HTTP_200_OK
-)
+@router.post('/{room_id}/players/{player_name}/kick', status_code=status.HTTP_200_OK)
 async def kick_player(
     player_name: str,
     room: Annotated[d.Room, Depends(get_room)],
@@ -341,7 +339,7 @@ async def kick_player(
     await conn_manager.broadcast_lobby_state(lobby_state)
 
 
-@router.post('/rooms/{room_id}/start', status_code=status.HTTP_201_CREATED)
+@router.post('/{room_id}/start', status_code=status.HTTP_201_CREATED)
 async def start_game(
     room: Annotated[d.Room, Depends(get_room)],
     player: Annotated[d.Player, Depends(get_player)],

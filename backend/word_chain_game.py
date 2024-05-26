@@ -50,8 +50,8 @@ def create_app() -> FastAPI:
         allow_headers=['*'],
     )
 
-    app.include_router(main.router)
-    app.include_router(rooms.router)
+    app.include_router(main.router, prefix='/api')
+    app.include_router(rooms.router, prefix='/api')
 
     app.add_exception_handler(RequestValidationError, request_validation_handler)
 
