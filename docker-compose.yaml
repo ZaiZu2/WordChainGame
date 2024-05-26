@@ -1,0 +1,39 @@
+services:
+  reverse_proxy:
+    image: nginx:latest
+    hostname: reverse_proxy
+    build: ./frontend
+    ports:
+      - "80:80"
+      - "443:443"
+    restart: on_failure
+    environment:
+      - REACT_APP_BASE_API_URL=https://backend:8000
+      - REACT_APP_WEBSOCKET_URL=wss://backend:8000/connect
+    depends_on:
+      - backend
+
+  backend:
+    image: word_chain_game:latest
+    hostname: backend
+    build: ./backend
+    # ports: # API is available only inside the network, do not expose it's port
+    #   - "8000:8000"
+    env_file:
+      - ./backend/.env.prod
+    restart: on_failure
+    depends_on:
+      - db
+
+  db:
+    image: postgres:14
+    ports:
+      - "5432:5432"
+    env_file:
+      - ./deployment/.env.postgres
+    restart: on_failure
+    volumes:
+      - postgres-db:/var/lib/postgresql/data
+
+volumes:
+  postgres-db:
