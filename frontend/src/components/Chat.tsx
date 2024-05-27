@@ -31,6 +31,7 @@ export default function Chat() {
     return (
         <Bubble>
             <Container
+                fluid
                 className="p-0 px-1"
                 style={{
                     minHeight: "100px",
