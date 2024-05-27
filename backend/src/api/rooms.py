@@ -35,7 +35,7 @@ from src.helpers import (
 router = APIRouter(prefix='/rooms', tags=[TagsEnum.ROOMS])
 
 
-@router.post('/', status_code=status.HTTP_201_CREATED)
+@router.post('', status_code=status.HTTP_201_CREATED)
 async def create_room(
     room_in: v.RoomIn,
     player: Annotated[d.Player, Depends(get_player)],

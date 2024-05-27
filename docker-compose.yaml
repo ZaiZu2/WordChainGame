@@ -9,9 +9,6 @@ services:
       - "80:80"
       - "443:443"
     restart: on-failure
-    environment:
-      - REACT_APP_BASE_API_URL=https://backend:8000/api
-      - REACT_APP_WEBSOCKET_URL=wss://backend:8000/api/connect
     depends_on:
       - backend
 
@@ -22,7 +19,6 @@ services:
       context: .
       dockerfile: ./backend/Dockerfile
     # ports: # API is available only inside the network, do not expose it's port
-    #   - "8000:8000"
     env_file:
       - deployment/.env.backend
     restart: on-failure
@@ -31,8 +27,7 @@ services:
 
   db:
     image: postgres:14
-    ports:
-      - "5432:5432"
+    # ports: # DB is available only inside the network, do not expose it's port
     env_file:
       - deployment/.env.postgres
     restart: on-failure

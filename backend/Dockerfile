@@ -18,4 +18,6 @@ USER word_chain_game
 
 EXPOSE 8000
 CMD ["uvicorn", "word_chain_game:app", \
+    # Listen on all interfaces, not just localhost
+    "--host", "0.0.0.0", \
     "--log-config", "logging_config.json"]
