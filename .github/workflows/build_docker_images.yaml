@@ -1,0 +1,70 @@
+name: Build Docker Images
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build_docker_images:
+    runs-on: ubuntu-latest
+    env:
+      REACT_APP_BASE_API_URL: /api
+      REACT_APP_WEBSOCKET_URL: /api/connect
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # - name: Set up Python
+      #   uses: actions/setup-python@v5.1.0
+      #   with:
+      #     python-version: "3.10"
+      #     cache: "pip"
+      #     cache-dependency-path: "./backend/requirements_prod.txt"
+
+      # - name: Install pip dependencies
+      #   run: pip install -r ./backend/requirements_prod.txt
+      #   working-directory: ./backend
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: "npm"
+          cache-dependency-path: "./frontend/package-lock.json"
+
+      - name: Install npm dependencies
+        run: npm install --legacy-peer-deps
+        working-directory: ./frontend
+
+      - name: Build React app
+        run: npm run build
+        working-directory: ./frontend
+
+      # - name: Set up QEMU # Not needed?
+      #   uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build FE image
+        uses: docker/build-push-action@v5
+        with:
+          file: ./frontend/Dockerfile
+          context: .
+          push: true
+          tags: zaizu2/word_chain_game_nginx:latest
+
+      - name: Build BE image
+        uses: docker/build-push-action@v5
+        with:
+          file: ./backend/Dockerfile
+          context: .
+          push: true
+          tags: zaizu2/word_chain_game_backend:latest

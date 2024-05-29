@@ -68,7 +68,7 @@ dmypy.json
 statements
 database
 .env*
-!.env.sample
+!.env.*.sample
 !.flaskenv
 *.pem
 logs/

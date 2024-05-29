@@ -1,6 +1,6 @@
 services:
   reverse_proxy:
-    image: nginx_frontend
+    image: word_chain_game_nginx
     hostname: reverse_proxy
     build:
       context: .
@@ -13,7 +13,7 @@ services:
       - backend
 
   backend:
-    image: word_chain_game
+    image: word_chain_game_backend
     hostname: backend
     build:
       context: .
