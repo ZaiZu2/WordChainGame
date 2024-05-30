@@ -18,9 +18,9 @@ game.
   - [ ] Introduce mute/ownership buttons
   - [ ] Check the leaderboards and your game history
   - [x] Create Dockerfiles and docker-compose of the application
-  - [ ] Deploy fully containerized on AWS
-  - [ ] Implement as a distributed system, with 2 independent game servers sharing transient state
-    in Redis
+  - [x] Create CI pipelines responsible for linting and building Dockerfiles
+  - [ ] Deploy the application on AWS as a distributed system, with 2 independent game servers
+    sharing transient state in Redis
 
 ### ***Tech Stack***
   - Frontend – Typescript, React, Boostrap/Bootstrap-React

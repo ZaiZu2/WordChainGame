@@ -1,0 +1,40 @@
+name: Lint code
+
+on: [pull_request, push]
+
+jobs:
+  lint_and_format:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout reapository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5.1.0
+        with:
+          python-version: "3.10"
+          cache: "pip"
+          cache-dependency-path: "./backend/requirements_dev.txt"
+
+      - name: Install pip dependencies
+        run: pip install -r ./backend/requirements_dev.txt
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: "npm"
+          cache-dependency-path: "./frontend/package-lock.json"
+
+      - name: Install npm dependencies
+        run: npm install --legacy-peer-deps
+        working-directory: ./frontend
+
+      - name: Lint BE code
+        run: ruff check
+        working-directory: ./backend
+
+      - name: Lint FE code
+        run: npx eslint --config .eslintrc.js
+        working-directory: ./frontend
