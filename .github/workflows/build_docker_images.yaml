@@ -8,9 +8,7 @@ on:
 jobs:
   build_docker_images:
     runs-on: ubuntu-latest
-    env:
-      REACT_APP_BASE_API_URL: /api
-      REACT_APP_WEBSOCKET_URL: /api/connect
+    environment: Production
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -36,24 +34,58 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4 # More information on this action can be found below in the 'AWS Credentials' section
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          role-to-assume: ${{ vars.AWS_ECR_ROLE }}
+          aws-region: ${{ vars.AWS_REGION }}
 
-      - name: Build FE image
-        uses: docker/build-push-action@v5
+      - name: Login to Amazon ECR Public
+        id: login-ecr-public
+        uses: aws-actions/amazon-ecr-login@v2
         with:
-          file: ./frontend/Dockerfile
-          context: .
-          push: true
-          tags: zaizu2/word_chain_game_nginx:latest
+          registry-type: public
 
-      - name: Build BE image
-        uses: docker/build-push-action@v5
-        with:
-          file: ./backend/Dockerfile
-          context: .
-          push: true
-          tags: zaizu2/word_chain_game_backend:latest
+      - name: Build and push FE docker image to Amazon ECR Public
+        env:
+          REGISTRY: ${{ steps.login-ecr-public.outputs.registry }}
+          REGISTRY_ALIAS: u9r6f9x0
+          REPOSITORY: word_chain_game_nginx
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:$IMAGE_TAG -f ./frontend/Dockerfile .
+          docker push $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:$IMAGE_TAG
+
+      - name: Build and push BE docker image to Amazon ECR Public
+        env:
+          REGISTRY: ${{ steps.login-ecr-public.outputs.registry }}
+          REGISTRY_ALIAS: u9r6f9x0
+          REPOSITORY: word_chain_game_backend
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:$IMAGE_TAG -f ./backend/Dockerfile .
+          docker push $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:$IMAGE_TAG
+
+      # - name: Login to Docker Hub
+      #   uses: docker/login-action@v3
+      #   with:
+      #     username: ${{ secrets.DOCKERHUB_USERNAME }}
+      #     password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # - name: Build FE image
+      #   uses: docker/build-push-action@v5
+      #   with:
+      #     file: ./frontend/Dockerfile
+      #     context: .
+      #     push: true
+      #     tags: zaizu2/word_chain_game_nginx:latest
+
+      # - name: Build BE image
+      #   uses: docker/build-push-action@v5
+      #   with:
+      #     file: ./backend/Dockerfile
+      #     context: .
+      #     push: true
+      #     tags: zaizu2/word_chain_game_backend:latest
