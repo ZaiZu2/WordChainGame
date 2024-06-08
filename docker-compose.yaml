@@ -1,13 +1,15 @@
 services:
-  reverse_proxy:
+  nginx:
     image: word_chain_game_nginx
-    hostname: reverse_proxy
+    hostname: nginx
     build:
       context: .
       dockerfile: ./frontend/Dockerfile
     ports:
       - "80:80"
       - "443:443"
+    env_file:
+      - deployment/.env.nginx
     restart: on-failure
     depends_on:
       - backend
