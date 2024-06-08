@@ -38,7 +38,7 @@ server {
     }
 
     location /api/connect {
-        proxy_pass http://backend:8000;
+        proxy_pass http://${BACKEND_HOST}:${BACKEND_PORT};
 
         # Set headers pointing to the original client
         proxy_set_header Host $host;
