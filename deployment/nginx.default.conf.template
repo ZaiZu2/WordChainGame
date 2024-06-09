@@ -1,6 +1,6 @@
 server {
     listen 80;
-    server_name  _;
+    server_name ${DOMAIN} www.${DOMAIN};
 
     location / {
         return 301 https://$host$request_uri;
@@ -9,10 +9,10 @@ server {
 
 server {
     listen 443 ssl;
-    server_name _;
+    server_name ${DOMAIN} www.${DOMAIN};
 
-    ssl_certificate /home/certs/localhost.pem;
-    ssl_certificate_key /home/certs/localhost-key.pem;
+    ssl_certificate /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
 
     root   /usr/share/nginx/html;
     index  index.html;
