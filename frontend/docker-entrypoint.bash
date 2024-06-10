@@ -13,6 +13,7 @@ apt-get install -y certbot python3-certbot-nginx
 certbot --nginx --noninteractive --agree-tos --email ${CERTBOT_EMAIL} \
 -d ${DOMAIN} -d www.${DOMAIN}
 certbot renew --dry-run
+echo "0 12 * * * /usr/bin/certbot renew --quiet" | crontab -
 
 # Reload Nginx to apply the new certificates
 nginx -s reload

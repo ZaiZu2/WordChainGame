@@ -1,16 +1,7 @@
+# Certbot nginx plugin will add TLS support during certificate creatoin
 server {
     listen 80;
     server_name ${DOMAIN} www.${DOMAIN};
-
-    location / {
-        return 301 https://$host$request_uri;
-    }
-}
-
-server {
-    listen 443 ssl;
-    server_name ${DOMAIN} www.${DOMAIN};
-
 
     root   /usr/share/nginx/html;
     index  index.html;
