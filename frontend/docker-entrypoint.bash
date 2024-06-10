@@ -5,7 +5,7 @@ set -eu
 envsubst '${BACKEND_HOST} ${BACKEND_PORT} ${DOMAIN}' \
 < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf
 
-wget google.com
+curl google.com
 
 # Install certbot and get the SSL certificate
 apt-get update
