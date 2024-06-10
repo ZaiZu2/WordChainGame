@@ -4,7 +4,7 @@ set -eu
 # Run nginx with replaced environment variables in the Nginx configuration file
 envsubst '${BACKEND_HOST} ${BACKEND_PORT} ${DOMAIN}' \
 < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf
-nginx &
+# nginx &
 
 
 # # Install certbot and get the SSL certificate
