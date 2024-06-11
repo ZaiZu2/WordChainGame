@@ -9,7 +9,7 @@ nginx &
 
 # Install certbot and get the SSL certificate
 apt-get update
-apt-get install -y certbot python3-certbot-nginx
+apt-get install -y certbot python3-certbot-nginx cron
 certbot --nginx --noninteractive --agree-tos --email ${CERTBOT_EMAIL} \
 -d ${DOMAIN} -d www.${DOMAIN}
 certbot renew --dry-run
