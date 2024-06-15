@@ -51,16 +51,16 @@ jobs:
 
       - name: Build and push FE docker image to Amazon ECR Public
         env:
-          AWS_ECR_ROLE: ${{ env.AWS_ECR_ROLE }}
-          REACT_APP_BASE_API_URL: ${{ env.REACT_APP_BASE_API_URL }}
-          REACT_APP_WEBSOCKET_URL: ${{ env.REACT_APP_WEBSOCKET_URL }}
+          REACT_APP_BASE_API_URL: ${{ vars.REACT_APP_BASE_API_URL }}
+          REACT_APP_WEBSOCKET_URL: ${{ vars.REACT_APP_WEBSOCKET_URL }}
           REGISTRY: ${{ steps.login-ecr-public.outputs.registry }}
           REGISTRY_ALIAS: u9r6f9x0
           REPOSITORY: word_chain_game_nginx
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          echo "REACT_APP_BASE_API_URL in Production: ${{ env.REACT_APP_BASE_API_URL }}"
-          echo "REACT_APP_WEBSOCKET_URL in Production: ${{ env.REACT_APP_WEBSOCKET_URL }}"
+          echo "AWS_ECR_ROLE in Production: ${{ vars.AWS_ECR_ROLE }}"
+          echo "REACT_APP_BASE_API_URL in Production: ${{ vars.REACT_APP_BASE_API_URL }}"
+          echo "REACT_APP_WEBSOCKET_URL in Production: ${{ vars.REACT_APP_WEBSOCKET_URL }}"
           echo "REACT_APP_BASE_API_URL in ENV VARS: $REACT_APP_BASE_API_URL"
           echo "REACT_APP_WEBSOCKET_URL in ENV VARS: $REACT_APP_WEBSOCKET_URL"
           docker build -t $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:$IMAGE_TAG -f ./frontend/Dockerfile .
