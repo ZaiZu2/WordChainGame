@@ -1,10 +1,11 @@
 name: Build Docker Images
 
-on:
-  workflow_run:
-    workflows: [Lint code]
-    types: [completed]
-    branches: [main, test2]
+# on:
+#   workflow_run:
+#     workflows: [Lint code]
+#     types: [completed]
+#     branches: [main, test2]
+on: [pull_request, push]
 
 jobs:
   on-success:
