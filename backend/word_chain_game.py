@@ -34,14 +34,11 @@ async def lifespan(app: FastAPI):
 
 
 def create_app() -> FastAPI:
+    Path('./logs').mkdir(exist_ok=True)
+
     app = FastAPI(lifespan=lifespan, openapi_tags=tags_metadata)
 
-    origins = [
-        'http://localhost:3000',
-        'http://127.0.0.1:3000',
-        'https://localhost:3000',
-        'https://127.0.0.1:3000',
-    ]
+    origins = get_config().CORS_ORIGINS
     app.add_middleware(
         CORSMiddleware,
         allow_origins=origins,
@@ -54,8 +51,6 @@ def create_app() -> FastAPI:
     app.include_router(rooms.router, prefix='/api')
 
     app.add_exception_handler(RequestValidationError, request_validation_handler)
-
-    Path('./logs').mkdir(exist_ok=True)
 
     return app
 

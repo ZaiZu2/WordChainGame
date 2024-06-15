@@ -12,6 +12,7 @@ class Config(BaseSettings):
         env_file_encoding = 'utf-8'
 
     DATABASE_URI: str
+    CORS_ORIGINS: list[str]
 
     AUTH_COOKIE_NAME: str = 'player_id'
     AUTH_COOKIE_EXPIRATION: int = 1200  # seconds
