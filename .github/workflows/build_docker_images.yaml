@@ -51,6 +51,7 @@ jobs:
 
       - name: Build and push FE docker image to Amazon ECR Public
         env:
+          AWS_ECR_ROLE: ${{ env.AWS_ECR_ROLE }}
           REACT_APP_BASE_API_URL: ${{ env.REACT_APP_BASE_API_URL }}
           REACT_APP_WEBSOCKET_URL: ${{ env.REACT_APP_WEBSOCKET_URL }}
           REGISTRY: ${{ steps.login-ecr-public.outputs.registry }}
