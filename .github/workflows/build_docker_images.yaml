@@ -1,14 +1,16 @@
 name: Build Docker Images
 
 on:
-  push:
-    # branches:
-    #   # - main
+  workflow_run:
+    workflows: ["Lint code"]
+    types:
+      - completed
 
 jobs:
   build_docker_images:
     runs-on: ubuntu-latest
     environment: Production
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/test2'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -48,6 +50,14 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v2
         with:
           registry-type: public
+
+      - name: Create .env file used by Create React App to build the app
+        env:
+          REACT_APP_BASE_API_URL: ${{ vars.REACT_APP_BASE_API_URL }}
+          REACT_APP_WEBSOCKET_URL: ${{ vars.REACT_APP_WEBSOCKET_URL }}
+        run: |
+          echo "REACT_APP_BASE_API_URL=$REACT_APP_BASE_API_URL" > ./frontend/.env
+          echo "REACT_APP_WEBSOCKET_URL=$REACT_APP_WEBSOCKET_URL" >> ./frontend/.env
 
       - name: Build and push FE docker image to Amazon ECR Public
         env:
