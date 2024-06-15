@@ -2,15 +2,15 @@ name: Build Docker Images
 
 on:
   workflow_run:
-    workflows: ["Lint code"]
-    types:
-      - completed
+    workflows: [Lint code]
+    types: [completed]
+    branches: [main, test2]
 
 jobs:
-  build_docker_images:
+  on-success:
     runs-on: ubuntu-latest
     environment: Production
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/test2'
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -106,3 +106,9 @@ jobs:
       #     context: .
       #     push: true
       #     tags: zaizu2/word_chain_game_backend:latest
+
+  on-failure:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+    steps:
+      - run: echo 'The triggering workflow failed'
