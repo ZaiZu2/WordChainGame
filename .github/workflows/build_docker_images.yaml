@@ -58,11 +58,6 @@ jobs:
           REPOSITORY: word_chain_game_nginx
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          echo "AWS_ECR_ROLE in Production: ${{ vars.AWS_ECR_ROLE }}"
-          echo "REACT_APP_BASE_API_URL in Production: ${{ vars.REACT_APP_BASE_API_URL }}"
-          echo "REACT_APP_WEBSOCKET_URL in Production: ${{ vars.REACT_APP_WEBSOCKET_URL }}"
-          echo "REACT_APP_BASE_API_URL in ENV VARS: $REACT_APP_BASE_API_URL"
-          echo "REACT_APP_WEBSOCKET_URL in ENV VARS: $REACT_APP_WEBSOCKET_URL"
           docker build -t $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:$IMAGE_TAG -f ./frontend/Dockerfile .
           docker push $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:$IMAGE_TAG
           docker tag $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:$IMAGE_TAG $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:latest
