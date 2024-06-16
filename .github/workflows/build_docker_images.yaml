@@ -28,7 +28,13 @@ jobs:
         working-directory: ./frontend
 
       - name: Build React app
-        run: npm run build
+        env:
+          REACT_APP_BASE_API_URL: ${{ vars.REACT_APP_BASE_API_URL }}
+          REACT_APP_WEBSOCKET_URL: ${{ vars.REACT_APP_WEBSOCKET_URL }}
+        run: |
+          echo "REACT_APP_BASE_API_URL=$REACT_APP_BASE_API_URL" > ./frontend/.env
+          echo "REACT_APP_WEBSOCKET_URL=$REACT_APP_WEBSOCKET_URL" >> ./frontend/.env
+          npm run build
         working-directory: ./frontend
 
       # Not needed
@@ -51,14 +57,6 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v2
         with:
           registry-type: public
-
-      - name: Create .env file used by Create React App to build the app
-        env:
-          REACT_APP_BASE_API_URL: ${{ vars.REACT_APP_BASE_API_URL }}
-          REACT_APP_WEBSOCKET_URL: ${{ vars.REACT_APP_WEBSOCKET_URL }}
-        run: |
-          echo "REACT_APP_BASE_API_URL=$REACT_APP_BASE_API_URL" > ./frontend/.env
-          echo "REACT_APP_WEBSOCKET_URL=$REACT_APP_WEBSOCKET_URL" >> ./frontend/.env
 
       - name: Build and push FE docker image to Amazon ECR Public
         env:
