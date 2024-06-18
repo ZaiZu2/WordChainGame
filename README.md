@@ -2,8 +2,8 @@
 
 In the Word Chain Game, players take turns adding a word to a growing chain, with each new word
 starting with the last letter of the previous one. The objective is to build the longest chain
-without repeating words, and the player who successfully contributes the longest word chain wins the
-game.
+without repeating words, and the player who will be the last to fail while appending the words
+to the growing chain, wins the game.
 
 ### ***Features***
   - [x] Play without the necessity to create the account - a UUID can be used to access your account
@@ -19,7 +19,7 @@ game.
   - [ ] Check the leaderboards and your game history
   - [x] Create Dockerfiles and docker-compose of the application
   - [x] Create CI pipelines responsible for linting and building Dockerfiles
-  - [ ] Deploy the application on AWS as a distributed system, with 2 independent game servers
+  - [x] Deploy the application on AWS ECS, with 2 independent game servers
     sharing transient state in Redis
 
 ### ***Tech Stack***
@@ -43,15 +43,14 @@ Application stores transient, game-related state in memory - meaning that curren
 active games and player sessions are not persisted. Nonetheless, the history of chat messages, past
 games (alongside all data to recreate their progress) and players are persisted using SQLAlchemy
 with a PostgreSQL database.
-#### 5. Validation
-Virtually all inputs and outputs are modeled and validated using Pydantic.
 #### 6. Deployment
-Application is utilizing Nginx as a public facing server. It is responsible for serving static React
-application and acting as a reverse proxy for serving dynamic content from a FastAPI application.
+Application is deployed on AWS ECS, consisting of 3 services deployed on 3 separate EC2s.
+- First one hosts Nginx as a public facing server. It is responsible for serving static React
+application and acting as a reverse proxy to a FastAPI application.
+- Second one hosts Uvicorn, holding transient state and interacting with database
+- Third one is a Postgres database running on AWS RDS
 
-System consists of 3 dockerized services - Nginx, FastAPI and postgres database. These services
-are orchestrated with a Docker Compose file.
-
+Additionally, application uses Docker Compose to orchestrate these services for local deployments.
 
 ### ***Frontend***
 #### 1. Typescript & Javascript
@@ -59,8 +58,3 @@ Initially written in JavaScript, the frontend code typing is gradually introduce
 transition fully to TypeScript in the near future.
 #### 2. React & Bootstrap
 React and boostrap are used to provide interactiveness and styling.
-
-### ***Disclaimer***
-This application is purely educational endeavor. It's general concept guided me on my learning path,
-allowing me to recognize various issues and the tools necessary to deal with them. Be advised that
-this is an ongoing project (started in January).
