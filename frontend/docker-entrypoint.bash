@@ -8,7 +8,7 @@ nginx &
 
 certbot --nginx --noninteractive --agree-tos --email ${CERTBOT_EMAIL} -d ${DOMAIN} -d www.${DOMAIN}
 certbot renew --dry-run
-echo "0 12 * * * /usr/bin/certbot renew --quiet" | crontab -
+echo "0 12 1 */2 * /usr/bin/certbot renew --quiet" | crontab - # At 12:00 on day-of-month 1 in every 2nd month
 
 nginx -s stop # Stop the background nginx, used by certbot to issue certificates
 sleep 5 # Wait to ensure nginx has fully stopped
