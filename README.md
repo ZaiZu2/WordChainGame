@@ -5,6 +5,8 @@ starting with the last letter of the previous one. The objective is to build the
 without repeating words, and the player who will be the last to fail while appending the words
 to the growing chain, wins the game.
 
+You can experience the game here: [wordchaingame.jkaw.xyz](http://wordchaingame.jkaw.xyz)
+
 ### ***Features***
   - [x] Play without the necessity to create the account - a UUID can be used to access your account
   - [x] Create and join game rooms
