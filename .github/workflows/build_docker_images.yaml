@@ -1,11 +1,16 @@
 name: Build Docker Images
 
+# BUG: Does not trigger after `Lint code` workflow finishes
 # on:
 #   workflow_run:
 #     workflows: [Lint code]
 #     types: [completed]
-#     branches: [main, test2]
-on: [pull_request, push]
+#     branches: [main]
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
 
 jobs:
   on-success:
