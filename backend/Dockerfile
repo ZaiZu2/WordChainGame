@@ -13,6 +13,7 @@ COPY backend/requirements_prod.txt requirements_prod.txt
 RUN pip install -r requirements_prod.txt
 
 COPY ./backend .
+RUN mkdir -p logs
 RUN chown -R word_chain_game:word_chain_game .
 USER word_chain_game
 

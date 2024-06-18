@@ -1,14 +1,22 @@
 name: Build Docker Images
 
+# BUG: Does not trigger after `Lint code` workflow finishes
+# on:
+#   workflow_run:
+#     workflows: [Lint code]
+#     types: [completed]
+#     branches: [main]
 on:
+  pull_request:
+    branches: [main]
   push:
-    branches:
-      - main
+    branches: [main]
 
 jobs:
-  build_docker_images:
+  on-success:
     runs-on: ubuntu-latest
     environment: Production
+    # if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -25,7 +33,13 @@ jobs:
         working-directory: ./frontend
 
       - name: Build React app
-        run: npm run build
+        env:
+          REACT_APP_BASE_API_URL: ${{ vars.REACT_APP_BASE_API_URL }}
+          REACT_APP_WEBSOCKET_URL: ${{ vars.REACT_APP_WEBSOCKET_URL }}
+        run: |
+          echo "REACT_APP_BASE_API_URL=$REACT_APP_BASE_API_URL" > .env
+          echo "REACT_APP_WEBSOCKET_URL=$REACT_APP_WEBSOCKET_URL" >> .env
+          npm run build
         working-directory: ./frontend
 
       # Not needed
@@ -51,6 +65,8 @@ jobs:
 
       - name: Build and push FE docker image to Amazon ECR Public
         env:
+          REACT_APP_BASE_API_URL: ${{ vars.REACT_APP_BASE_API_URL }}
+          REACT_APP_WEBSOCKET_URL: ${{ vars.REACT_APP_WEBSOCKET_URL }}
           REGISTRY: ${{ steps.login-ecr-public.outputs.registry }}
           REGISTRY_ALIAS: u9r6f9x0
           REPOSITORY: word_chain_game_nginx
@@ -94,3 +110,9 @@ jobs:
       #     context: .
       #     push: true
       #     tags: zaizu2/word_chain_game_backend:latest
+
+  # on-failure:
+  #   runs-on: ubuntu-latest
+  #   if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+  #   steps:
+  #     - run: echo 'The triggering workflow failed'
