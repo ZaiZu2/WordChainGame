@@ -5,6 +5,13 @@ from config import get_config
 
 client = httpx.Client()
 
+accepted_func_labels = [
+    'noun',
+    'verb',
+    'adjective',
+    'adverb',
+]
+
 
 def check_word_correctness(word: str) -> d.Word:
     response = client.get(
@@ -22,11 +29,15 @@ def check_word_correctness(word: str) -> d.Word:
     if any(isinstance(elem, str) for elem in data):
         return d.Word(content=word, is_correct=False)
 
-    definitions = [definition for definition in data if definition.get('fl')]
+    definitions = [
+        definition
+        for definition in data
+        if definition.get('fl') and definition['fl'] in accepted_func_labels
+    ]
 
     description: list[tuple[str, str]] = [
         (definition['fl'], definition['shortdef'][0])
         for i, definition in enumerate(definitions)
-        if i < 3 and definition.get('fl')
+        if i < 3 and definition.get('fl')  # Limit to top 3 definitions
     ]
     return d.Word(content=word, is_correct=True, description=description)
