@@ -29,15 +29,31 @@ def check_word_correctness(word: str) -> d.Word:
     if any(isinstance(elem, str) for elem in data):
         return d.Word(content=word, is_correct=False)
 
-    definitions = [
-        definition
-        for definition in data
-        if definition.get('fl') and definition['fl'] in accepted_func_labels
-    ]
+    filtered_definitions = []
+    for definition in data:
+        # Filter out words finds without functional labels
+        if not (definition.get('fl') and definition['fl'] in accepted_func_labels):
+            continue
 
-    description: list[tuple[str, str]] = [
-        (definition['fl'], definition['shortdef'][0])
-        for i, definition in enumerate(definitions)
-        if i < 3 and definition.get('fl')  # Limit to top 3 definitions
-    ]
+        # Filter out any definitions which are not the exact match - Mirriam-Webster returns
+        # similar words (e.g 'god' -> 'god-awful')
+        if not definition['meta']['id'].split(':')[0] == word:
+            continue
+
+        filtered_definitions.append(definition)
+
+    description: list[tuple[str, str]] = []
+    for definition, _ in zip(filtered_definitions, range(3)):
+        shortdef: list[str] = definition['shortdef']
+        part_of_speech: str = definition['fl']
+
+        # Format subsequent elements to start from a newline and a dash
+        if len(shortdef) > 1:
+            temp = [f'\n- {line}' if i > 0 else line for i, line in enumerate(shortdef)]
+            explanation = ''.join(temp)
+        else:
+            explanation = shortdef[0]
+
+        description.append((part_of_speech, explanation))
+
     return d.Word(content=word, is_correct=True, description=description)
