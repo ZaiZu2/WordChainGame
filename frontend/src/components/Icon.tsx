@@ -43,7 +43,9 @@ export default function Icon({
                     </span>
                 </Tooltip>
             ) : (
-                <span className={`material-symbols-outlined fs-${iconSize}`}>{symbol}</span>
+                <span className={`material-symbols-outlined fs-${iconSize} ${color}`}>
+                    {symbol}
+                </span>
             )}
             {value && <span className={`fs-${textSize}`}>{value}</span>}
         </Stack>
