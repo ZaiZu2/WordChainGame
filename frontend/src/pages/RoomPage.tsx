@@ -1,8 +1,11 @@
 import React, { useEffect, useRef } from "react";
 import { Button, Spinner, Stack } from "react-bootstrap";
 import { Container } from "react-bootstrap";
+import Badge from "react-bootstrap/Badge";
 import Form from "react-bootstrap/Form";
+import OverlayTrigger from "react-bootstrap/OverlayTrigger";
 import Table from "react-bootstrap/Table";
+import Tooltip from "react-bootstrap/Tooltip";
 import { useNavigate } from "react-router-dom";
 
 import apiClient from "../apiClient";
@@ -577,21 +580,9 @@ function WordList() {
         positionToSize[i] = { fontSize: `${(i + 1) * sizeStep}rem` };
     }
 
-    const symbol = (word: Word) => (word.is_correct ? "check" : "close");
     const points = (word: Word | null) =>
         word?.is_correct ? "+" + roomState?.rules.reward : roomState?.rules.penalty;
     const color = (word: Word | null) => (word?.is_correct ? "text-success" : "text-danger"); // GREEN or RED
-    const tooltip = (turn: Turn) => {
-        if (turn.word?.is_correct) {
-            let tooltipText = "";
-            turn.word.description!.forEach(([partOfSpeech, description]) => {
-                tooltipText += `${partOfSpeech}: ${description}\n\n`;
-            });
-            return tooltipText;
-        } else {
-            return turn.info as string;
-        }
-    };
 
     return (
         <Bubble>
@@ -620,24 +611,12 @@ function WordList() {
                                         className="d-flex p-0 border-0 justify-content-center align-middle"
                                         style={{ height: "35px" }}
                                     >
-                                        <Stack direction="horizontal" gap={3}>
-                                            <div
-                                                className={`p-0 border-0`}
-                                                style={positionToSize[index]}
-                                            >
-                                                {word ? word.content : "-"}
-                                            </div>
-                                            <div>
-                                                {word && (
-                                                    <Icon
-                                                        symbol={symbol(word)}
-                                                        color={color(word)}
-                                                        tooltip={tooltip(gameTurn)}
-                                                        iconSize={3}
-                                                    />
-                                                )}
-                                            </div>
-                                        </Stack>
+                                        {word && (
+                                            <WordElement
+                                                gameTurn={gameTurn}
+                                                textStyle={positionToSize[index]}
+                                            />
+                                        )}
                                     </td>
                                     <td
                                         className={`p-0 border-0 align-middle ${color(word)}`}
@@ -700,21 +679,9 @@ function WordSummary() {
     const gamePlayers = _gamePlayers as GamePlayer[];
     const gameTurns = _gameTurns as Turn[];
 
-    const symbol = (word: Word) => (word.is_correct ? "check" : "close");
     const points = (word: Word | null) =>
         word?.is_correct ? "+" + roomState?.rules.reward : roomState?.rules.penalty;
     const color = (word: Word | null) => (word?.is_correct ? "text-success" : "text-danger"); // GREEN or RED
-    const tooltip = (turn: Turn) => {
-        if (turn.word?.is_correct) {
-            let tooltipText = "";
-            turn.word.description!.forEach(([partOfSpeech, description]) => {
-                tooltipText += `${partOfSpeech}: ${description}\n\n`;
-            });
-            return tooltipText;
-        } else {
-            return turn.info as string;
-        }
-    };
 
     return (
         <Bubble>
@@ -740,23 +707,9 @@ function WordSummary() {
                                     </td>
                                     <td
                                         className="d-flex p-0 border-0 justify-content-center align-middle"
-                                        style={{ height: "35px" }}
+                                        style={{ height: "35px", minWidth: "60%" }}
                                     >
-                                        <Stack direction="horizontal" gap={3}>
-                                            <div className={`p-0 border-0`}>
-                                                {word ? word.content : "-"}
-                                            </div>
-                                            <div>
-                                                {word && (
-                                                    <Icon
-                                                        symbol={symbol(word)}
-                                                        color={color(word)}
-                                                        tooltip={tooltip(gameTurn)}
-                                                        iconSize={3}
-                                                    />
-                                                )}
-                                            </div>
-                                        </Stack>
+                                        <WordElement gameTurn={gameTurn} />
                                     </td>
                                     <td
                                         className={`p-0 border-0 align-middle ${color(word)}`}
@@ -771,5 +724,63 @@ function WordSummary() {
                 </Table>
             </Container>
         </Bubble>
+    );
+}
+
+function WordElement({ gameTurn, textStyle = {} }: { gameTurn: Turn; textStyle?: object }) {
+    const { gamePlayers: _gamePlayers, gameTurns: _gameTurns } = useStore();
+    const tooltipRef = useRef<HTMLDivElement | null>(null);
+
+    const renderDefinitionTooltip = (props: any) => (
+        <Tooltip id="popover-basic" {...props}>
+            <table className="p-2">
+                <tbody>
+                    <tbody>
+                        {gameTurn.word?.is_correct ? (
+                            gameTurn.word?.description!.map((definition, index) => (
+                                <tr key={index} className="">
+                                    <td className="pe-2 pt-2 align-top">
+                                        <h6>
+                                            <Badge pill bg="primary">
+                                                {definition[0]}
+                                            </Badge>
+                                        </h6>
+                                    </td>
+                                    <td className="text-start">{definition[1]}</td>
+                                </tr>
+                            ))
+                        ) : (
+                            <tr>
+                                <td>{gameTurn.info}</td>
+                            </tr>
+                        )}
+                    </tbody>
+                </tbody>
+            </table>
+        </Tooltip>
+    );
+
+    return (
+        <OverlayTrigger overlay={renderDefinitionTooltip} placement="right">
+            <div ref={tooltipRef} className={`p-0 border-0`}>
+                <Stack direction="horizontal" gap={3}>
+                    {gameTurn.word ? (
+                        <>
+                            <div style={textStyle}>{gameTurn.word.content}</div>
+                            <Icon
+                                symbol={gameTurn.word?.is_correct ? "check" : "close"}
+                                color={gameTurn.word?.is_correct ? "text-success" : "text-danger"}
+                                iconSize={3}
+                            />
+                        </>
+                    ) : (
+                        <>
+                            <div style={textStyle}>-</div>
+                            <Icon symbol={"close"} color={"text-danger"} iconSize={3} />
+                        </>
+                    )}
+                </Stack>
+            </div>
+        </OverlayTrigger>
     );
 }
