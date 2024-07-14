@@ -7,8 +7,6 @@ name: Build Docker Images
 #     types: [completed]
 #     branches: [main]
 on:
-  pull_request:
-    branches: [main]
   push:
     branches: [main]
 
