@@ -31,7 +31,7 @@ async def init_db_session() -> AsyncGenerator[AsyncSession, None]:
 
 
 async def recreate_database():
-    async with engine.begin() as conn:
+    async with engine.begin() as conn:  # `engine.begin()` due to a synchronous DB commands
         await conn.run_sync(db.Base.metadata.drop_all)
         await conn.run_sync(db.Base.metadata.create_all)
 

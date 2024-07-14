@@ -17,10 +17,9 @@ from src.misc import request_validation_handler
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # HACK: Temporary DB recreation logic for repeatable development environment
-    # Must be removed for a production environment
-    await recreate_database()
-    await create_root_objects()
+    if get_config().ENVIRONMENT == 'development':
+        await recreate_database()
+        await create_root_objects()
 
     # Schedule recurring tasks
     started_on = datetime.utcnow().replace(second=0, microsecond=0)
