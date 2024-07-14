@@ -611,12 +611,10 @@ function WordList() {
                                         className="d-flex p-0 border-0 justify-content-center align-middle"
                                         style={{ height: "35px" }}
                                     >
-                                        {word && (
-                                            <WordElement
-                                                gameTurn={gameTurn}
-                                                textStyle={positionToSize[index]}
-                                            />
-                                        )}
+                                        <WordElement
+                                            gameTurn={gameTurn}
+                                            textStyle={positionToSize[index]}
+                                        />
                                     </td>
                                     <td
                                         className={`p-0 border-0 align-middle ${color(word)}`}
@@ -732,12 +730,12 @@ function WordElement({ gameTurn, textStyle = {} }: { gameTurn: Turn; textStyle?:
     const tooltipRef = useRef<HTMLDivElement | null>(null);
 
     const renderDefinitionTooltip = (props: any) => (
-        <Tooltip id="popover-basic" {...props}>
+        <Tooltip {...props} style={{ ...props.style, "--bs-tooltip-max-width": "250px" }}>
             <table className="p-2">
                 <tbody>
                     <tbody>
                         {gameTurn.word?.is_correct ? (
-                            gameTurn.word?.description!.map((definition, index) => (
+                            gameTurn.word?.definitions!.map((definition, index) => (
                                 <tr key={index} className="">
                                     <td className="pe-2 pt-2 align-top">
                                         <h6>
@@ -746,7 +744,15 @@ function WordElement({ gameTurn, textStyle = {} }: { gameTurn: Turn; textStyle?:
                                             </Badge>
                                         </h6>
                                     </td>
-                                    <td className="text-start">{definition[1]}</td>
+                                    <td className="text-start">
+                                        <Stack>
+                                            {definition[1].map((description, index2) => (
+                                                <div key={index2} className="text-start">
+                                                    {description}
+                                                </div>
+                                            ))}
+                                        </Stack>
+                                    </td>
                                 </tr>
                             ))
                         ) : (

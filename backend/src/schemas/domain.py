@@ -184,7 +184,9 @@ class GameStateEnum(str, Enum):
 @dataclass(kw_only=True)
 class Word:
     content: str
-    description: list[tuple[str, str]] | None = None
+    definitions: list[tuple[str, list[str]]] | None = (
+        None  # [(part_of_speech, [def1, def2, ...]), ...]
+    )
     is_correct: bool | None = None
 
     def __hash__(self) -> int:

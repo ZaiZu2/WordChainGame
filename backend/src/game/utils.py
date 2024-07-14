@@ -36,24 +36,20 @@ def check_word_correctness(word: str) -> d.Word:
             continue
 
         # Filter out any definitions which are not the exact match - Mirriam-Webster returns
-        # similar words (e.g 'god' -> 'god-awful')
-        if not definition['meta']['id'].split(':')[0] == word:
+        # similar words (e.g 'god' -> 'god-awful'). In case multiple definitions exist,
+        # it will index them using a colon (e.g 'god:1', 'god:2')
+        if not definition['meta']['id'].lower().split(':')[0] == word:
             continue
 
         filtered_definitions.append(definition)
 
-    description: list[tuple[str, str]] = []
+    description: list[tuple[str, list[str]]] = []
     for definition, _ in zip(filtered_definitions, range(3)):
-        shortdef: list[str] = definition['shortdef']
+        shortdefs: list[str] = [
+            '- ' + shortdef if i > 0 else shortdef
+            for i, shortdef in enumerate(definition['shortdef'])
+        ]
         part_of_speech: str = definition['fl']
+        description.append((part_of_speech, shortdefs))
 
-        # Format subsequent elements to start from a newline and a dash
-        if len(shortdef) > 1:
-            temp = [f'\n- {line}' if i > 0 else line for i, line in enumerate(shortdef)]
-            explanation = ''.join(temp)
-        else:
-            explanation = shortdef[0]
-
-        description.append((part_of_speech, explanation))
-
-    return d.Word(content=word, is_correct=True, description=description)
+    return d.Word(content=word, is_correct=True, definitions=description)
