@@ -20,9 +20,10 @@ You can experience the game here: [wordchaingame.jkaw.xyz](http://wordchaingame.
   - [ ] Introduce mute/ownership buttons
   - [ ] Check the leaderboards and your game history
   - [x] Create Dockerfiles and docker-compose of the application
-  - [x] Create CI pipelines responsible for linting and building Dockerfiles
-  - [x] Deploy the application on AWS ECS, with 2 independent game servers
-    sharing transient state in Redis
+  - [x] Create CI pipelines responsible for linting building and pushing Docker Images to AWS ECR
+  - [x] Deploy the application on AWS ECS using AWS Postgres RDS
+  - [ ] Create CD pipeline
+  - [ ] Deploy with 2 independent game servers sharing transient state in Redis
 
 ### ***Tech Stack***
   - Frontend – Typescript, React, Boostrap/Bootstrap-React
