@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { Stack } from "react-bootstrap";
 import Container from "react-bootstrap/Container";
 import Form from "react-bootstrap/Form";
 
@@ -43,16 +44,28 @@ export default function Chat() {
                 {chatMessages.map((message, index) => {
                     const isLastMessage = index === chatMessages.length - 1;
                     return (
-                        <div key={message.id} ref={isLastMessage ? lastMessageRef : null}>
-                            {message.player_name !== "root" ? (
-                                <>
-                                    <span className="fw-bold me-2">{message.player_name}</span>
-                                    {message.content}
-                                </>
-                            ) : (
-                                <span className="fst-italic">{message.content}</span>
-                            )}
-                        </div>
+                        <Stack
+                            direction="horizontal"
+                            key={message.id}
+                            ref={isLastMessage ? lastMessageRef : null}
+                        >
+                            <div className="me-auto">
+                                {message.player_name !== "root" ? (
+                                    <>
+                                        <span className="fw-bold me-2">{message.player_name}</span>
+                                        {message.content}
+                                    </>
+                                ) : (
+                                    <span className="fst-italic">{message.content}</span>
+                                )}
+                            </div>
+                            <div
+                                className="h-100 ms-2 text-end align-self-start"
+                                style={{ minWidth: "100px" }}
+                            >
+                                {new Date(message.created_on!).toLocaleTimeString()}
+                            </div>
+                        </Stack>
                     );
                 })}
             </Container>
