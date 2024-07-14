@@ -1,6 +1,7 @@
 import json
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 from uuid import UUID
 
 from pydantic_settings import BaseSettings
@@ -27,6 +28,7 @@ class Config(BaseSettings):
     ROOM_DELETION_INTERVAL: int = 60  # seconds
     ROOM_DELETION_DELAY: int = 180  # seconds
 
+    ENVIRONMENT: Literal['development', 'production'] = 'production'
     ROOT_ID: UUID
     ROOT_NAME: str = 'root'
     LOBBY_ID: int = 1
