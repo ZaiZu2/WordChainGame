@@ -13,7 +13,7 @@
     },
     "default_file": {
       "()": "uvicorn.logging.DefaultFormatter",
-      "fmt": "%(levelprefix)s %(message)s",
+      "fmt": "%(levelprefix)s %(asctime)s %(message)s",
       "use_colors": false
     },
     "default_stream": {
@@ -35,10 +35,17 @@
       "formatter": "access_stream",
       "stream": "ext://sys.stdout"
     },
-    "errors_to_file": {
+    "internal_to_file": {
       "class": "logging.handlers.RotatingFileHandler",
       "formatter": "default_file",
       "filename": "logs/internal.log",
+      "maxBytes": 10240,
+      "backupCount": 10
+    },
+    "errors_to_file": {
+      "class": "logging.handlers.RotatingFileHandler",
+      "formatter": "default_file",
+      "filename": "logs/errors.log",
       "maxBytes": 10240,
       "backupCount": 10
     },
@@ -50,18 +57,22 @@
   },
   "loggers": {
     "uvicorn.access": {
-      "handlers": ["requests_to_file", "requests_to_stream"],
+      "handlers": [
+        "internal_to_file",
+        "requests_to_file",
+        "requests_to_stream"
+      ],
       "level": "INFO",
       "propagate": false
     },
     "uvicorn": {
-      "handlers": ["errors_to_file", "errors_to_stream"],
+      "handlers": ["internal_to_file", "errors_to_stream"],
       "level": "INFO",
       "propagate": false
     },
     "uvicorn.error": {
-      "handlers": ["errors_to_file", "errors_to_stream"],
-      "level": "INFO",
+      "handlers": ["internal_to_file", "errors_to_stream", "errors_to_file"],
+      "level": "WARNING",
       "propagate": false
     }
   },

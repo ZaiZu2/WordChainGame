@@ -374,45 +374,56 @@ def get_current_stats(conn_manager: ConnectionManager) -> v.CurrentStatistics:
 
 
 async def expire_inactive_rooms(conn_manager: ConnectionManager):
-    async with init_db_session() as db_session:
-        db_rooms = await db_session.scalars(
-            select(db.Room).where(
-                and_(db.Room.ended_on == None, db.Room.id_ != d.LOBBY.id_)  # noqa: E711
+    try:
+        async with init_db_session() as db_session:
+            db_rooms = await db_session.scalars(
+                select(db.Room).where(
+                    and_(db.Room.ended_on == None, db.Room.id_ != d.LOBBY.id_)  # noqa: E711
+                )
             )
+
+            current_date = datetime.utcnow()
+            expired_rooms = []
+            for db_room in db_rooms:
+                try:
+                    room = conn_manager.pool.get_room(room_id=db_room.id_)
+                except KeyError:
+                    # If the room is no longer in the pool, it probably means it was lost
+                    # due to a server crash or other error. It should be marked as finished
+                    # in the DB.
+                    db_room.ended_on = current_date
+                    db_session.add(db_room)
+                    expired_rooms.append(db_room.id_)
+                    continue
+
+                time_since_last_active = (current_date - room.last_active_on).seconds
+                if (
+                    not room.players
+                    and time_since_last_active > get_config().ROOM_DELETION_DELAY
+                ):
+                    conn_manager.pool.remove_room(room.id_)
+                    db_room.ended_on = current_date
+                    db_session.add(db_room)
+                    expired_rooms.append(db_room.id_)
+
+            await db_session.commit()
+            await broadcast_full_lobby_state(
+                conn_manager, removed_room_ids=expired_rooms
+            )
+
+            logger = getLogger('uvicorn')
+            if len(expired_rooms) > 0:
+                logger.info(
+                    f'RECURRING ROOM CLEANUP: Expired {len(expired_rooms)} rooms'
+                )
+            else:
+                logger.info('RECURRING ROOM CLEANUP: No rooms expired')
+            raise Exception('a')
+    except Exception:
+        error_logger = getLogger('uvicorn.error')
+        error_logger.exception(
+            'Unexpected exception caught while executing RECURRING ROOM CLEANUP'
         )
-
-        current_date = datetime.utcnow()
-        expired_rooms = []
-        for db_room in db_rooms:
-            try:
-                room = conn_manager.pool.get_room(room_id=db_room.id_)
-            except KeyError:
-                # If the room is no longer in the pool, it probably means it was lost
-                # due to a server crash or other error. It should be marked as finished
-                # in the DB.
-                db_room.ended_on = current_date
-                db_session.add(db_room)
-                expired_rooms.append(db_room.id_)
-                continue
-
-            time_since_last_active = (current_date - room.last_active_on).seconds
-            if (
-                not room.players
-                and time_since_last_active > get_config().ROOM_DELETION_DELAY
-            ):
-                conn_manager.pool.remove_room(room.id_)
-                db_room.ended_on = current_date
-                db_session.add(db_room)
-                expired_rooms.append(db_room.id_)
-
-        await db_session.commit()
-        await broadcast_full_lobby_state(conn_manager, removed_room_ids=expired_rooms)
-
-        logger = getLogger('uvicorn')
-        if len(expired_rooms) > 0:
-            logger.info(f'RECURRING ROOM CLEANUP: Expired {len(expired_rooms)} rooms')
-        else:
-            logger.info('RECURRING ROOM CLEANUP: No rooms expired')
 
 
 def schedule_recurring_task(
